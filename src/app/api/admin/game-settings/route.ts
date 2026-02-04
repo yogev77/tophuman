@@ -12,6 +12,8 @@ const VALID_GAME_TYPES = [
   'visual_diff',
   'audio_pattern',
   'drag_sort',
+  'follow_me',
+  'duck_shoot',
 ]
 
 export async function GET() {
@@ -133,6 +135,8 @@ function getGameName(gameId: string): string {
     visual_diff: 'Spot Difference',
     audio_pattern: 'Audio Pattern',
     drag_sort: 'Drag & Sort',
+    follow_me: 'Follow Me',
+    duck_shoot: 'Duck Shoot',
   }
   return names[gameId] || gameId
 }
@@ -149,6 +153,8 @@ function getGameDescription(gameId: string): string {
     visual_diff: 'Find all the differences between two images',
     audio_pattern: 'Listen and repeat the sound sequence',
     drag_sort: 'Arrange items in the correct order',
+    follow_me: 'Trace the path as accurately as possible',
+    duck_shoot: 'Shoot the moving ducks with precision',
   }
   return descriptions[gameId] || ''
 }
