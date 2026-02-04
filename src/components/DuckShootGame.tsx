@@ -251,9 +251,6 @@ export function DuckShootGame({ onGameComplete }: DuckShootGameProps) {
     ctx.font = 'bold 14px monospace'
     ctx.textAlign = 'center'
     ctx.fillText(`${MAX_SHOTS - shots}`, gunX, gunY + 5)
-
-    // Clean up old trails
-    setBulletTrails(prev => prev.filter(t => now - t.startTime < 500))
   }, [spec, activeDucks, bulletTrails, shots])
 
   const gameLoop = useCallback(() => {
@@ -491,6 +488,15 @@ export function DuckShootGame({ onGameComplete }: DuckShootGameProps) {
       drawGame()
     }
   }, [phase, drawGame])
+
+  // Clean up old bullet trails
+  useEffect(() => {
+    if (bulletTrails.length === 0) return
+    const timer = setTimeout(() => {
+      setBulletTrails(prev => prev.filter(t => Date.now() - t.startTime < 500))
+    }, 100)
+    return () => clearTimeout(timer)
+  }, [bulletTrails])
 
   return (
     <div className="bg-slate-800 rounded-xl p-6">
