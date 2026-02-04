@@ -250,7 +250,9 @@ function GamePageContent() {
           )}
 
           {(balance >= 1 || dailyGrantAvailable) && (
-            <GameComponent onGameComplete={handleGameComplete} />
+            <div className={`${colors.bg} border ${colors.border} rounded-xl p-6`}>
+              <GameComponent onGameComplete={handleGameComplete} />
+            </div>
           )}
         </div>
 
