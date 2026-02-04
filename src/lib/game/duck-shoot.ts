@@ -174,74 +174,50 @@ export function validateDuckShootTurn(
     }
   }
 
-  // Calculate hits and accuracy
-  let hits = 0
-  let totalAccuracy = 0
+  // Calculate hits - trust client's hit detection (duckIndex is sent when hit)
   const hitDucks = new Set<number>()
 
   for (const shoot of shoots) {
     if (shoot.duckIndex !== undefined && !hitDucks.has(shoot.duckIndex)) {
-      const duck = spec.duckSpawns[shoot.duckIndex]
-      if (duck && shoot.x !== undefined && shoot.y !== undefined) {
-        // Calculate duck position at time of shot
-        const shotTime = shoot.clientTimestampMs || 0
-        const duckAge = shotTime - duck.spawnTimeMs
-
-        let duckX: number
-        if (duck.fromLeft) {
-          duckX = (duckAge / 1000) * duck.speed
-        } else {
-          duckX = spec.canvasWidth - (duckAge / 1000) * duck.speed
-        }
-        const duckY = duck.yPosition
-        const duckCenterX = duckX + spec.duckSize / 2
-        const duckCenterY = duckY + spec.duckSize / 2
-
-        // Check if shot is within duck bounds (generous hitbox)
-        const hitRadius = spec.duckSize * 0.6
-        const distance = Math.sqrt(
-          Math.pow(shoot.x - duckCenterX, 2) + Math.pow(shoot.y - duckCenterY, 2)
-        )
-
-        if (distance <= hitRadius) {
-          hits++
-          hitDucks.add(shoot.duckIndex)
-          // Accuracy: 1 = perfect center, 0 = edge of hitbox
-          const accuracy = Math.max(0, 1 - distance / hitRadius)
-          totalAccuracy += accuracy
-        }
+      // Validate duck index is valid
+      if (shoot.duckIndex >= 0 && shoot.duckIndex < spec.duckSpawns.length) {
+        hitDucks.add(shoot.duckIndex)
       }
     }
   }
 
-  const totalDucks = spec.duckSpawns.length
+  const hits = hitDucks.size
+  // Accuracy based on hit ratio (since line-of-fire doesn't have distance)
+  const totalAccuracy = hits > 0 ? 0.8 : 0 // Base accuracy for line-of-fire hits
 
-  // Must hit at least 20% of ducks
-  if (hits < totalDucks * 0.2) {
-    return { valid: false, reason: 'not_enough_hits', hits, totalDucks }
+  const maxShots = 10
+
+  // Must hit at least 2 ducks (20% of max shots)
+  if (hits < 2) {
+    return { valid: false, reason: 'not_enough_hits', hits, totalDucks: maxShots }
   }
 
-  const avgAccuracy = hits > 0 ? totalAccuracy / hits : 0
+  // Accuracy = hits / shots taken
+  const accuracy = shoots.length > 0 ? hits / shoots.length : 0
 
   // Score components:
-  // 1. Hits: up to 5000 points (based on hit ratio)
-  const hitRatio = hits / totalDucks
-  const hitScore = Math.round(hitRatio * 5000)
+  // 1. Hits: 500 points per hit (up to 5000 for 10 hits)
+  const hitScore = hits * 500
 
-  // 2. Accuracy bonus: up to 3000 points
-  const accuracyBonus = Math.round(avgAccuracy * 3000)
+  // 2. Accuracy bonus: up to 3000 points (100% accuracy = 3000)
+  const accuracyBonus = Math.round(accuracy * 3000)
 
-  // 3. Streak bonus: up to 2000 points for consecutive hits
-  // (simplified: based on total hits as proxy for streaks)
-  const streakBonus = Math.min(2000, hits * 100)
+  // 3. Efficiency bonus: up to 2000 points for using fewer shots
+  const shotsUsed = shoots.length
+  const efficiencyBonus = Math.max(0, Math.round((1 - shotsUsed / maxShots) * 2000))
 
-  const score = hitScore + accuracyBonus + streakBonus
+  const score = hitScore + accuracyBonus + efficiencyBonus
 
   return {
     valid: true,
     hits,
-    totalDucks,
-    accuracy: avgAccuracy,
+    totalDucks: maxShots,
+    accuracy,
     score,
   }
 }
