@@ -13,6 +13,8 @@ import {
   ScanEye,
   Music,
   GripVertical,
+  Pencil,
+  Crosshair,
   Power,
   Calendar,
   Check,
@@ -69,6 +71,8 @@ const GAME_OPTIONS: GameOption[] = [
   { id: 'visual_diff', icon: ScanEye, name: 'Spot Difference', desc: 'Find the differences' },
   { id: 'audio_pattern', icon: Music, name: 'Audio Pattern', desc: 'Repeat the sound pattern' },
   { id: 'drag_sort', icon: GripVertical, name: 'Drag & Sort', desc: 'Sort items in order' },
+  { id: 'follow_me', icon: Pencil, name: 'Follow Me', desc: 'Trace the path accurately' },
+  { id: 'duck_shoot', icon: Crosshair, name: 'Duck Shoot', desc: 'Shoot the moving ducks' },
 ]
 
 export default function AdminPage() {
