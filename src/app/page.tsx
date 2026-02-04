@@ -13,6 +13,8 @@ import {
   ScanEye,
   Music,
   GripVertical,
+  Pencil,
+  Crosshair,
   Clock,
   Lock,
   LucideIcon,
@@ -29,6 +31,8 @@ const GAME_ICONS: Record<string, LucideIcon> = {
   visual_diff: ScanEye,
   audio_pattern: Music,
   drag_sort: GripVertical,
+  follow_me: Pencil,
+  duck_shoot: Crosshair,
 }
 
 interface GameInfo {

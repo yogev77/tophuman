@@ -14,6 +14,8 @@ import { ColorMatchGame } from '@/components/ColorMatchGame'
 import { VisualDiffGame } from '@/components/VisualDiffGame'
 import { AudioPatternGame } from '@/components/AudioPatternGame'
 import { DragSortGame } from '@/components/DragSortGame'
+import { FollowMeGame } from '@/components/FollowMeGame'
+import { DuckShootGame } from '@/components/DuckShootGame'
 import { Leaderboard } from '@/components/Leaderboard'
 import Link from 'next/link'
 import {
@@ -27,6 +29,8 @@ import {
   ScanEye,
   Music,
   GripVertical,
+  Pencil,
+  Crosshair,
   ArrowLeft,
   Gift,
   LucideIcon,
@@ -97,6 +101,18 @@ const GAME_CONFIG: Record<string, {
     name: 'Drag & Sort',
     leaderboardType: 'drag_sort',
     icon: GripVertical,
+  },
+  follow_me: {
+    component: FollowMeGame,
+    name: 'Follow Me',
+    leaderboardType: 'follow_me',
+    icon: Pencil,
+  },
+  duck_shoot: {
+    component: DuckShootGame,
+    name: 'Duck Shoot',
+    leaderboardType: 'duck_shoot',
+    icon: Crosshair,
   },
 }
 

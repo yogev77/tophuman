@@ -10,6 +10,8 @@ import { generateColorMatchTurnSpec, getColorMatchClientSpec, DEFAULT_COLOR_MATC
 import { generateVisualDiffTurnSpec, getVisualDiffClientSpec, DEFAULT_VISUAL_DIFF_CONFIG } from '@/lib/game/visual-diff'
 import { generateAudioPatternTurnSpec, getAudioPatternClientSpec, DEFAULT_AUDIO_PATTERN_CONFIG } from '@/lib/game/audio-pattern'
 import { generateDragSortTurnSpec, getDragSortClientSpec, DEFAULT_DRAG_SORT_CONFIG } from '@/lib/game/drag-sort'
+import { generateFollowMeTurnSpec, getFollowMeClientSpec, DEFAULT_FOLLOW_ME_CONFIG } from '@/lib/game/follow-me'
+import { generateDuckShootTurnSpec, getDuckShootClientSpec, DEFAULT_DUCK_SHOOT_CONFIG } from '@/lib/game/duck-shoot'
 import crypto from 'crypto'
 
 export async function POST(request: Request) {
@@ -139,6 +141,20 @@ export async function POST(request: Request) {
           spec = dsSpec as unknown as Record<string, unknown>
           clientSpec = getDragSortClientSpec(dsSpec) as unknown as Record<string, unknown>
           gameTypeId = 'drag_sort'
+          break
+        }
+        case 'follow_me': {
+          const fmSpec = generateFollowMeTurnSpec(profile.user_id, DEFAULT_FOLLOW_ME_CONFIG)
+          spec = fmSpec as unknown as Record<string, unknown>
+          clientSpec = getFollowMeClientSpec(fmSpec) as unknown as Record<string, unknown>
+          gameTypeId = 'follow_me'
+          break
+        }
+        case 'duck_shoot': {
+          const dsSpec = generateDuckShootTurnSpec(profile.user_id, DEFAULT_DUCK_SHOOT_CONFIG)
+          spec = dsSpec as unknown as Record<string, unknown>
+          clientSpec = getDuckShootClientSpec(dsSpec) as unknown as Record<string, unknown>
+          gameTypeId = 'duck_shoot'
           break
         }
         default: {

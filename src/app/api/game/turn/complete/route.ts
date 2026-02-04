@@ -10,6 +10,8 @@ import { validateColorMatchTurn, ColorMatchTurnSpec } from '@/lib/game/color-mat
 import { validateVisualDiffTurn, VisualDiffTurnSpec } from '@/lib/game/visual-diff'
 import { validateAudioPatternTurn, AudioPatternTurnSpec } from '@/lib/game/audio-pattern'
 import { validateDragSortTurn, DragSortTurnSpec } from '@/lib/game/drag-sort'
+import { validateFollowMeTurn, FollowMeTurnSpec } from '@/lib/game/follow-me'
+import { validateDuckShootTurn, DuckShootTurnSpec } from '@/lib/game/duck-shoot'
 
 export async function POST(request: NextRequest) {
   try {
@@ -122,6 +124,16 @@ export async function POST(request: NextRequest) {
       case 'drag_sort': {
         const spec = turn.spec as unknown as DragSortTurnSpec
         result = validateDragSortTurn(spec, baseEvents)
+        break
+      }
+      case 'follow_me': {
+        const spec = turn.spec as unknown as FollowMeTurnSpec
+        result = validateFollowMeTurn(spec, baseEvents)
+        break
+      }
+      case 'duck_shoot': {
+        const spec = turn.spec as unknown as DuckShootTurnSpec
+        result = validateDuckShootTurn(spec, baseEvents)
         break
       }
       default: {

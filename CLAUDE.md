@@ -65,6 +65,8 @@ src/
 │   ├── VisualDiffGame.tsx
 │   ├── AudioPatternGame.tsx
 │   ├── DragSortGame.tsx
+│   ├── DuckShootGame.tsx
+│   ├── FollowMeGame.tsx
 │   ├── ImageRotateGame.tsx
 │   ├── Leaderboard.tsx
 │   └── Header.tsx
@@ -72,6 +74,8 @@ src/
 │   ├── game/              # Server-side game logic & validation
 │   │   ├── whack-a-mole.ts
 │   │   ├── emoji-keypad.ts
+│   │   ├── follow-me.ts
+│   │   ├── duck-shoot.ts
 │   │   └── ... (one per game)
 │   └── supabase/          # Supabase client utilities
 ├── hooks/                 # React hooks
@@ -104,6 +108,8 @@ Key tables:
 | `visual_diff` | Visual Diff | Working |
 | `audio_pattern` | Audio Pattern | Working |
 | `drag_sort` | Drag Sort | Working |
+| `follow_me` | Follow Me | Working |
+| `duck_shoot` | Duck Shoot | Working |
 
 ## Known Issues
 
