@@ -247,14 +247,18 @@ function validateTimingPlausibility(events: StoredEvent[]): { valid: boolean; si
 
 function calculateScore(timeMs: number, mistakes: number, spec: TurnSpec): number {
   // Higher score = better
-  // Base: inverse of time, scaled to 10000 max
+  // Base: inverse of time, scaled to 9500 max (reduced from 10000)
   const maxTime = spec.timeLimitMs
-  const timeScore = Math.max(0, ((maxTime - timeMs) / maxTime) * 10000)
+  // Apply minimum time floor - even instant completion has a time cost
+  const minTimeFloor = 2000 // 2 seconds minimum
+  const effectiveTime = Math.max(timeMs, minTimeFloor)
+  const timeScore = Math.max(0, ((maxTime - effectiveTime) / maxTime) * 9500)
 
-  // Penalty for mistakes
-  const mistakePenalty = mistakes * 500
+  // Penalty for mistakes (increased)
+  const mistakePenalty = mistakes * 600
 
-  return Math.max(0, Math.round(timeScore - mistakePenalty))
+  // Cap at 9800 to ensure max score is never achievable
+  return Math.min(9800, Math.max(0, Math.round(timeScore - mistakePenalty)))
 }
 
 export const DEFAULT_CONFIG: GameConfig = {

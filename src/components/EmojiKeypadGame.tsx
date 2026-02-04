@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import Link from 'next/link'
 import { formatTime } from '@/lib/utils'
 
 type GamePhase = 'idle' | 'loading' | 'memorize' | 'play' | 'checking' | 'completed' | 'failed'
@@ -353,12 +354,17 @@ export function EmojiKeypadGame({ onGameComplete }: EmojiKeypadGameProps) {
               <div className="text-sm text-slate-400">Mistakes</div>
             </div>
           </div>
-          <button
-            onClick={startGame}
-            className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg transition"
-          >
-            Play Again
-          </button>
+          <div className="flex gap-4 justify-center">
+            <button
+              onClick={startGame}
+              className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg transition"
+            >
+              Play Again
+            </button>
+            <Link href="/" className="bg-slate-600 hover:bg-slate-500 text-white font-bold py-3 px-8 rounded-lg transition">
+              New Game
+            </Link>
+          </div>
         </div>
       )}
 
@@ -375,12 +381,17 @@ export function EmojiKeypadGame({ onGameComplete }: EmojiKeypadGameProps) {
               ? 'You ran out of time.'
               : 'Better luck next time!'}
           </p>
-          <button
-            onClick={startGame}
-            className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg transition"
-          >
-            Try Again
-          </button>
+          <div className="flex gap-4 justify-center">
+            <button
+              onClick={startGame}
+              className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg transition"
+            >
+              Try Again
+            </button>
+            <Link href="/" className="bg-slate-600 hover:bg-slate-500 text-white font-bold py-3 px-8 rounded-lg transition">
+              New Game
+            </Link>
+          </div>
         </div>
       )}
 

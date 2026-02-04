@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import Link from 'next/link'
 import { formatTime } from '@/lib/utils'
 
 type GamePhase = 'idle' | 'loading' | 'play' | 'checking' | 'completed' | 'failed'
@@ -39,7 +40,7 @@ export function VisualDiffGame({ onGameComplete }: VisualDiffGameProps) {
   const [turnToken, setTurnToken] = useState<string | null>(null)
   const [spec, setSpec] = useState<TurnSpec | null>(null)
   const [foundCount, setFoundCount] = useState(0)
-  const [clicks, setClicks] = useState<{ x: number; y: number }[]>([])
+  const [clicks, setClicks] = useState<{ x: number; y: number; side: 'left' | 'right' }[]>([])
   const [timeLeft, setTimeLeft] = useState(0)
   const [result, setResult] = useState<GameResult | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -107,7 +108,7 @@ export function VisualDiffGame({ onGameComplete }: VisualDiffGameProps) {
     const x = e.clientX - rect.left
     const y = e.clientY - rect.top
 
-    setClicks(prev => [...prev, { x, y }])
+    setClicks(prev => [...prev, { x, y, side }])
 
     // Send click event
     await fetch('/api/game/turn/event', {
@@ -254,6 +255,13 @@ export function VisualDiffGame({ onGameComplete }: VisualDiffGameProps) {
                 onClick={(e) => handleClick(e, 'left')}
               >
                 {spec.baseShapes.map((shape, i) => renderShape(shape, i))}
+                {/* Click markers for left side */}
+                {clicks.filter(c => c.side === 'left').map((click, i) => (
+                  <g key={`marker-left-${i}`}>
+                    <circle cx={click.x} cy={click.y} r={12} fill="none" stroke="#22c55e" strokeWidth={3} />
+                    <circle cx={click.x} cy={click.y} r={4} fill="#22c55e" />
+                  </g>
+                ))}
               </svg>
             </div>
             <div>
@@ -265,6 +273,13 @@ export function VisualDiffGame({ onGameComplete }: VisualDiffGameProps) {
                 onClick={(e) => handleClick(e, 'right')}
               >
                 {spec.modifiedShapes.map((shape, i) => renderShape(shape, i))}
+                {/* Click markers for right side */}
+                {clicks.filter(c => c.side === 'right').map((click, i) => (
+                  <g key={`marker-right-${i}`}>
+                    <circle cx={click.x} cy={click.y} r={12} fill="none" stroke="#22c55e" strokeWidth={3} />
+                    <circle cx={click.x} cy={click.y} r={4} fill="#22c55e" />
+                  </g>
+                ))}
               </svg>
             </div>
           </div>
@@ -302,12 +317,17 @@ export function VisualDiffGame({ onGameComplete }: VisualDiffGameProps) {
               <div className="text-sm text-slate-400">Differences Found</div>
             </div>
           </div>
-          <button
-            onClick={startGame}
-            className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg transition"
-          >
-            Play Again
-          </button>
+          <div className="flex gap-4 justify-center">
+            <button
+              onClick={startGame}
+              className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg transition"
+            >
+              Play Again
+            </button>
+            <Link href="/" className="bg-slate-600 hover:bg-slate-500 text-white font-bold py-3 px-8 rounded-lg transition">
+              New Game
+            </Link>
+          </div>
         </div>
       )}
 
@@ -320,12 +340,17 @@ export function VisualDiffGame({ onGameComplete }: VisualDiffGameProps) {
               ? `Only found ${result.found}/${result.total} differences. Need at least 60%.`
               : 'Better luck next time!'}
           </p>
-          <button
-            onClick={startGame}
-            className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg transition"
-          >
-            Try Again
-          </button>
+          <div className="flex gap-4 justify-center">
+            <button
+              onClick={startGame}
+              className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg transition"
+            >
+              Try Again
+            </button>
+            <Link href="/" className="bg-slate-600 hover:bg-slate-500 text-white font-bold py-3 px-8 rounded-lg transition">
+              New Game
+            </Link>
+          </div>
         </div>
       )}
 

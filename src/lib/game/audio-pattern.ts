@@ -34,10 +34,10 @@ export interface AudioPatternResult {
 }
 
 export const DEFAULT_AUDIO_PATTERN_CONFIG: AudioPatternConfig = {
-  num_tones: 6,
+  num_tones: 15, // Max sequence length (for progressive levels)
   num_buttons: 4,
   time_limit_seconds: 30,
-  tone_duration_ms: 400,
+  tone_duration_ms: 300,
 }
 
 // Musical frequencies (C4, E4, G4, C5 - a nice chord)
@@ -102,6 +102,7 @@ export function validateAudioPatternTurn(
   events: AudioEvent[]
 ): AudioPatternResult {
   const taps = events.filter(e => e.eventType === 'tap')
+  const levelCompleteEvents = events.filter(e => e.eventType === 'level_complete')
 
   if (taps.length === 0) {
     return { valid: false, reason: 'no_input', correct: 0, total: spec.sequence.length }
@@ -131,7 +132,7 @@ export function validateAudioPatternTurn(
     }
 
     // Impossibly fast tapping
-    if (avgInterval < 100) {
+    if (avgInterval < 50) {
       return {
         valid: false,
         reason: 'impossible_speed',
@@ -142,29 +143,35 @@ export function validateAudioPatternTurn(
     }
   }
 
-  // Check sequence
-  let correct = 0
-  for (let i = 0; i < Math.min(taps.length, spec.sequence.length); i++) {
-    if (taps[i].buttonIndex === spec.sequence[i]) {
-      correct++
-    } else {
-      // Stop at first mistake
-      break
-    }
+  // Calculate levels completed (starting level is 3)
+  const levelsCompleted = levelCompleteEvents.length
+  const highestLevel = 3 + levelsCompleted
+
+  // Calculate total time taken
+  const startTime = events.find(e => e.eventType === 'tap')?.clientTimestampMs || 0
+  const endTime = events[events.length - 1]?.clientTimestampMs || startTime
+  const totalTimeMs = endTime - startTime
+
+  // Must complete at least level 3 (first round)
+  if (levelsCompleted < 1) {
+    return { valid: false, reason: 'no_levels_completed', correct: 0, total: highestLevel }
   }
 
-  // Must get at least 80% correct
-  if (correct < spec.sequence.length * 0.8) {
-    return { valid: false, reason: 'incorrect_sequence', correct, total: spec.sequence.length }
-  }
+  // Score: base points for levels + speed bonus
+  // Each level = 950 points (reduced from 1000), speed bonus up to 4500 (reduced from 5000)
+  // Minimum time floor ensures even instant completion doesn't max out
+  const levelPoints = levelsCompleted * 950
+  const minTimeFloor = 2000 // 2 seconds minimum
+  const effectiveTime = Math.max(totalTimeMs, minTimeFloor)
+  const speedBonus = Math.max(0, 4500 - Math.floor(effectiveTime / 10)) // Faster = more points
 
-  const accuracy = correct / spec.sequence.length
-  const score = Math.round(accuracy * 10000)
+  // Cap at 9800 to ensure max score is never achievable
+  const score = Math.min(9800, levelPoints + speedBonus)
 
   return {
     valid: true,
-    correct,
-    total: spec.sequence.length,
+    correct: levelsCompleted,
+    total: highestLevel,
     score,
   }
 }

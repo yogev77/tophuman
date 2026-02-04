@@ -205,11 +205,17 @@ export function validateWhackAMoleTurn(
 
 function calculateWhackAMoleScore(hits: number, misses: number, bombHits: number, spec: WhackAMoleTurnSpec): number {
   // Score based on accuracy and hits
+  // Reduced max values to prevent 10K scores
   const maxHits = spec.numMoles
-  const hitScore = (hits / maxHits) * 7000
-  const accuracyBonus = hits > 0 ? (hits / (hits + misses + bombHits)) * 2000 : 0
-  const missPenalty = misses * 30
-  const bombPenalty = bombHits * 300 // Heavy penalty for hitting bombs
+  const hitScore = (hits / maxHits) * 6500 // Reduced from 7000
 
-  return Math.max(0, Math.round(hitScore + accuracyBonus - missPenalty - bombPenalty))
+  // Accuracy bonus capped and curved - hitting every mole perfectly is very hard
+  const accuracyRatio = hits > 0 ? hits / (hits + misses + bombHits) : 0
+  const accuracyBonus = Math.pow(accuracyRatio, 1.15) * 1800 // Reduced from 2000, curved
+
+  const missPenalty = misses * 35 // Slightly increased
+  const bombPenalty = bombHits * 350 // Increased penalty for bombs
+
+  // Cap at 9800 to ensure max score is never achievable
+  return Math.min(9800, Math.max(0, Math.round(hitScore + accuracyBonus - missPenalty - bombPenalty)))
 }

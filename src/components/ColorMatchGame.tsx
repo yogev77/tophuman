@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import Link from 'next/link'
 import { formatTime } from '@/lib/utils'
 
 type GamePhase = 'idle' | 'loading' | 'play' | 'checking' | 'completed' | 'failed'
@@ -21,6 +22,176 @@ interface GameResult {
 
 interface ColorMatchGameProps {
   onGameComplete?: (result: GameResult) => void
+}
+
+// HSV to RGB conversion
+function hsvToRgb(h: number, s: number, v: number): { r: number; g: number; b: number } {
+  const c = v * s
+  const x = c * (1 - Math.abs((h / 60) % 2 - 1))
+  const m = v - c
+  let r = 0, g = 0, b = 0
+
+  if (h < 60) { r = c; g = x; b = 0 }
+  else if (h < 120) { r = x; g = c; b = 0 }
+  else if (h < 180) { r = 0; g = c; b = x }
+  else if (h < 240) { r = 0; g = x; b = c }
+  else if (h < 300) { r = x; g = 0; b = c }
+  else { r = c; g = 0; b = x }
+
+  return {
+    r: Math.round((r + m) * 255),
+    g: Math.round((g + m) * 255),
+    b: Math.round((b + m) * 255)
+  }
+}
+
+// Color Picker Component
+function ColorPicker({ color, onChange }: {
+  color: { r: number; g: number; b: number }
+  onChange: (color: { r: number; g: number; b: number }) => void
+}) {
+  const [hue, setHue] = useState(0)
+  const [saturation, setSaturation] = useState(0.5)
+  const [brightness, setBrightness] = useState(1)
+  const squareRef = useRef<HTMLDivElement>(null)
+  const hueRef = useRef<HTMLDivElement>(null)
+  const isDraggingSquare = useRef(false)
+  const isDraggingHue = useRef(false)
+
+  // Update color when HSV changes
+  useEffect(() => {
+    onChange(hsvToRgb(hue, saturation, brightness))
+  }, [hue, saturation, brightness, onChange])
+
+  const handleSquareInteraction = useCallback((clientX: number, clientY: number) => {
+    if (!squareRef.current) return
+    const rect = squareRef.current.getBoundingClientRect()
+    const x = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+    const y = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height))
+    setSaturation(x)
+    setBrightness(1 - y)
+  }, [])
+
+  const handleHueInteraction = useCallback((clientX: number) => {
+    if (!hueRef.current) return
+    const rect = hueRef.current.getBoundingClientRect()
+    const x = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+    setHue(x * 360)
+  }, [])
+
+  // Mouse events for square
+  const onSquareMouseDown = (e: React.MouseEvent) => {
+    isDraggingSquare.current = true
+    handleSquareInteraction(e.clientX, e.clientY)
+  }
+
+  // Mouse events for hue
+  const onHueMouseDown = (e: React.MouseEvent) => {
+    isDraggingHue.current = true
+    handleHueInteraction(e.clientX)
+  }
+
+  // Touch events for square
+  const onSquareTouchStart = (e: React.TouchEvent) => {
+    isDraggingSquare.current = true
+    const touch = e.touches[0]
+    handleSquareInteraction(touch.clientX, touch.clientY)
+  }
+
+  const onSquareTouchMove = (e: React.TouchEvent) => {
+    if (!isDraggingSquare.current) return
+    const touch = e.touches[0]
+    handleSquareInteraction(touch.clientX, touch.clientY)
+  }
+
+  // Touch events for hue
+  const onHueTouchStart = (e: React.TouchEvent) => {
+    isDraggingHue.current = true
+    const touch = e.touches[0]
+    handleHueInteraction(touch.clientX)
+  }
+
+  const onHueTouchMove = (e: React.TouchEvent) => {
+    if (!isDraggingHue.current) return
+    const touch = e.touches[0]
+    handleHueInteraction(touch.clientX)
+  }
+
+  // Global mouse move/up
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      if (isDraggingSquare.current) {
+        handleSquareInteraction(e.clientX, e.clientY)
+      }
+      if (isDraggingHue.current) {
+        handleHueInteraction(e.clientX)
+      }
+    }
+    const onMouseUp = () => {
+      isDraggingSquare.current = false
+      isDraggingHue.current = false
+    }
+    const onTouchEnd = () => {
+      isDraggingSquare.current = false
+      isDraggingHue.current = false
+    }
+
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp)
+    window.addEventListener('touchend', onTouchEnd)
+
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+      window.removeEventListener('touchend', onTouchEnd)
+    }
+  }, [handleSquareInteraction, handleHueInteraction])
+
+  const pureHueColor = hsvToRgb(hue, 1, 1)
+
+  return (
+    <div className="space-y-4">
+      {/* Saturation/Brightness Square */}
+      <div
+        ref={squareRef}
+        className="w-full h-48 rounded-lg cursor-crosshair relative touch-none select-none"
+        style={{
+          background: `linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, rgb(${pureHueColor.r}, ${pureHueColor.g}, ${pureHueColor.b}))`
+        }}
+        onMouseDown={onSquareMouseDown}
+        onTouchStart={onSquareTouchStart}
+        onTouchMove={onSquareTouchMove}
+      >
+        {/* Picker indicator */}
+        <div
+          className="absolute w-5 h-5 border-2 border-white rounded-full shadow-lg pointer-events-none"
+          style={{
+            left: `calc(${saturation * 100}% - 10px)`,
+            top: `calc(${(1 - brightness) * 100}% - 10px)`,
+            backgroundColor: `rgb(${color.r}, ${color.g}, ${color.b})`
+          }}
+        />
+      </div>
+
+      {/* Hue Bar */}
+      <div
+        ref={hueRef}
+        className="w-full h-8 rounded-lg cursor-pointer relative touch-none select-none"
+        style={{
+          background: 'linear-gradient(to right, #f00 0%, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00 100%)'
+        }}
+        onMouseDown={onHueMouseDown}
+        onTouchStart={onHueTouchStart}
+        onTouchMove={onHueTouchMove}
+      >
+        {/* Hue indicator */}
+        <div
+          className="absolute top-0 w-2 h-full bg-white rounded shadow-lg pointer-events-none"
+          style={{ left: `calc(${(hue / 360) * 100}% - 4px)` }}
+        />
+      </div>
+    </div>
+  )
 }
 
 export function ColorMatchGame({ onGameComplete }: ColorMatchGameProps) {
@@ -174,7 +345,7 @@ export function ColorMatchGame({ onGameComplete }: ColorMatchGameProps) {
       {phase === 'idle' && (
         <div className="text-center py-12">
           <p className="text-slate-300 mb-6">
-            Match the target color using RGB sliders. Get as close as you can!
+            Drag on the color picker to match the target color. Get as close as you can!
           </p>
           <button
             onClick={startGame}
@@ -211,49 +382,8 @@ export function ColorMatchGame({ onGameComplete }: ColorMatchGameProps) {
             </div>
           </div>
 
-          <div className="space-y-4 mb-6">
-            <div>
-              <div className="flex justify-between text-sm text-slate-400 mb-1">
-                <span>Red</span>
-                <span>{userColor.r}</span>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="255"
-                value={userColor.r}
-                onChange={(e) => setUserColor({ ...userColor, r: parseInt(e.target.value) })}
-                className="w-full h-3 bg-gradient-to-r from-black via-red-500 to-red-500 rounded-lg appearance-none cursor-pointer"
-              />
-            </div>
-            <div>
-              <div className="flex justify-between text-sm text-slate-400 mb-1">
-                <span>Green</span>
-                <span>{userColor.g}</span>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="255"
-                value={userColor.g}
-                onChange={(e) => setUserColor({ ...userColor, g: parseInt(e.target.value) })}
-                className="w-full h-3 bg-gradient-to-r from-black via-green-500 to-green-500 rounded-lg appearance-none cursor-pointer"
-              />
-            </div>
-            <div>
-              <div className="flex justify-between text-sm text-slate-400 mb-1">
-                <span>Blue</span>
-                <span>{userColor.b}</span>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="255"
-                value={userColor.b}
-                onChange={(e) => setUserColor({ ...userColor, b: parseInt(e.target.value) })}
-                className="w-full h-3 bg-gradient-to-r from-black via-blue-500 to-blue-500 rounded-lg appearance-none cursor-pointer"
-              />
-            </div>
+          <div className="mb-6">
+            <ColorPicker color={userColor} onChange={setUserColor} />
           </div>
 
           <button
@@ -292,12 +422,17 @@ export function ColorMatchGame({ onGameComplete }: ColorMatchGameProps) {
               <div className="text-sm text-slate-400">Average Accuracy</div>
             </div>
           </div>
-          <button
-            onClick={startGame}
-            className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg transition"
-          >
-            Play Again
-          </button>
+          <div className="flex gap-4 justify-center">
+            <button
+              onClick={startGame}
+              className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg transition"
+            >
+              Play Again
+            </button>
+            <Link href="/" className="bg-slate-600 hover:bg-slate-500 text-white font-bold py-3 px-8 rounded-lg transition">
+              New Game
+            </Link>
+          </div>
         </div>
       )}
 
@@ -310,12 +445,17 @@ export function ColorMatchGame({ onGameComplete }: ColorMatchGameProps) {
               ? `Accuracy too low: ${Math.round((result.averageAccuracy || 0) * 100)}%`
               : 'Better luck next time!'}
           </p>
-          <button
-            onClick={startGame}
-            className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg transition"
-          >
-            Try Again
-          </button>
+          <div className="flex gap-4 justify-center">
+            <button
+              onClick={startGame}
+              className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg transition"
+            >
+              Try Again
+            </button>
+            <Link href="/" className="bg-slate-600 hover:bg-slate-500 text-white font-bold py-3 px-8 rounded-lg transition">
+              New Game
+            </Link>
+          </div>
         </div>
       )}
 

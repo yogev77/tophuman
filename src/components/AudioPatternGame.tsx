@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import Link from 'next/link'
 
 type GamePhase = 'idle' | 'loading' | 'listen' | 'play' | 'checking' | 'completed' | 'failed'
 
@@ -37,8 +38,12 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
   const [result, setResult] = useState<GameResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [playingIndex, setPlayingIndex] = useState(-1)
+  const [currentLevel, setCurrentLevel] = useState(3) // Start with 3 notes
+  const [timeLeft, setTimeLeft] = useState(30000)
 
   const audioContextRef = useRef<AudioContext | null>(null)
+  const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const gameStartTimeRef = useRef<number>(0)
 
   const playTone = useCallback((frequency: number, duration: number) => {
     if (!audioContextRef.current) {
@@ -68,6 +73,11 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
     setUserInput([])
     setResult(null)
     setPlayingIndex(-1)
+    setCurrentLevel(3)
+    setTimeLeft(30000)
+
+    // Clear any existing timer
+    if (timerRef.current) clearInterval(timerRef.current)
 
     try {
       const createRes = await fetch('/api/game/turn/create', {
@@ -95,9 +105,23 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
         throw new Error('Failed to start turn')
       }
 
-      // Play the sequence
+      gameStartTimeRef.current = Date.now()
+
+      // Start 30 second timer
+      timerRef.current = setInterval(() => {
+        const elapsed = Date.now() - gameStartTimeRef.current
+        const remaining = 30000 - elapsed
+        setTimeLeft(Math.max(0, remaining))
+
+        if (remaining <= 0) {
+          if (timerRef.current) clearInterval(timerRef.current)
+          completeGame()
+        }
+      }, 100)
+
+      // Play the sequence (only first 3 notes)
       setPhase('listen')
-      await playSequence(turnData.spec)
+      await playSequence(turnData.spec, 3)
 
       setPhase('play')
     } catch (err) {
@@ -106,14 +130,15 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
     }
   }, [])
 
-  const playSequence = async (gameSpec: TurnSpec) => {
-    for (let i = 0; i < gameSpec.sequence.length; i++) {
+  const playSequence = async (gameSpec: TurnSpec, length?: number) => {
+    const seqLength = length || gameSpec.sequence.length
+    for (let i = 0; i < seqLength; i++) {
       const buttonIndex = gameSpec.sequence[i]
       setPlayingIndex(i)
       setActiveButton(buttonIndex)
       playTone(gameSpec.frequencies[buttonIndex], gameSpec.toneDurationMs)
 
-      await new Promise(resolve => setTimeout(resolve, gameSpec.toneDurationMs + 200))
+      await new Promise(resolve => setTimeout(resolve, gameSpec.toneDurationMs + 150))
       setActiveButton(null)
     }
     setPlayingIndex(-1)
@@ -145,16 +170,46 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
     // Check if sequence complete or wrong
     const currentIndex = newInput.length - 1
     if (newInput[currentIndex] !== spec.sequence[currentIndex]) {
-      // Wrong!
+      // Wrong! End game
       completeGame()
-    } else if (newInput.length >= spec.sequence.length) {
-      // Complete!
-      completeGame()
+    } else if (newInput.length >= currentLevel) {
+      // Level complete! Send level complete event
+      await fetch('/api/game/turn/event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          turnToken,
+          eventType: 'level_complete',
+          level: currentLevel,
+          clientTimestampMs: Date.now(),
+        }),
+      })
+
+      // Check if we've reached max sequence or time is up
+      if (currentLevel >= spec.sequence.length) {
+        completeGame()
+      } else {
+        // Progress to next level
+        const nextLevel = currentLevel + 1
+        setCurrentLevel(nextLevel)
+        setUserInput([])
+
+        // Play the new longer sequence
+        setPhase('listen')
+        await playSequence(spec, nextLevel)
+        setPhase('play')
+      }
     }
   }
 
   const completeGame = async () => {
     if (!turnToken) return
+
+    // Stop timer
+    if (timerRef.current) {
+      clearInterval(timerRef.current)
+      timerRef.current = null
+    }
 
     setPhase('checking')
 
@@ -183,6 +238,9 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
       if (audioContextRef.current) {
         audioContextRef.current.close()
       }
+      if (timerRef.current) {
+        clearInterval(timerRef.current)
+      }
     }
   }, [])
 
@@ -190,17 +248,20 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
     <div className="bg-slate-800 rounded-xl p-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold text-white">Audio Pattern</h2>
-        {phase === 'play' && spec && (
-          <span className="text-slate-400">
-            {userInput.length} / {spec.sequence.length}
-          </span>
+        {(phase === 'play' || phase === 'listen') && spec && (
+          <div className="flex items-center gap-4">
+            <span className="text-slate-400">Level {currentLevel - 2}</span>
+            <span className={`text-2xl font-mono ${timeLeft < 10000 ? 'text-red-400' : 'text-green-400'}`}>
+              {Math.ceil(timeLeft / 1000)}s
+            </span>
+          </div>
         )}
       </div>
 
       {phase === 'idle' && (
         <div className="text-center py-12">
           <p className="text-slate-300 mb-6">
-            Listen to the pattern, then repeat it! Like Simon Says, but with sound.
+            Listen and repeat! Start with 3 tones, each level adds one more. 30 seconds - go fast!
           </p>
           <button
             onClick={startGame}
@@ -222,7 +283,7 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
         <div className="text-center py-8">
           <p className="text-xl text-yellow-400 mb-6 animate-pulse">Listen carefully!</p>
           <p className="text-slate-400 mb-4">
-            Playing tone {playingIndex + 1} of {spec.sequence.length}
+            Playing tone {playingIndex + 1} of {currentLevel}
           </p>
           <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto">
             {Array.from({ length: spec.numButtons }).map((_, i) => (
@@ -239,7 +300,7 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
 
       {phase === 'play' && spec && (
         <div className="text-center py-8">
-          <p className="text-xl text-green-400 mb-6">Your turn! Repeat the pattern</p>
+          <p className="text-xl text-green-400 mb-6">Your turn! Repeat the {currentLevel} tones</p>
           <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto">
             {Array.from({ length: spec.numButtons }).map((_, i) => (
               <button
@@ -252,7 +313,7 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
             ))}
           </div>
           <div className="flex justify-center gap-2 mt-6">
-            {spec.sequence.map((_, i) => (
+            {Array.from({ length: currentLevel }).map((_, i) => (
               <div
                 key={i}
                 className={`w-4 h-4 rounded-full ${
@@ -289,16 +350,21 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
               <div className="text-sm text-slate-400">Rank</div>
             </div>
             <div className="bg-slate-700 rounded-lg p-4 col-span-2">
-              <div className="text-xl font-bold text-green-400">{result.correct}/{result.total}</div>
-              <div className="text-sm text-slate-400">Correct</div>
+              <div className="text-xl font-bold text-green-400">{result.correct} levels</div>
+              <div className="text-sm text-slate-400">Completed</div>
             </div>
           </div>
-          <button
-            onClick={startGame}
-            className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg transition"
-          >
-            Play Again
-          </button>
+          <div className="flex gap-4 justify-center">
+            <button
+              onClick={startGame}
+              className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg transition"
+            >
+              Play Again
+            </button>
+            <Link href="/" className="bg-slate-600 hover:bg-slate-500 text-white font-bold py-3 px-8 rounded-lg transition">
+              New Game
+            </Link>
+          </div>
         </div>
       )}
 
@@ -307,16 +373,23 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
           <div className="text-6xl mb-4">😢</div>
           <h3 className="text-2xl font-bold text-red-400 mb-4">Wrong Pattern!</h3>
           <p className="text-slate-300 mb-6">
-            {result?.reason === 'incorrect_sequence'
-              ? `Got ${result.correct}/${result.total} correct.`
+            {result?.reason === 'no_levels_completed'
+              ? 'Failed on level 1. Keep trying!'
+              : result?.correct
+              ? `Made it to level ${result.correct}!`
               : 'Better luck next time!'}
           </p>
-          <button
-            onClick={startGame}
-            className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg transition"
-          >
-            Try Again
-          </button>
+          <div className="flex gap-4 justify-center">
+            <button
+              onClick={startGame}
+              className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg transition"
+            >
+              Try Again
+            </button>
+            <Link href="/" className="bg-slate-600 hover:bg-slate-500 text-white font-bold py-3 px-8 rounded-lg transition">
+              New Game
+            </Link>
+          </div>
         </div>
       )}
 

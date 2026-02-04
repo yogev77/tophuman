@@ -146,7 +146,10 @@ export function validateColorMatchTurn(
     return { valid: false, reason: 'low_accuracy', roundScores, averageAccuracy }
   }
 
-  const score = Math.round(averageAccuracy * 10000)
+  // Apply a curve to accuracy - perfect color matching is nearly impossible
+  // Even 100% accuracy gives ~9600 due to the curve
+  const curvedAccuracy = Math.pow(averageAccuracy, 1.05)
+  const score = Math.min(9800, Math.round(curvedAccuracy * 9800))
 
   return {
     valid: true,

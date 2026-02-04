@@ -215,12 +215,17 @@ function validateTimingPlausibility(events: StoredEvent[]): { valid: boolean; si
 function calculateScore(timeMs: number, extraRotations: number, spec: ImageRotateTurnSpec): number {
   // Higher score = better
   const maxTime = spec.timeLimitMs
-  const timeScore = Math.max(0, ((maxTime - timeMs) / maxTime) * 10000)
 
-  // Penalty for extra rotations
-  const rotationPenalty = extraRotations * 200
+  // Apply minimum time floor - even instant completion has a time cost
+  const minTimeFloor = 4000 // 4 seconds minimum for this puzzle
+  const effectiveTime = Math.max(timeMs, minTimeFloor)
+  const timeScore = Math.max(0, ((maxTime - effectiveTime) / maxTime) * 9500)
 
-  return Math.max(0, Math.round(timeScore - rotationPenalty))
+  // Penalty for extra rotations (increased)
+  const rotationPenalty = extraRotations * 250
+
+  // Cap at 9800 to ensure max score is never achievable
+  return Math.min(9800, Math.max(0, Math.round(timeScore - rotationPenalty)))
 }
 
 export const DEFAULT_IMAGE_ROTATE_CONFIG: ImageRotateConfig = {

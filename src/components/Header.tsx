@@ -19,7 +19,7 @@ export function Header() {
           <nav className="flex items-center gap-6">
             {!authLoading && user ? (
               <>
-                <Link href="/game" className="text-slate-300 hover:text-white transition">
+                <Link href="/" className="text-slate-300 hover:text-white transition">
                   Play
                 </Link>
 

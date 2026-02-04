@@ -181,9 +181,9 @@ export function validateVisualDiffTurn(
     }
   }
 
-  // Check which differences were found
-  const foundDiffs = new Set<number>()
-  const clickRadius = 25 // How close a click needs to be
+  // Check which differences were found and track click accuracy
+  const foundDiffs = new Map<number, number>() // diffIndex -> best distance
+  const clickRadius = 30 // How close a click needs to be
 
   for (const click of clicks) {
     const clickX = click.x ?? 0
@@ -198,7 +198,11 @@ export function validateVisualDiffTurn(
       )
 
       if (distance <= clickRadius + shape.size) {
-        foundDiffs.add(i)
+        // Track the best (closest) click for each difference
+        const currentBest = foundDiffs.get(i)
+        if (currentBest === undefined || distance < currentBest) {
+          foundDiffs.set(i, distance)
+        }
       }
     }
   }
@@ -211,8 +215,38 @@ export function validateVisualDiffTurn(
     return { valid: false, reason: 'not_enough_found', found, total }
   }
 
-  const accuracy = found / total
-  const score = Math.round(accuracy * 10000)
+  // Calculate time taken (from first to last event)
+  const allTimes = events.map(e => e.clientTimestampMs || 0).filter(t => t > 0)
+  const timeTakenMs = allTimes.length >= 2
+    ? allTimes[allTimes.length - 1] - allTimes[0]
+    : spec.timeLimitMs
+
+  // Calculate average click accuracy (0 = perfect, higher = worse)
+  const distances = Array.from(foundDiffs.values())
+  const avgDistance = distances.length > 0
+    ? distances.reduce((a, b) => a + b, 0) / distances.length
+    : clickRadius
+
+  // Score components:
+  // 1. Found ratio: up to 4800 points (slightly reduced to prevent max score)
+  const foundScore = (found / total) * 4800
+
+  // 2. Speed bonus: up to 2800 points (faster = more points)
+  // Minimum time of 3 seconds for any bonus, scales down from there
+  // Even instant completion won't give full bonus due to minimum time floor
+  const minTimeForBonus = 3000 // 3 seconds minimum
+  const effectiveTime = Math.max(timeTakenMs, minTimeForBonus)
+  const speedBonus = Math.max(0, 2800 - Math.floor(effectiveTime / 18))
+
+  // 3. Accuracy bonus: up to 1800 points (closer clicks = more points)
+  // Perfect accuracy is nearly impossible - require very close clicks
+  const maxAccuracyDistance = clickRadius + 15 // Tighter accuracy requirement
+  const accuracyRatio = Math.max(0, 1 - avgDistance / maxAccuracyDistance)
+  // Apply a curve so perfect accuracy is harder to achieve
+  const accuracyBonus = Math.round(Math.pow(accuracyRatio, 1.2) * 1800)
+
+  // Cap at 9800 to ensure max score is never achievable
+  const score = Math.min(9800, Math.round(foundScore + speedBonus + accuracyBonus))
 
   return {
     valid: true,

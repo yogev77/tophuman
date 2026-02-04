@@ -169,17 +169,32 @@ export function validateReactionTimeTurn(
 
 function calculateReactionTimeScore(avgReactionMs: number, spec: ReactionTimeTurnSpec): number {
   // Lower reaction time = higher score
-  // Perfect (100ms) = 10000, max allowed = 0
-  const maxScore = 10000
+  // Best achievable ~9700 (human limits), max allowed = 0
+  // Perfect 100ms is nearly impossible for humans, so we use a curve
+  const maxScore = 9800
   const perfectTime = 100
+  const excellentTime = 180 // More realistic excellent human reaction
   const maxTime = spec.maxReactionMs
 
-  if (avgReactionMs <= perfectTime) return maxScore
   if (avgReactionMs >= maxTime) return 0
 
-  const range = maxTime - perfectTime
-  const position = avgReactionMs - perfectTime
-  const score = maxScore * (1 - position / range)
+  // Use a curve that rewards faster times but caps below max
+  // Even the fastest human reaction (~150ms avg) won't hit max score
+  let score: number
+  if (avgReactionMs <= perfectTime) {
+    // Theoretical perfect - still cap below max
+    score = maxScore - 200
+  } else if (avgReactionMs <= excellentTime) {
+    // Excellent range: 100-180ms, scale from 9600 to 9200
+    const range = excellentTime - perfectTime
+    const position = avgReactionMs - perfectTime
+    score = 9600 - (position / range) * 400
+  } else {
+    // Normal range: 180ms to max, scale from 9200 to 0
+    const range = maxTime - excellentTime
+    const position = avgReactionMs - excellentTime
+    score = 9200 * (1 - position / range)
+  }
 
-  return Math.round(score)
+  return Math.round(Math.min(9800, Math.max(0, score)))
 }

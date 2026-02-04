@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import Link from 'next/link'
 import { formatTime } from '@/lib/utils'
 import Image from 'next/image'
 
@@ -334,12 +335,17 @@ export function ImageRotateGame({ onGameComplete }: ImageRotateGameProps) {
               <div className="text-sm text-slate-400">Extra Rotations</div>
             </div>
           </div>
-          <button
-            onClick={startGame}
-            className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg transition"
-          >
-            Play Again
-          </button>
+          <div className="flex gap-4 justify-center">
+            <button
+              onClick={startGame}
+              className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg transition"
+            >
+              Play Again
+            </button>
+            <Link href="/" className="bg-slate-600 hover:bg-slate-500 text-white font-bold py-3 px-8 rounded-lg transition">
+              New Game
+            </Link>
+          </div>
         </div>
       )}
 
@@ -354,12 +360,17 @@ export function ImageRotateGame({ onGameComplete }: ImageRotateGameProps) {
               ? 'You ran out of time.'
               : 'Better luck next time!'}
           </p>
-          <button
-            onClick={startGame}
-            className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg transition"
-          >
-            Try Again
-          </button>
+          <div className="flex gap-4 justify-center">
+            <button
+              onClick={startGame}
+              className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg transition"
+            >
+              Try Again
+            </button>
+            <Link href="/" className="bg-slate-600 hover:bg-slate-500 text-white font-bold py-3 px-8 rounded-lg transition">
+              New Game
+            </Link>
+          </div>
         </div>
       )}
 

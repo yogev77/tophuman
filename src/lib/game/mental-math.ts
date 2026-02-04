@@ -202,15 +202,20 @@ export function validateMentalMathTurn(
 }
 
 function calculateMentalMathScore(correct: number, total: number, avgTimeMs?: number): number {
-  // Score based on accuracy (max 7000) and speed (max 3000)
-  const accuracyScore = (correct / total) * 7000
+  // Score based on accuracy (max 6500) and speed (max 2800)
+  // Reduced totals to prevent 10K max score
+  const accuracyScore = (correct / total) * 6500
 
   let speedScore = 0
   if (avgTimeMs) {
-    // Faster = better. Perfect is 1000ms, max penalty at 5000ms
-    const speedFactor = Math.max(0, 1 - (avgTimeMs - 1000) / 4000)
-    speedScore = speedFactor * 3000
+    // Faster = better. Minimum reasonable time is 1500ms (increased from 1000)
+    // Even very fast answers won't give full speed bonus
+    const minReasonableTime = 1500
+    const effectiveTime = Math.max(avgTimeMs, minReasonableTime)
+    const speedFactor = Math.max(0, 1 - (effectiveTime - minReasonableTime) / 4000)
+    speedScore = speedFactor * 2800
   }
 
-  return Math.round(accuracyScore + speedScore)
+  // Cap at 9800 to ensure max score is never achievable
+  return Math.min(9800, Math.round(accuracyScore + speedScore))
 }
