@@ -22,9 +22,13 @@ interface PoolInfo {
 interface LeaderboardProps {
   gameType: string
   gameTypeName: string
+  colorBg?: string
+  colorBorder?: string
 }
 
-export function Leaderboard({ gameType, gameTypeName }: LeaderboardProps) {
+export function Leaderboard({ gameType, gameTypeName, colorBg, colorBorder }: LeaderboardProps) {
+  const bgClass = colorBg || 'bg-slate-800'
+  const borderClass = colorBorder ? `border ${colorBorder}` : ''
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [pool, setPool] = useState<PoolInfo | null>(null)
   const [msUntilSettlement, setMsUntilSettlement] = useState(0)
@@ -66,7 +70,7 @@ export function Leaderboard({ gameType, gameTypeName }: LeaderboardProps) {
 
   if (loading) {
     return (
-      <div className="bg-slate-800 rounded-xl p-6">
+      <div className={`${bgClass} ${borderClass} rounded-xl p-6`}>
         <div className="animate-pulse">
           <div className="h-6 bg-slate-700 rounded w-1/3 mb-4"></div>
           <div className="space-y-3">
@@ -80,7 +84,7 @@ export function Leaderboard({ gameType, gameTypeName }: LeaderboardProps) {
   }
 
   return (
-    <div className="bg-slate-800 rounded-xl p-6">
+    <div className={`${bgClass} ${borderClass} rounded-xl p-6`}>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold text-white">{gameTypeName}</h2>
         {period === 'today' && (

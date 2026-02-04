@@ -260,6 +260,8 @@ function GamePageContent() {
           <Leaderboard
             gameType={config.leaderboardType}
             gameTypeName={config.name}
+            colorBg={colors.bg}
+            colorBorder={colors.border}
           />
         </div>
       </div>
