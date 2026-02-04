@@ -43,11 +43,15 @@ export async function GET() {
 
     const alreadyGranted = grantToday && grantToday.length > 0
 
+    // Generate referral code from user_id (use last 8 chars for cleaner URLs)
+    const referralCode = profile.user_id.replace('usr_', '').slice(-8)
+
     return NextResponse.json({
       balance: balance ?? 0,
       dailyGrantAvailable: !alreadyGranted,
       userId: profile.user_id,
       displayName: profile.display_name,
+      referralCode,
     })
   } catch {
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })

@@ -17,6 +17,7 @@ import { DragSortGame } from '@/components/DragSortGame'
 import { FollowMeGame } from '@/components/FollowMeGame'
 import { DuckShootGame } from '@/components/DuckShootGame'
 import { Leaderboard } from '@/components/Leaderboard'
+import { ReferralBanner } from '@/components/ReferralBanner'
 import Link from 'next/link'
 import {
   Target,
@@ -120,7 +121,7 @@ function GamePageContent() {
   const searchParams = useSearchParams()
   const gameTypeParam = searchParams.get('type')
   const { user, loading: authLoading } = useAuth()
-  const { balance, dailyGrantAvailable, claimDailyGrant, refreshBalance, loading: creditsLoading } = useCredits()
+  const { balance, dailyGrantAvailable, claimDailyGrant, refreshBalance, referralCode, loading: creditsLoading } = useCredits()
 
   // Use URL param or default to emoji_keypad
   const gameType = gameTypeParam && GAME_CONFIG[gameTypeParam] ? gameTypeParam : 'emoji_keypad'
@@ -228,12 +229,8 @@ function GamePageContent() {
             )}
           </div>
 
-          {!creditsLoading && balance < 1 && !dailyGrantAvailable && (
-            <div className="bg-yellow-500/20 border border-yellow-500/30 rounded-xl p-4 mb-6 text-center">
-              <p className="text-yellow-400">
-                You need at least 1 $Credit to play. Come back tomorrow for your daily grant!
-              </p>
-            </div>
+          {!creditsLoading && balance < 1 && !dailyGrantAvailable && referralCode && (
+            <ReferralBanner referralCode={referralCode} />
           )}
 
           {(balance >= 1 || dailyGrantAvailable) && (

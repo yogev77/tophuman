@@ -7,6 +7,7 @@ interface CreditsState {
   dailyGrantAvailable: boolean
   userId: string | null
   displayName: string | null
+  referralCode: string | null
   loading: boolean
   error: string | null
 }
@@ -17,6 +18,7 @@ export function useCredits() {
     dailyGrantAvailable: false,
     userId: null,
     displayName: null,
+    referralCode: null,
     loading: true,
     error: null,
   })
@@ -37,6 +39,7 @@ export function useCredits() {
         dailyGrantAvailable: data.dailyGrantAvailable,
         userId: data.userId,
         displayName: data.displayName,
+        referralCode: data.referralCode,
         loading: false,
         error: null,
       })

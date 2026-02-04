@@ -1,17 +1,30 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
+import { Gift } from 'lucide-react'
 
-export default function SignUpPage() {
+function SignUpContent() {
+  const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [referralCode, setReferralCode] = useState<string | null>(null)
   const supabase = createClient()
+
+  useEffect(() => {
+    const ref = searchParams.get('ref')
+    if (ref) {
+      setReferralCode(ref)
+      // Store in localStorage for after email verification
+      localStorage.setItem('referralCode', ref)
+    }
+  }, [searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -70,6 +83,16 @@ export default function SignUpPage() {
     <div className="min-h-[80vh] flex items-center justify-center px-4">
       <div className="bg-slate-800 rounded-xl p-8 max-w-md w-full">
         <h1 className="text-2xl font-bold text-white mb-6 text-center">Create Account</h1>
+
+        {referralCode && (
+          <div className="bg-green-500/20 border border-green-500/30 rounded-lg p-4 mb-6 flex items-center gap-3">
+            <Gift className="w-6 h-6 text-green-400 flex-shrink-0" />
+            <div>
+              <p className="text-green-400 font-semibold">Referral Bonus!</p>
+              <p className="text-sm text-slate-300">Your friend will get 100 $Credits when you verify your email!</p>
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -132,5 +155,17 @@ export default function SignUpPage() {
         </p>
       </div>
     </div>
+  )
+}
+
+export default function SignUpPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-[80vh] flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
+      </div>
+    }>
+      <SignUpContent />
+    </Suspense>
   )
 }
