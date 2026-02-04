@@ -52,6 +52,14 @@ const GAME_INFO: Record<string, { name: string; description: string }> = {
     name: 'Drag & Sort',
     description: 'Arrange items in the correct order',
   },
+  follow_me: {
+    name: 'Follow Me',
+    description: 'Trace the path as accurately as possible',
+  },
+  duck_shoot: {
+    name: 'Duck Shoot',
+    description: 'Shoot the moving ducks before they escape',
+  },
 }
 
 export async function GET() {
