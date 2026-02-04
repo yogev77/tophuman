@@ -30,6 +30,7 @@ export interface ShootEvent {
   x?: number
   y?: number
   duckIndex?: number
+  hitAccuracy?: number
   serverTimestamp: Date
   clientTimestampMs?: number
 }
@@ -174,21 +175,22 @@ export function validateDuckShootTurn(
     }
   }
 
-  // Calculate hits - trust client's hit detection (duckIndex is sent when hit)
+  // Calculate hits and accuracy - trust client's hit detection
   const hitDucks = new Set<number>()
+  let totalAccuracy = 0
 
   for (const shoot of shoots) {
     if (shoot.duckIndex !== undefined && !hitDucks.has(shoot.duckIndex)) {
       // Validate duck index is valid
       if (shoot.duckIndex >= 0 && shoot.duckIndex < spec.duckSpawns.length) {
         hitDucks.add(shoot.duckIndex)
+        // Add accuracy for this hit (how close to center)
+        totalAccuracy += shoot.hitAccuracy ?? 0.5
       }
     }
   }
 
   const hits = hitDucks.size
-  // Accuracy based on hit ratio (since line-of-fire doesn't have distance)
-  const totalAccuracy = hits > 0 ? 0.8 : 0 // Base accuracy for line-of-fire hits
 
   const maxShots = 10
 
@@ -197,27 +199,27 @@ export function validateDuckShootTurn(
     return { valid: false, reason: 'not_enough_hits', hits, totalDucks: maxShots }
   }
 
-  // Accuracy = hits / shots taken
-  const accuracy = shoots.length > 0 ? hits / shoots.length : 0
+  // Average accuracy per hit (how close to duck center)
+  const avgHitAccuracy = hits > 0 ? totalAccuracy / hits : 0
 
   // Score components:
   // 1. Hits: 500 points per hit (up to 5000 for 10 hits)
   const hitScore = hits * 500
 
-  // 2. Accuracy bonus: up to 3000 points (100% accuracy = 3000)
-  const accuracyBonus = Math.round(accuracy * 3000)
+  // 2. Precision bonus: up to 3000 points (based on how close to center of ducks)
+  const precisionBonus = Math.round(avgHitAccuracy * 3000)
 
   // 3. Efficiency bonus: up to 2000 points for using fewer shots
   const shotsUsed = shoots.length
   const efficiencyBonus = Math.max(0, Math.round((1 - shotsUsed / maxShots) * 2000))
 
-  const score = hitScore + accuracyBonus + efficiencyBonus
+  const score = hitScore + precisionBonus + efficiencyBonus
 
   return {
     valid: true,
     hits,
     totalDucks: maxShots,
-    accuracy,
+    accuracy: avgHitAccuracy,
     score,
   }
 }

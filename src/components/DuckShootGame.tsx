@@ -44,6 +44,7 @@ interface ActiveDuck {
 interface BulletTrail {
   x: number
   hit: boolean
+  accuracy: number // 0-1, how close to center
   startTime: number
 }
 
@@ -218,39 +219,72 @@ export function DuckShootGame({ onGameComplete }: DuckShootGameProps) {
 
     // Draw gun platform
     const gunX = canvas.width / 2
-    const gunY = canvas.height - 30
+    const gunY = canvas.height - 25
 
-    // Gun stand
-    ctx.fillStyle = '#4A3728'
+    // Wooden gun stand/tripod
+    ctx.fillStyle = '#5D4037'
     ctx.beginPath()
-    ctx.moveTo(gunX - 40, canvas.height)
-    ctx.lineTo(gunX - 20, gunY + 10)
-    ctx.lineTo(gunX + 20, gunY + 10)
-    ctx.lineTo(gunX + 40, canvas.height)
+    ctx.moveTo(gunX - 50, canvas.height)
+    ctx.lineTo(gunX - 15, gunY + 5)
+    ctx.lineTo(gunX - 10, gunY + 5)
+    ctx.lineTo(gunX - 35, canvas.height)
+    ctx.closePath()
+    ctx.fill()
+    ctx.beginPath()
+    ctx.moveTo(gunX + 50, canvas.height)
+    ctx.lineTo(gunX + 15, gunY + 5)
+    ctx.lineTo(gunX + 10, gunY + 5)
+    ctx.lineTo(gunX + 35, canvas.height)
     ctx.closePath()
     ctx.fill()
 
-    // Gun barrel
-    ctx.fillStyle = '#2C2C2C'
-    ctx.fillRect(gunX - 6, gunY - 45, 12, 55)
-    ctx.fillStyle = '#1A1A1A'
-    ctx.fillRect(gunX - 8, gunY - 48, 16, 8)
+    // Gun barrel - longer and more detailed
+    const barrelGradient = ctx.createLinearGradient(gunX - 8, 0, gunX + 8, 0)
+    barrelGradient.addColorStop(0, '#1A1A1A')
+    barrelGradient.addColorStop(0.3, '#4A4A4A')
+    barrelGradient.addColorStop(0.7, '#4A4A4A')
+    barrelGradient.addColorStop(1, '#1A1A1A')
+    ctx.fillStyle = barrelGradient
+    ctx.fillRect(gunX - 5, gunY - 55, 10, 60)
 
-    // Gun body
+    // Barrel tip
+    ctx.fillStyle = '#1A1A1A'
+    ctx.fillRect(gunX - 7, gunY - 58, 14, 6)
+
+    // Gun body/receiver
     ctx.fillStyle = '#3D3D3D'
     ctx.beginPath()
-    ctx.arc(gunX, gunY, 20, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.fillStyle = '#2C2C2C'
-    ctx.beginPath()
-    ctx.arc(gunX, gunY, 12, 0, Math.PI * 2)
+    ctx.roundRect(gunX - 18, gunY - 5, 36, 20, 5)
     ctx.fill()
 
-    // Ammo display on gun
+    // Gun details
+    ctx.fillStyle = '#2A2A2A'
+    ctx.beginPath()
+    ctx.roundRect(gunX - 15, gunY, 30, 12, 3)
+    ctx.fill()
+
+    // Sight on barrel
+    ctx.fillStyle = '#FF4444'
+    ctx.beginPath()
+    ctx.arc(gunX, gunY - 52, 3, 0, Math.PI * 2)
+    ctx.fill()
+
+    // Ammo display - outside gun, top left corner
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)'
+    ctx.beginPath()
+    ctx.roundRect(10, 10, 80, 35, 8)
+    ctx.fill()
+    ctx.strokeStyle = '#FFD700'
+    ctx.lineWidth = 2
+    ctx.stroke()
+
     ctx.fillStyle = '#FFD700'
-    ctx.font = 'bold 14px monospace'
+    ctx.font = 'bold 24px monospace'
     ctx.textAlign = 'center'
-    ctx.fillText(`${MAX_SHOTS - shots}`, gunX, gunY + 5)
+    ctx.fillText(`${MAX_SHOTS - shots}`, 50, 37)
+    ctx.font = '10px sans-serif'
+    ctx.fillStyle = '#AAA'
+    ctx.fillText('SHOTS', 50, 22)
   }, [spec, activeDucks, bulletTrails, shots])
 
   const gameLoop = useCallback(() => {
@@ -395,17 +429,23 @@ export function DuckShootGame({ onGameComplete }: DuckShootGameProps) {
     // Check for duck hit - duck is hit if it's in the line of fire (vertical line)
     let hitDuckIndex: number | undefined
     let hitDuck: ActiveDuck | undefined
+    let hitAccuracy = 0
 
     for (const duck of activeDucks) {
       if (duck.hit) continue
 
       const duckLeft = duck.x
       const duckRight = duck.x + spec.duckSize
+      const duckCenterX = duck.x + spec.duckSize / 2
 
       // Check if bullet x is within duck's horizontal bounds
       if (x >= duckLeft && x <= duckRight) {
         hitDuckIndex = duck.index
         hitDuck = duck
+        // Calculate accuracy: 1.0 = perfect center, 0 = edge of duck
+        const distanceFromCenter = Math.abs(x - duckCenterX)
+        const maxDistance = spec.duckSize / 2
+        hitAccuracy = 1 - (distanceFromCenter / maxDistance)
         setHits(prev => prev + 1)
         setActiveDucks(prev =>
           prev.map(d => (d.index === duck.index ? { ...d, hit: true } : d))
@@ -415,7 +455,7 @@ export function DuckShootGame({ onGameComplete }: DuckShootGameProps) {
     }
 
     // Add bullet trail
-    setBulletTrails(prev => [...prev, { x, hit: !!hitDuck, startTime: Date.now() }])
+    setBulletTrails(prev => [...prev, { x, hit: !!hitDuck, accuracy: hitAccuracy, startTime: Date.now() }])
 
     // Send shoot event
     await fetch('/api/game/turn/event', {
@@ -427,6 +467,7 @@ export function DuckShootGame({ onGameComplete }: DuckShootGameProps) {
         x,
         y: hitDuck ? hitDuck.spawn.yPosition + spec.duckSize / 2 : 0,
         duckIndex: hitDuckIndex,
+        hitAccuracy: hitAccuracy,
         clientTimestampMs: Date.now(),
       }),
     })
