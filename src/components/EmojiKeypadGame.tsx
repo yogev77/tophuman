@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { formatTime } from '@/lib/utils'
+import { ShareScore } from './ShareScore'
 
 type GamePhase = 'idle' | 'loading' | 'memorize' | 'play' | 'checking' | 'completed' | 'failed'
 
@@ -237,9 +238,9 @@ export function EmojiKeypadGame({ onGameComplete }: EmojiKeypadGameProps) {
   const cols = spec ? Math.ceil(Math.sqrt(spec.keypad.length)) : 3
 
   return (
-    <div className="bg-slate-800 rounded-xl p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold text-white">Emoji Keypad Sequence</h2>
+    <div className="bg-slate-800 rounded-xl p-4 sm:p-6">
+      <div className="flex items-center justify-between mb-4 sm:mb-6">
+        <h2 className="text-lg sm:text-xl font-bold text-white">Emoji Keypad Sequence</h2>
         {phase === 'play' && (
           <div className={`text-2xl font-mono ${timeLeft < 5000 ? 'text-red-400' : 'text-green-400'}`}>
             {formatTime(timeLeft)}
@@ -254,7 +255,7 @@ export function EmojiKeypadGame({ onGameComplete }: EmojiKeypadGameProps) {
           </p>
           <button
             onClick={startGame}
-            className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg text-lg transition"
+            className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg text-lg transition"
           >
             Start Game (1 $Credit)
           </button>
@@ -269,14 +270,14 @@ export function EmojiKeypadGame({ onGameComplete }: EmojiKeypadGameProps) {
       )}
 
       {phase === 'memorize' && spec && (
-        <div className="text-center py-8">
+        <div className="text-center py-8 px-2">
           <p className="text-slate-300 mb-2">Memorize this sequence!</p>
           <p className="text-slate-500 text-sm mb-4">You&apos;ll need to find and tap these in order</p>
-          <div className="flex justify-center gap-3 mb-6">
+          <div className="flex justify-center gap-2 sm:gap-3 mb-6 flex-wrap max-w-full">
             {spec.sequence.map((emoji, i) => (
               <div
                 key={i}
-                className="w-16 h-16 bg-slate-700 rounded-xl flex items-center justify-center text-3xl animate-pulse"
+                className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 bg-slate-700 rounded-xl flex items-center justify-center text-2xl sm:text-3xl animate-pulse"
               >
                 {emoji}
               </div>
@@ -287,18 +288,18 @@ export function EmojiKeypadGame({ onGameComplete }: EmojiKeypadGameProps) {
       )}
 
       {phase === 'play' && spec && (
-        <div>
+        <div className="px-2">
           {/* User input display */}
-          <div className="mb-6">
+          <div className="mb-4 sm:mb-6">
             <p className="text-slate-400 text-sm text-center mb-2">Find and tap the emojis in order! ({userInput.length}/{spec.sequence.length})</p>
-            <div className="flex justify-center gap-2 min-h-[64px] flex-wrap">
+            <div className="flex justify-center gap-1.5 sm:gap-2 min-h-[48px] sm:min-h-[56px] flex-wrap">
               {userInput.length === 0 ? (
-                <div className="text-slate-500 italic">Tap the first emoji from the sequence...</div>
+                <div className="text-slate-500 italic text-sm sm:text-base">Tap the first emoji from the sequence...</div>
               ) : (
                 userInput.map((idx, i) => (
                   <div
                     key={i}
-                    className="w-14 h-14 bg-slate-700 rounded-xl flex items-center justify-center text-2xl"
+                    className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 bg-slate-700 rounded-lg sm:rounded-xl flex items-center justify-center text-xl sm:text-2xl"
                   >
                     {spec.keypad[idx]}
                   </div>
@@ -309,14 +310,14 @@ export function EmojiKeypadGame({ onGameComplete }: EmojiKeypadGameProps) {
 
           {/* Keypad */}
           <div
-            className="grid gap-3 max-w-md mx-auto"
+            className="grid gap-2 sm:gap-3 max-w-sm sm:max-w-md mx-auto"
             style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}
           >
             {spec.keypad.map((emoji, i) => (
               <button
                 key={i}
                 onClick={() => handleTap(i)}
-                className="w-full aspect-square bg-slate-700 hover:bg-slate-600 active:bg-slate-500 rounded-xl text-4xl transition-all transform hover:scale-105 active:scale-95"
+                className="w-full aspect-square bg-slate-700 hover:bg-slate-600 active:bg-slate-500 rounded-lg sm:rounded-xl text-2xl sm:text-3xl md:text-4xl transition-all transform hover:scale-105 active:scale-95"
               >
                 {emoji}
               </button>
@@ -357,7 +358,7 @@ export function EmojiKeypadGame({ onGameComplete }: EmojiKeypadGameProps) {
           <div className="flex gap-4 justify-center">
             <button
               onClick={startGame}
-              className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg transition"
+              className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg transition"
             >
               Play Again
             </button>
@@ -365,6 +366,7 @@ export function EmojiKeypadGame({ onGameComplete }: EmojiKeypadGameProps) {
               New Game
             </Link>
           </div>
+          <ShareScore gameName="Emoji Keypad" score={result.score || 0} rank={result.rank} />
         </div>
       )}
 
@@ -384,7 +386,7 @@ export function EmojiKeypadGame({ onGameComplete }: EmojiKeypadGameProps) {
           <div className="flex gap-4 justify-center">
             <button
               onClick={startGame}
-              className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg transition"
+              className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg transition"
             >
               Try Again
             </button>
