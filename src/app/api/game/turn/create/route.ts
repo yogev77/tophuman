@@ -74,7 +74,7 @@ export async function POST(request: Request) {
     let clientSpec: Record<string, unknown>
     let gameTypeId: string
 
-    console.log('Active game type:', activeGameType, 'Raw value:', gameSetting?.value)
+    console.log('Active game type:', activeGameType)
 
     try {
       switch (activeGameType) {
