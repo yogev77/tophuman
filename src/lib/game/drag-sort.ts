@@ -3,7 +3,13 @@ import crypto from 'crypto'
 export interface DragSortConfig {
   num_items: number
   time_limit_seconds: number
-  sort_type: 'numbers' | 'alphabet' | 'dates'
+  sort_type: 'numbers' | 'alphabet' | 'dates' | 'mixed'
+}
+
+export interface RoundSpec {
+  items: string[]
+  correctOrder: number[]
+  sortType: string
 }
 
 export interface DragSortTurnSpec {
@@ -12,6 +18,7 @@ export interface DragSortTurnSpec {
   correctOrder: number[] // Indices in sorted order
   sortType: string
   timeLimitMs: number
+  rounds?: RoundSpec[] // For mixed mode
 }
 
 export interface DragEvent {
@@ -33,9 +40,9 @@ export interface DragSortResult {
 }
 
 export const DEFAULT_DRAG_SORT_CONFIG: DragSortConfig = {
-  num_items: 6,
-  time_limit_seconds: 45,
-  sort_type: 'numbers',
+  num_items: 5,
+  time_limit_seconds: 60,
+  sort_type: 'mixed', // Numbers then letters
 }
 
 function seededRandom(seed: string): () => number {
@@ -61,40 +68,29 @@ function shuffleArray<T>(array: T[], random: () => number): T[] {
   return result
 }
 
-export function generateDragSortTurnSpec(
-  userId: string,
-  config: DragSortConfig
-): DragSortTurnSpec {
-  const seedInput = `${userId}_${crypto.randomUUID()}_${Date.now()}`
-  const seed = crypto.createHash('sha256').update(seedInput).digest('hex')
-  const random = seededRandom(seed)
-
+function generateRound(
+  random: () => number,
+  numItems: number,
+  sortType: 'numbers' | 'alphabet'
+): RoundSpec {
   let sortedItems: string[]
 
-  if (config.sort_type === 'numbers') {
-    // Generate random numbers
+  if (sortType === 'numbers') {
     const numbers = new Set<number>()
-    while (numbers.size < config.num_items) {
+    while (numbers.size < numItems) {
       numbers.add(Math.floor(random() * 100) + 1)
     }
     sortedItems = Array.from(numbers).sort((a, b) => a - b).map(n => n.toString())
-  } else if (config.sort_type === 'alphabet') {
-    // Generate random words
-    const words = ['Apple', 'Banana', 'Cherry', 'Dragon', 'Eagle', 'Falcon', 'Grape', 'Honey', 'Igloo', 'Jungle', 'Kiwi', 'Lemon', 'Mango', 'Nectar', 'Orange', 'Peach']
-    const selected = shuffleArray(words, random).slice(0, config.num_items)
-    sortedItems = selected.sort()
   } else {
-    // Dates - generate months
-    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-    const startIndex = Math.floor(random() * (12 - config.num_items))
-    sortedItems = months.slice(startIndex, startIndex + config.num_items)
+    // Capital letters
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
+    const selected = shuffleArray(letters, random).slice(0, numItems)
+    sortedItems = selected.sort()
   }
 
-  // Create shuffled version
   const indices = sortedItems.map((_, i) => i)
   const shuffledIndices = shuffleArray(indices, random)
 
-  // Make sure it's actually shuffled
   while (shuffledIndices.every((v, i) => v === i)) {
     const temp = shuffledIndices[0]
     shuffledIndices[0] = shuffledIndices[1]
@@ -103,15 +99,69 @@ export function generateDragSortTurnSpec(
 
   const shuffledItems = shuffledIndices.map(i => sortedItems[i])
 
-  // correctOrder maps shuffled position to sorted position
-  const correctOrder = shuffledIndices.map(shuffledIdx =>
-    sortedItems.findIndex((_, sortedIdx) => sortedIdx === shuffledIdx)
-  )
+  return {
+    items: shuffledItems,
+    correctOrder: indices,
+    sortType,
+  }
+}
+
+export function generateDragSortTurnSpec(
+  userId: string,
+  config: DragSortConfig
+): DragSortTurnSpec {
+  const seedInput = `${userId}_${crypto.randomUUID()}_${Date.now()}`
+  const seed = crypto.createHash('sha256').update(seedInput).digest('hex')
+  const random = seededRandom(seed)
+
+  if (config.sort_type === 'mixed') {
+    // Generate two rounds: numbers then letters
+    const round1 = generateRound(random, config.num_items, 'numbers')
+    const round2 = generateRound(random, config.num_items, 'alphabet')
+
+    return {
+      seed,
+      items: round1.items,
+      correctOrder: round1.correctOrder,
+      sortType: 'mixed',
+      timeLimitMs: config.time_limit_seconds * 1000,
+      rounds: [round1, round2],
+    }
+  }
+
+  let sortedItems: string[]
+
+  if (config.sort_type === 'numbers') {
+    const numbers = new Set<number>()
+    while (numbers.size < config.num_items) {
+      numbers.add(Math.floor(random() * 100) + 1)
+    }
+    sortedItems = Array.from(numbers).sort((a, b) => a - b).map(n => n.toString())
+  } else if (config.sort_type === 'alphabet') {
+    const words = ['Apple', 'Banana', 'Cherry', 'Dragon', 'Eagle', 'Falcon', 'Grape', 'Honey', 'Igloo', 'Jungle', 'Kiwi', 'Lemon', 'Mango', 'Nectar', 'Orange', 'Peach']
+    const selected = shuffleArray(words, random).slice(0, config.num_items)
+    sortedItems = selected.sort()
+  } else {
+    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+    const startIndex = Math.floor(random() * (12 - config.num_items))
+    sortedItems = months.slice(startIndex, startIndex + config.num_items)
+  }
+
+  const indices = sortedItems.map((_, i) => i)
+  const shuffledIndices = shuffleArray(indices, random)
+
+  while (shuffledIndices.every((v, i) => v === i)) {
+    const temp = shuffledIndices[0]
+    shuffledIndices[0] = shuffledIndices[1]
+    shuffledIndices[1] = temp
+  }
+
+  const shuffledItems = shuffledIndices.map(i => sortedItems[i])
 
   return {
     seed,
     items: shuffledItems,
-    correctOrder: indices, // The correct final order is just [0, 1, 2, ...]
+    correctOrder: indices,
     sortType: config.sort_type,
     timeLimitMs: config.time_limit_seconds * 1000,
   }
@@ -121,11 +171,13 @@ export function getDragSortClientSpec(spec: DragSortTurnSpec): {
   items: string[]
   sortType: string
   timeLimitMs: number
+  rounds?: RoundSpec[]
 } {
   return {
     items: spec.items,
     sortType: spec.sortType,
     timeLimitMs: spec.timeLimitMs,
+    rounds: spec.rounds,
   }
 }
 

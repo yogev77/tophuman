@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { formatTime } from '@/lib/utils'
+import { ShareScore } from './ShareScore'
 
 type GamePhase = 'idle' | 'loading' | 'play' | 'checking' | 'completed' | 'failed'
 
@@ -155,8 +156,10 @@ export function WhackAMoleGame({ onGameComplete }: WhackAMoleGameProps) {
 
       if (hitEntityType === 0) {
         // Hit a mole - good!
-        setHits(h => h + 1)
-        await fetch('/api/game/turn/event', {
+        const newHits = hits + 1
+        setHits(newHits)
+
+        fetch('/api/game/turn/event', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -167,6 +170,11 @@ export function WhackAMoleGame({ onGameComplete }: WhackAMoleGameProps) {
             clientTimestampMs: Date.now(),
           }),
         })
+
+        // Check if all moles have been hit
+        if (spec && newHits >= spec.numMoles) {
+          completeGame(turnToken)
+        }
       } else {
         // Hit a bomb - bad!
         setBombHits(b => b + 1)
@@ -265,7 +273,7 @@ export function WhackAMoleGame({ onGameComplete }: WhackAMoleGameProps) {
           </p>
           <button
             onClick={startGame}
-            className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg text-lg transition"
+            className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg text-lg transition"
           >
             Start Game (1 $Credit)
           </button>
@@ -348,20 +356,21 @@ export function WhackAMoleGame({ onGameComplete }: WhackAMoleGameProps) {
               </div>
             )}
           </div>
-          <div className="flex gap-4 justify-center">
+          <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto">
             <button
               onClick={startGame}
-              className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg transition"
+              className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 rounded-lg transition"
             >
               Play Again
             </button>
             <Link
               href="/"
-              className="bg-slate-600 hover:bg-slate-500 text-white font-bold py-3 px-8 rounded-lg transition"
+              className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 rounded-lg transition text-center"
             >
               New Game
             </Link>
           </div>
+          <ShareScore gameName="Whack-a-Mole" score={result.score || 0} rank={result.rank} />
         </div>
       )}
 
@@ -373,7 +382,7 @@ export function WhackAMoleGame({ onGameComplete }: WhackAMoleGameProps) {
           <div className="flex gap-4 justify-center">
             <button
               onClick={startGame}
-              className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg transition"
+              className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg transition"
             >
               Try Again
             </button>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
+import { ShareScore } from './ShareScore'
 
 type GamePhase = 'idle' | 'loading' | 'ready' | 'draw' | 'checking' | 'completed' | 'failed'
 
@@ -29,15 +30,19 @@ interface FollowMeGameProps {
   onGameComplete?: (result: GameResult) => void
 }
 
+const TOTAL_ROUNDS = 3
+
 export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
   const [phase, setPhase] = useState<GamePhase>('idle')
   const [turnToken, setTurnToken] = useState<string | null>(null)
   const [spec, setSpec] = useState<TurnSpec | null>(null)
   const [userPath, setUserPath] = useState<Point[]>([])
+  const [allPaths, setAllPaths] = useState<Point[][]>([])
+  const [currentRound, setCurrentRound] = useState(1)
   const [result, setResult] = useState<GameResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isDrawing, setIsDrawing] = useState(false)
-  const [timeLeft, setTimeLeft] = useState(30000)
+  const [timeLeft, setTimeLeft] = useState(45000)
   const [drawStartTime, setDrawStartTime] = useState<number | null>(null)
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -115,8 +120,10 @@ export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
     setPhase('loading')
     setError(null)
     setUserPath([])
+    setAllPaths([])
+    setCurrentRound(1)
     setResult(null)
-    setTimeLeft(30000)
+    setTimeLeft(45000)
     setDrawStartTime(null)
 
     if (timerRef.current) clearInterval(timerRef.current)
@@ -150,7 +157,7 @@ export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
 
       timerRef.current = setInterval(() => {
         const elapsed = Date.now() - gameStartTimeRef.current
-        const remaining = 30000 - elapsed
+        const remaining = 45000 - elapsed
         setTimeLeft(Math.max(0, remaining))
 
         if (remaining <= 0) {
@@ -235,7 +242,33 @@ export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
     setIsDrawing(false)
 
     if (phase === 'draw' && userPath.length > 10) {
-      completeGame()
+      // Save this round's path
+      setAllPaths(prev => [...prev, userPath])
+
+      if (currentRound < TOTAL_ROUNDS) {
+        // Move to next round
+        setCurrentRound(prev => prev + 1)
+        setUserPath([])
+        setPhase('ready')
+
+        // Send round complete event
+        if (turnToken) {
+          fetch('/api/game/turn/event', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              turnToken,
+              eventType: 'round_complete',
+              round: currentRound,
+              points: userPath,
+              clientTimestampMs: Date.now(),
+            }),
+          })
+        }
+      } else {
+        // All rounds done
+        completeGame()
+      }
     }
   }
 
@@ -249,15 +282,20 @@ export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
 
     setPhase('checking')
 
+    // Combine all paths including current one if not empty
+    const finalPaths = userPath.length > 10 ? [...allPaths, userPath] : allPaths
+    const combinedPath = finalPaths.flat()
+
     try {
-      // Send draw complete event with user path
+      // Send draw complete event with all paths combined
       await fetch('/api/game/turn/event', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           turnToken,
           eventType: 'draw_complete',
-          points: userPath,
+          points: combinedPath,
+          rounds: finalPaths.length,
           clientTimestampMs: Date.now(),
         }),
       })
@@ -303,12 +341,12 @@ export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
       {phase === 'idle' && (
         <div className="text-center py-12">
           <p className="text-slate-300 mb-6">
-            Trace the blue path as accurately as possible! Start from the green dot and end at the red dot.
+            Trace the blue path {TOTAL_ROUNDS} times! Start from the green dot and end at the red dot.
             Speed and accuracy both count toward your score.
           </p>
           <button
             onClick={startGame}
-            className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg text-lg transition"
+            className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg text-lg transition"
           >
             Start Game (1 $Credit)
           </button>
@@ -324,8 +362,26 @@ export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
 
       {(phase === 'ready' || phase === 'draw') && spec && (
         <div className="text-center">
+          <div className="flex justify-center gap-2 mb-3">
+            {Array.from({ length: TOTAL_ROUNDS }).map((_, i) => (
+              <div
+                key={i}
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                  i + 1 < currentRound
+                    ? 'bg-green-500 text-white'
+                    : i + 1 === currentRound
+                    ? 'bg-yellow-500 text-slate-900'
+                    : 'bg-slate-600 text-slate-400'
+                }`}
+              >
+                {i + 1}
+              </div>
+            ))}
+          </div>
           <p className={`text-lg mb-4 ${phase === 'ready' ? 'text-yellow-400' : 'text-green-400'}`}>
-            {phase === 'ready' ? 'Start drawing from the green dot!' : 'Keep tracing to the red dot!'}
+            {phase === 'ready'
+              ? `Line ${currentRound}/${TOTAL_ROUNDS}: Start from the green dot!`
+              : `Line ${currentRound}/${TOTAL_ROUNDS}: Keep tracing to the red dot!`}
           </p>
           <div className="inline-block border-4 border-slate-600 rounded-lg overflow-hidden touch-none">
             <canvas
@@ -400,7 +456,7 @@ export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
           <div className="flex gap-4 justify-center">
             <button
               onClick={startGame}
-              className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg transition"
+              className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg transition"
             >
               Play Again
             </button>
@@ -408,6 +464,7 @@ export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
               New Game
             </Link>
           </div>
+          <ShareScore gameName="Follow Me" score={result.score || 0} rank={result.rank} />
         </div>
       )}
 
@@ -427,7 +484,7 @@ export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
           <div className="flex gap-4 justify-center">
             <button
               onClick={startGame}
-              className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg transition"
+              className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg transition"
             >
               Try Again
             </button>

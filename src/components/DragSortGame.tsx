@@ -3,13 +3,21 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { formatTime } from '@/lib/utils'
+import { ShareScore } from './ShareScore'
 
 type GamePhase = 'idle' | 'loading' | 'play' | 'checking' | 'completed' | 'failed'
+
+interface RoundSpec {
+  items: string[]
+  correctOrder: number[]
+  sortType: string
+}
 
 interface TurnSpec {
   items: string[]
   sortType: string
   timeLimitMs: number
+  rounds?: RoundSpec[]
 }
 
 interface GameResult {
@@ -35,6 +43,8 @@ export function DragSortGame({ onGameComplete }: DragSortGameProps) {
   const [result, setResult] = useState<GameResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null)
+  const [currentRound, setCurrentRound] = useState(1)
+  const [totalRounds, setTotalRounds] = useState(1)
 
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -59,8 +69,18 @@ export function DragSortGame({ onGameComplete }: DragSortGameProps) {
 
       setTurnToken(turnData.turnToken)
       setSpec(turnData.spec)
-      setItems(turnData.spec.items)
-      setOrder(turnData.spec.items.map((_: string, i: number) => i))
+      setCurrentRound(1)
+
+      // Check if multi-round mode
+      if (turnData.spec.rounds && turnData.spec.rounds.length > 0) {
+        setTotalRounds(turnData.spec.rounds.length)
+        setItems(turnData.spec.rounds[0].items)
+        setOrder(turnData.spec.rounds[0].items.map((_: string, i: number) => i))
+      } else {
+        setTotalRounds(1)
+        setItems(turnData.spec.items)
+        setOrder(turnData.spec.items.map((_: string, i: number) => i))
+      }
       setTimeLeft(turnData.spec.timeLimitMs)
 
       // Start turn on server
@@ -114,6 +134,35 @@ export function DragSortGame({ onGameComplete }: DragSortGameProps) {
         clientTimestampMs: Date.now(),
       }),
     })
+  }
+
+  const submitRound = async () => {
+    if (!turnToken || !spec) return
+
+    // Send round submission event
+    await fetch('/api/game/turn/event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        turnToken,
+        eventType: 'submit_round',
+        round: currentRound,
+        finalOrder: order,
+        clientTimestampMs: Date.now(),
+      }),
+    })
+
+    // Check if more rounds
+    if (spec.rounds && currentRound < spec.rounds.length) {
+      const nextRound = currentRound + 1
+      setCurrentRound(nextRound)
+      const nextRoundSpec = spec.rounds[nextRound - 1]
+      setItems(nextRoundSpec.items)
+      setOrder(nextRoundSpec.items.map((_, i) => i))
+    } else {
+      // Final round complete
+      completeGame(turnToken)
+    }
   }
 
   const completeGame = async (token?: string) => {
@@ -196,10 +245,19 @@ export function DragSortGame({ onGameComplete }: DragSortGameProps) {
 
   const getSortHint = () => {
     if (!spec) return ''
+
+    // For multi-round, check current round's sort type
+    if (spec.rounds && spec.rounds.length > 0 && currentRound <= spec.rounds.length) {
+      const roundSpec = spec.rounds[currentRound - 1]
+      if (roundSpec.sortType === 'numbers') return 'Sort numbers from smallest to largest'
+      if (roundSpec.sortType === 'alphabet') return 'Sort letters alphabetically (A-Z)'
+    }
+
     switch (spec.sortType) {
       case 'numbers': return 'Sort from smallest to largest'
       case 'alphabet': return 'Sort alphabetically (A-Z)'
       case 'dates': return 'Sort chronologically'
+      case 'mixed': return currentRound === 1 ? 'Sort numbers from smallest to largest' : 'Sort letters alphabetically (A-Z)'
       default: return 'Sort in order'
     }
   }
@@ -222,7 +280,7 @@ export function DragSortGame({ onGameComplete }: DragSortGameProps) {
           </p>
           <button
             onClick={startGame}
-            className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg text-lg transition"
+            className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg text-lg transition"
           >
             Start Game (1 $Credit)
           </button>
@@ -238,7 +296,28 @@ export function DragSortGame({ onGameComplete }: DragSortGameProps) {
 
       {phase === 'play' && spec && (
         <div>
-          <p className="text-slate-400 text-sm text-center mb-4">{getSortHint()}</p>
+          {totalRounds > 1 && (
+            <div className="flex justify-center gap-2 mb-3">
+              {Array.from({ length: totalRounds }).map((_, i) => (
+                <div
+                  key={i}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                    i + 1 < currentRound
+                      ? 'bg-green-500 text-white'
+                      : i + 1 === currentRound
+                      ? 'bg-yellow-500 text-slate-900'
+                      : 'bg-slate-600 text-slate-400'
+                  }`}
+                >
+                  {i + 1}
+                </div>
+              ))}
+            </div>
+          )}
+          <p className="text-slate-400 text-sm text-center mb-4">
+            {totalRounds > 1 && `Round ${currentRound}/${totalRounds}: `}
+            {getSortHint()}
+          </p>
 
           <div className="space-y-2 max-w-md mx-auto">
             {order.map((itemIndex, displayIndex) => (
@@ -250,7 +329,7 @@ export function DragSortGame({ onGameComplete }: DragSortGameProps) {
                 onDragEnd={handleDragEnd}
                 className={`flex items-center gap-2 p-4 rounded-lg cursor-move transition-all ${
                   draggingIndex === displayIndex
-                    ? 'bg-blue-600 scale-105'
+                    ? 'bg-yellow-500 scale-105'
                     : 'bg-slate-700 hover:bg-slate-600'
                 }`}
               >
@@ -277,10 +356,10 @@ export function DragSortGame({ onGameComplete }: DragSortGameProps) {
           </div>
 
           <button
-            onClick={() => completeGame()}
+            onClick={() => totalRounds > 1 ? submitRound() : completeGame()}
             className="w-full mt-6 bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-6 rounded-lg transition"
           >
-            Submit Order
+            {totalRounds > 1 && currentRound < totalRounds ? `Submit Round ${currentRound}` : 'Submit Order'}
           </button>
         </div>
       )}
@@ -313,7 +392,7 @@ export function DragSortGame({ onGameComplete }: DragSortGameProps) {
           <div className="flex gap-4 justify-center">
             <button
               onClick={startGame}
-              className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg transition"
+              className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg transition"
             >
               Play Again
             </button>
@@ -321,6 +400,7 @@ export function DragSortGame({ onGameComplete }: DragSortGameProps) {
               New Game
             </Link>
           </div>
+          <ShareScore gameName="Drag Sort" score={result.score || 0} rank={result.rank} />
         </div>
       )}
 
@@ -336,7 +416,7 @@ export function DragSortGame({ onGameComplete }: DragSortGameProps) {
           <div className="flex gap-4 justify-center">
             <button
               onClick={startGame}
-              className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg transition"
+              className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg transition"
             >
               Try Again
             </button>
