@@ -2,13 +2,28 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
+import { ShareScore } from './ShareScore'
 
-type GamePhase = 'idle' | 'loading' | 'waiting' | 'ready' | 'checking' | 'completed' | 'failed'
+type GamePhase = 'idle' | 'loading' | 'waiting' | 'signal' | 'feedback' | 'checking' | 'completed' | 'failed'
+
+interface RoundSpec {
+  delay: number
+  shouldTap: boolean
+  color: string
+}
 
 interface TurnSpec {
+  rounds: RoundSpec[]
   maxReactionMs: number
   timeLimitMs: number
   numRounds: number
+}
+
+interface RoundResult {
+  shouldTap: boolean
+  tapped: boolean
+  reactionMs?: number
+  correct: boolean
 }
 
 interface GameResult {
@@ -17,6 +32,10 @@ interface GameResult {
   averageReactionMs?: number
   score?: number
   rank?: number
+  correctTaps?: number
+  correctSkips?: number
+  wrongTaps?: number
+  missedTaps?: number
   reason?: string
 }
 
@@ -29,21 +48,51 @@ export function ReactionTimeGame({ onGameComplete }: ReactionTimeGameProps) {
   const [turnToken, setTurnToken] = useState<string | null>(null)
   const [spec, setSpec] = useState<TurnSpec | null>(null)
   const [currentRound, setCurrentRound] = useState(0)
-  const [reactionTimes, setReactionTimes] = useState<number[]>([])
+  const [roundResults, setRoundResults] = useState<RoundResult[]>([])
   const [result, setResult] = useState<GameResult | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [showSignal, setShowSignal] = useState(false)
+  const [currentColor, setCurrentColor] = useState('#64748b')
+  const [currentShouldTap, setCurrentShouldTap] = useState(true)
+  const [feedbackText, setFeedbackText] = useState('')
+  const [feedbackColor, setFeedbackColor] = useState('')
 
   const signalTimeRef = useRef<number>(0)
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const eventQueueRef = useRef<{ event: object; sent: boolean }[]>([])
+
+  // Background event sender
+  const sendQueuedEvents = useCallback(async () => {
+    if (!turnToken) return
+
+    for (const item of eventQueueRef.current) {
+      if (item.sent) continue
+      try {
+        await fetch('/api/game/turn/event', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ turnToken, ...item.event }),
+        })
+        item.sent = true
+      } catch (err) {
+        console.error('Failed to send event:', err)
+      }
+    }
+  }, [turnToken])
+
+  const queueEvent = useCallback((event: object) => {
+    eventQueueRef.current.push({ event, sent: false })
+    // Fire and forget - don't await
+    sendQueuedEvents()
+  }, [sendQueuedEvents])
 
   const startGame = useCallback(async () => {
     setPhase('loading')
     setError(null)
     setCurrentRound(0)
-    setReactionTimes([])
+    setRoundResults([])
     setResult(null)
-    setShowSignal(false)
+    setCurrentColor('#64748b')
+    eventQueueRef.current = []
 
     try {
       const createRes = await fetch('/api/game/turn/create', {
@@ -72,110 +121,131 @@ export function ReactionTimeGame({ onGameComplete }: ReactionTimeGameProps) {
       }
 
       // Start first round
-      startRound(turnData.turnToken, 0)
+      startRound(turnData.spec, 0)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error')
       setPhase('idle')
     }
   }, [])
 
-  const startRound = async (token: string, round: number) => {
+  const startRound = (gameSpec: TurnSpec, round: number) => {
     setPhase('waiting')
-    setShowSignal(false)
+    setCurrentColor('#64748b') // Slate waiting color
 
-    // Request server to schedule signal
-    try {
-      const res = await fetch('/api/game/turn/event', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          turnToken: token,
-          eventType: 'request_signal',
-          round,
-          clientTimestampMs: Date.now(),
-        }),
-      })
+    const roundSpec = gameSpec.rounds[round]
 
-      if (!res.ok) throw new Error('Failed to request signal')
-
-      const data = await res.json()
-      const delay = data.delay || 2000
-
-      // Wait for server-specified delay, then show signal
-      timeoutRef.current = setTimeout(() => {
-        showSignalAndWait(token, round)
-      }, delay)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error')
-      setPhase('failed')
-    }
+    // Schedule signal after delay
+    timeoutRef.current = setTimeout(() => {
+      showSignal(gameSpec, round, roundSpec)
+    }, roundSpec.delay)
   }
 
-  const showSignalAndWait = async (token: string, round: number) => {
-    // Record signal time and notify server
+  const showSignal = (gameSpec: TurnSpec, round: number, roundSpec: RoundSpec) => {
     signalTimeRef.current = Date.now()
-    setShowSignal(true)
-    setPhase('ready')
+    setCurrentColor(roundSpec.color)
+    setCurrentShouldTap(roundSpec.shouldTap)
+    setPhase('signal')
 
-    await fetch('/api/game/turn/event', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        turnToken: token,
-        eventType: 'signal_shown',
-        round,
-        clientTimestampMs: signalTimeRef.current,
-      }),
+    // Queue signal event
+    queueEvent({
+      eventType: 'signal_shown',
+      round,
+      clientTimestampMs: signalTimeRef.current,
     })
+
+    // Auto-advance after max reaction time if no tap
+    timeoutRef.current = setTimeout(() => {
+      if (phase === 'signal') {
+        handleRoundComplete(gameSpec, round, false)
+      }
+    }, gameSpec.maxReactionMs)
   }
 
-  const handleTap = async () => {
+  const handleTap = () => {
     if (phase === 'waiting') {
-      // Tapped too early!
-      setError('Too early! Wait for the green signal.')
-      if (timeoutRef.current) clearTimeout(timeoutRef.current)
-      setPhase('failed')
-      setResult({ valid: false, reason: 'early_tap' })
+      // Tapped during wait - show brief error but continue
+      setFeedbackText('Too early!')
+      setFeedbackColor('text-red-400')
+      setPhase('feedback')
+
+      setTimeout(() => {
+        if (spec) {
+          startRound(spec, currentRound)
+        }
+      }, 500)
       return
     }
 
-    if (phase !== 'ready' || !turnToken || !spec) return
+    if (phase !== 'signal' || !spec) return
 
-    const tapTime = Date.now()
-    const reactionMs = tapTime - signalTimeRef.current
+    if (timeoutRef.current) clearTimeout(timeoutRef.current)
+    handleRoundComplete(spec, currentRound, true)
+  }
 
-    // Send tap event to server
-    await fetch('/api/game/turn/event', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        turnToken,
-        eventType: 'tap',
-        round: currentRound,
-        clientTimestampMs: tapTime,
-      }),
+  const handleRoundComplete = (gameSpec: TurnSpec, round: number, tapped: boolean) => {
+    const roundSpec = gameSpec.rounds[round]
+    const reactionMs = tapped ? Date.now() - signalTimeRef.current : undefined
+
+    // Determine if correct
+    const correct = (roundSpec.shouldTap && tapped) || (!roundSpec.shouldTap && !tapped)
+
+    // Show feedback
+    if (tapped) {
+      if (roundSpec.shouldTap) {
+        setFeedbackText(`${reactionMs}ms`)
+        setFeedbackColor('text-green-400')
+      } else {
+        setFeedbackText('Wrong!')
+        setFeedbackColor('text-red-400')
+      }
+    } else {
+      if (roundSpec.shouldTap) {
+        setFeedbackText('Missed!')
+        setFeedbackColor('text-red-400')
+      } else {
+        setFeedbackText('Good!')
+        setFeedbackColor('text-green-400')
+      }
+    }
+
+    setPhase('feedback')
+
+    // Record result
+    const roundResult: RoundResult = {
+      shouldTap: roundSpec.shouldTap,
+      tapped,
+      reactionMs,
+      correct,
+    }
+    setRoundResults(prev => [...prev, roundResult])
+
+    // Queue round complete event
+    queueEvent({
+      eventType: 'round_complete',
+      round,
+      tapped,
+      clientTimestampMs: Date.now(),
     })
 
-    const newReactionTimes = [...reactionTimes, reactionMs]
-    setReactionTimes(newReactionTimes)
-    setShowSignal(false)
-
-    const nextRound = currentRound + 1
-
-    if (nextRound >= spec.numRounds) {
-      // All rounds complete
-      completeGame()
+    // Next round or complete
+    const nextRound = round + 1
+    if (nextRound >= gameSpec.numRounds) {
+      setTimeout(() => completeGame(), 600)
     } else {
-      setCurrentRound(nextRound)
-      // Brief pause before next round
       setTimeout(() => {
-        startRound(turnToken, nextRound)
-      }, 500)
+        setCurrentRound(nextRound)
+        startRound(gameSpec, nextRound)
+      }, 600)
     }
   }
 
   const completeGame = async () => {
     setPhase('checking')
+    setCurrentColor('#64748b')
+
+    // Wait for events to flush
+    await sendQueuedEvents()
+    await new Promise(resolve => setTimeout(resolve, 200))
 
     try {
       const completeRes = await fetch('/api/game/turn/complete', {
@@ -203,11 +273,17 @@ export function ReactionTimeGame({ onGameComplete }: ReactionTimeGameProps) {
     }
   }, [])
 
+  // Calculate live stats
+  const correctTaps = roundResults.filter(r => r.shouldTap && r.tapped).length
+  const correctSkips = roundResults.filter(r => !r.shouldTap && !r.tapped).length
+  const wrongTaps = roundResults.filter(r => !r.shouldTap && r.tapped).length
+  const missedTaps = roundResults.filter(r => r.shouldTap && !r.tapped).length
+
   return (
-    <div className="bg-slate-800 rounded-xl p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold text-white">Reaction Time</h2>
-        {(phase === 'waiting' || phase === 'ready') && spec && (
+    <div className="bg-slate-800 rounded-xl p-4 sm:p-6">
+      <div className="flex items-center justify-between mb-4 sm:mb-6">
+        <h2 className="text-lg sm:text-xl font-bold text-white">Reaction Time</h2>
+        {spec && (phase === 'waiting' || phase === 'signal' || phase === 'feedback') && (
           <div className="text-sm text-slate-400">
             Round {currentRound + 1} / {spec.numRounds}
           </div>
@@ -215,13 +291,14 @@ export function ReactionTimeGame({ onGameComplete }: ReactionTimeGameProps) {
       </div>
 
       {phase === 'idle' && (
-        <div className="text-center py-12">
-          <p className="text-slate-300 mb-6">
-            Test your reflexes! Click as fast as you can when the screen turns green.
+        <div className="text-center py-8 sm:py-12">
+          <p className="text-slate-300 mb-4 sm:mb-6 px-2">
+            Tap when you see <span className="text-green-400 font-bold">&quot;Tap!&quot;</span> but
+            hold back when you see <span className="text-red-400 font-bold">&quot;Don&apos;t Tap!&quot;</span>
           </p>
           <button
             onClick={startGame}
-            className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg text-lg transition"
+            className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg text-lg transition"
           >
             Start Game (1 $Credit)
           </button>
@@ -235,24 +312,50 @@ export function ReactionTimeGame({ onGameComplete }: ReactionTimeGameProps) {
         </div>
       )}
 
-      {(phase === 'waiting' || phase === 'ready') && (
+      {(phase === 'waiting' || phase === 'signal' || phase === 'feedback') && (
         <div className="text-center">
           <button
             onClick={handleTap}
-            className={`w-full h-64 rounded-xl text-3xl font-bold transition-all ${
-              showSignal
-                ? 'bg-green-500 hover:bg-green-400 text-white'
-                : 'bg-red-500 hover:bg-red-400 text-white'
-            }`}
+            disabled={phase === 'feedback'}
+            className="w-full h-48 sm:h-64 rounded-xl text-3xl sm:text-4xl font-bold transition-all transform active:scale-95 disabled:transform-none"
+            style={{ backgroundColor: currentColor }}
           >
-            {showSignal ? 'CLICK NOW!' : 'Wait for green...'}
+            {phase === 'waiting' && (
+              <span className="text-white/80">Get Ready...</span>
+            )}
+            {phase === 'signal' && (
+              <span className="text-white drop-shadow-lg">
+                {currentShouldTap ? 'Tap!' : "Don't Tap!"}
+              </span>
+            )}
+            {phase === 'feedback' && (
+              <span className={feedbackColor + ' drop-shadow-lg'}>{feedbackText}</span>
+            )}
           </button>
 
-          {reactionTimes.length > 0 && (
-            <div className="mt-4 flex justify-center gap-2 flex-wrap">
-              {reactionTimes.map((time, i) => (
-                <span key={i} className="px-3 py-1 bg-slate-700 rounded text-sm text-slate-300">
-                  R{i + 1}: {time}ms
+          {/* Live stats */}
+          <div className="mt-4 flex justify-center gap-3 flex-wrap text-sm">
+            <span className="px-3 py-1 bg-green-500/20 rounded text-green-400">
+              {correctTaps + correctSkips} correct
+            </span>
+            {(wrongTaps > 0 || missedTaps > 0) && (
+              <span className="px-3 py-1 bg-red-500/20 rounded text-red-400">
+                {wrongTaps + missedTaps} wrong
+              </span>
+            )}
+          </div>
+
+          {/* Recent results */}
+          {roundResults.length > 0 && (
+            <div className="mt-3 flex justify-center gap-1.5 flex-wrap">
+              {roundResults.slice(-8).map((r, i) => (
+                <span
+                  key={i}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                    r.correct ? 'bg-green-500/30 text-green-400' : 'bg-red-500/30 text-red-400'
+                  }`}
+                >
+                  {r.tapped ? (r.reactionMs ? Math.round(r.reactionMs / 10) : '!') : '-'}
                 </span>
               ))}
             </div>
@@ -268,61 +371,57 @@ export function ReactionTimeGame({ onGameComplete }: ReactionTimeGameProps) {
       )}
 
       {phase === 'completed' && result && (
-        <div className="text-center py-8">
-          <div className="text-6xl mb-4">⚡</div>
-          <h3 className="text-2xl font-bold text-green-400 mb-4">Great Reflexes!</h3>
-          <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto mb-6">
-            <div className="bg-slate-700 rounded-lg p-4">
-              <div className="text-3xl font-bold text-white">{result.score?.toLocaleString()}</div>
-              <div className="text-sm text-slate-400">Score</div>
+        <div className="text-center py-6 sm:py-8">
+          <div className="text-5xl sm:text-6xl mb-4">⚡</div>
+          <h3 className="text-xl sm:text-2xl font-bold text-green-400 mb-4">Great Job!</h3>
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 max-w-xs mx-auto mb-4 sm:mb-6">
+            <div className="bg-slate-700 rounded-lg p-3 sm:p-4">
+              <div className="text-2xl sm:text-3xl font-bold text-white">{result.score?.toLocaleString()}</div>
+              <div className="text-xs sm:text-sm text-slate-400">Score</div>
             </div>
-            <div className="bg-slate-700 rounded-lg p-4">
-              <div className="text-3xl font-bold text-white">#{result.rank}</div>
-              <div className="text-sm text-slate-400">Rank</div>
+            <div className="bg-slate-700 rounded-lg p-3 sm:p-4">
+              <div className="text-2xl sm:text-3xl font-bold text-white">#{result.rank}</div>
+              <div className="text-xs sm:text-sm text-slate-400">Rank</div>
             </div>
-            <div className="bg-slate-700 rounded-lg p-4 col-span-2">
-              <div className="text-xl font-bold text-white">{result.averageReactionMs}ms</div>
-              <div className="text-sm text-slate-400">Average Reaction Time</div>
+            <div className="bg-slate-700 rounded-lg p-3 sm:p-4">
+              <div className="text-lg sm:text-xl font-bold text-white">{result.averageReactionMs}ms</div>
+              <div className="text-xs sm:text-sm text-slate-400">Avg Reaction</div>
+            </div>
+            <div className="bg-slate-700 rounded-lg p-3 sm:p-4">
+              <div className="text-lg sm:text-xl font-bold text-white">
+                {(result.correctTaps || 0) + (result.correctSkips || 0)}/{spec?.numRounds}
+              </div>
+              <div className="text-xs sm:text-sm text-slate-400">Accuracy</div>
             </div>
           </div>
-          <div className="flex justify-center gap-2 flex-wrap mb-6">
-            {result.reactionTimes?.map((time, i) => (
-              <span key={i} className="px-3 py-1 bg-slate-700 rounded text-sm text-slate-300">
-                R{i + 1}: {time}ms
-              </span>
-            ))}
-          </div>
-          <div className="flex gap-4 justify-center">
+          <div className="flex gap-3 sm:gap-4 justify-center">
             <button
               onClick={startGame}
-              className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg transition"
+              className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-2.5 sm:py-3 px-6 sm:px-8 rounded-lg transition"
             >
               Play Again
             </button>
-            <Link href="/" className="bg-slate-600 hover:bg-slate-500 text-white font-bold py-3 px-8 rounded-lg transition">
+            <Link href="/" className="bg-slate-600 hover:bg-slate-500 text-white font-bold py-2.5 sm:py-3 px-6 sm:px-8 rounded-lg transition">
               New Game
             </Link>
           </div>
+          <ShareScore gameName="Reaction Time" score={result.score || 0} rank={result.rank} />
         </div>
       )}
 
       {phase === 'failed' && (
         <div className="text-center py-8">
           <div className="text-6xl mb-4">😢</div>
-          <h3 className="text-2xl font-bold text-red-400 mb-4">
-            {result?.reason === 'early_tap' ? 'Too Early!' : 'Failed!'}
-          </h3>
+          <h3 className="text-2xl font-bold text-red-400 mb-4">Game Over</h3>
           <p className="text-slate-300 mb-6">
-            {result?.reason === 'early_tap'
-              ? 'You clicked before the signal appeared.'
-              : result?.reason === 'too_slow'
-              ? 'Your reaction was too slow.'
+            {result?.reason === 'impossible_speed'
+              ? 'Suspicious activity detected.'
               : 'Better luck next time!'}
           </p>
           <div className="flex gap-4 justify-center">
             <button
               onClick={startGame}
-              className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg transition"
+              className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg transition"
             >
               Try Again
             </button>

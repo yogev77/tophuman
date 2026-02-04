@@ -6,11 +6,18 @@ export interface ReactionTimeConfig {
   max_delay_ms: number
   max_reaction_ms: number
   time_limit_seconds: number
+  trap_ratio: number // Percentage of "Don't Tap" rounds (0-1)
+}
+
+export interface RoundSpec {
+  delay: number
+  shouldTap: boolean
+  color: string
 }
 
 export interface ReactionTimeTurnSpec {
   seed: string
-  delays: number[] // Server-generated random delays for each round
+  rounds: RoundSpec[]
   maxReactionMs: number
   timeLimitMs: number
   numRounds: number
@@ -21,6 +28,8 @@ export interface ReactionEvent {
   round?: number
   serverTimestamp: Date
   clientTimestampMs?: number
+  tapped?: boolean
+  shouldTap?: boolean
 }
 
 export interface ReactionTimeResult {
@@ -29,16 +38,32 @@ export interface ReactionTimeResult {
   reactionTimes: number[]
   averageReactionMs?: number
   score?: number
+  correctTaps?: number
+  correctSkips?: number
+  wrongTaps?: number
+  missedTaps?: number
   flag?: boolean
 }
 
 export const DEFAULT_REACTION_TIME_CONFIG: ReactionTimeConfig = {
-  num_rounds: 5,
-  min_delay_ms: 1000,
-  max_delay_ms: 4000,
+  num_rounds: 8,
+  min_delay_ms: 800,
+  max_delay_ms: 2500,
   max_reaction_ms: 1000,
   time_limit_seconds: 60,
+  trap_ratio: 0.3, // 30% are "Don't Tap" rounds
 }
+
+const COLORS = [
+  '#ef4444', // red
+  '#f97316', // orange
+  '#eab308', // yellow
+  '#22c55e', // green
+  '#06b6d4', // cyan
+  '#3b82f6', // blue
+  '#8b5cf6', // violet
+  '#ec4899', // pink
+]
 
 function seededRandom(seed: string): () => number {
   let hash = 0
@@ -62,16 +87,37 @@ export function generateReactionTimeTurnSpec(
   const seed = crypto.createHash('sha256').update(seedInput).digest('hex')
   const random = seededRandom(seed)
 
-  // Generate random delays for each round
-  const delays: number[] = []
+  // Generate rounds with random delays, tap/don't-tap, and colors
+  const rounds: RoundSpec[] = []
+  const trapCount = Math.floor(config.num_rounds * config.trap_ratio)
+  const trapIndices = new Set<number>()
+
+  // Randomly select which rounds are traps (don't tap)
+  while (trapIndices.size < trapCount) {
+    trapIndices.add(Math.floor(random() * config.num_rounds))
+  }
+
+  let lastColor = ''
   for (let i = 0; i < config.num_rounds; i++) {
     const delay = config.min_delay_ms + random() * (config.max_delay_ms - config.min_delay_ms)
-    delays.push(Math.round(delay))
+
+    // Pick a random color different from the last one
+    let color = COLORS[Math.floor(random() * COLORS.length)]
+    while (color === lastColor) {
+      color = COLORS[Math.floor(random() * COLORS.length)]
+    }
+    lastColor = color
+
+    rounds.push({
+      delay: Math.round(delay),
+      shouldTap: !trapIndices.has(i),
+      color,
+    })
   }
 
   return {
     seed,
-    delays,
+    rounds,
     maxReactionMs: config.max_reaction_ms,
     timeLimitMs: config.time_limit_seconds * 1000,
     numRounds: config.num_rounds,
@@ -79,8 +125,9 @@ export function generateReactionTimeTurnSpec(
 }
 
 export function getReactionTimeClientSpec(spec: ReactionTimeTurnSpec): Partial<ReactionTimeTurnSpec> {
-  // Don't send delays to client - server controls when signals appear
+  // Send rounds to client but they still need server timing for validation
   return {
+    rounds: spec.rounds,
     maxReactionMs: spec.maxReactionMs,
     timeLimitMs: spec.timeLimitMs,
     numRounds: spec.numRounds,
@@ -92,50 +139,74 @@ export function validateReactionTimeTurn(
   events: ReactionEvent[]
 ): ReactionTimeResult {
   const reactionTimes: number[] = []
+  let correctTaps = 0
+  let correctSkips = 0
+  let wrongTaps = 0
+  let missedTaps = 0
 
   // Group events by round
-  const roundEvents = new Map<number, { signalTime?: Date; tapTime?: Date }>()
+  const roundEvents = new Map<number, { signalTime?: Date; tapTime?: Date; tapped?: boolean; shouldTap?: boolean }>()
 
   for (const event of events) {
     const roundNum = event.round ?? -1
-    if (roundNum < 0) continue
+    if (roundNum < 0 || roundNum >= spec.numRounds) continue
 
     if (!roundEvents.has(roundNum)) {
-      roundEvents.set(roundNum, {})
+      roundEvents.set(roundNum, { shouldTap: spec.rounds[roundNum].shouldTap })
     }
     const round = roundEvents.get(roundNum)!
 
     if (event.eventType === 'signal_shown') {
       round.signalTime = event.serverTimestamp
-    } else if (event.eventType === 'tap') {
+    } else if (event.eventType === 'round_complete') {
       round.tapTime = event.serverTimestamp
+      round.tapped = event.tapped
     }
   }
 
   // Validate each round
   for (let i = 0; i < spec.numRounds; i++) {
     const round = roundEvents.get(i)
+    const shouldTap = spec.rounds[i].shouldTap
 
-    if (!round || !round.signalTime || !round.tapTime) {
-      return { valid: false, reason: 'incomplete_rounds', reactionTimes }
+    if (!round || !round.signalTime) {
+      return { valid: false, reason: 'incomplete_rounds', reactionTimes, correctTaps, correctSkips, wrongTaps, missedTaps }
     }
 
-    const reactionMs = round.tapTime.getTime() - round.signalTime.getTime()
-    reactionTimes.push(reactionMs)
+    if (round.tapped && round.tapTime) {
+      const reactionMs = round.tapTime.getTime() - round.signalTime.getTime()
 
-    // Check for impossibly fast reaction (bot detection)
-    if (reactionMs < 100) {
-      return {
-        valid: false,
-        reason: 'impossible_speed',
-        reactionTimes,
-        flag: true
+      if (shouldTap) {
+        // Correct tap
+        reactionTimes.push(reactionMs)
+        correctTaps++
+
+        // Check for impossibly fast reaction (bot detection)
+        if (reactionMs < 100) {
+          return {
+            valid: false,
+            reason: 'impossible_speed',
+            reactionTimes,
+            correctTaps,
+            correctSkips,
+            wrongTaps,
+            missedTaps,
+            flag: true
+          }
+        }
+      } else {
+        // Wrong tap (tapped on "Don't Tap")
+        wrongTaps++
       }
-    }
-
-    // Check for too slow reaction
-    if (reactionMs > spec.maxReactionMs) {
-      return { valid: false, reason: 'too_slow', reactionTimes }
+    } else {
+      // Didn't tap
+      if (shouldTap) {
+        // Missed tap
+        missedTaps++
+      } else {
+        // Correct skip
+        correctSkips++
+      }
     }
   }
 
@@ -145,56 +216,75 @@ export function validateReactionTimeTurn(
     const variance = reactionTimes.reduce((sum, t) => sum + Math.pow(t - avg, 2), 0) / reactionTimes.length
     const stdDev = Math.sqrt(variance)
 
-    // If std dev is less than 10ms over multiple rounds, likely a bot
     if (stdDev < 10) {
       return {
         valid: false,
         reason: 'suspicious_consistency',
         reactionTimes,
+        correctTaps,
+        correctSkips,
+        wrongTaps,
+        missedTaps,
         flag: true,
       }
     }
   }
 
-  const averageReactionMs = Math.round(reactionTimes.reduce((a, b) => a + b, 0) / reactionTimes.length)
-  const score = calculateReactionTimeScore(averageReactionMs, spec)
+  const averageReactionMs = reactionTimes.length > 0
+    ? Math.round(reactionTimes.reduce((a, b) => a + b, 0) / reactionTimes.length)
+    : 0
+
+  const score = calculateReactionTimeScore(averageReactionMs, correctTaps, correctSkips, wrongTaps, missedTaps, spec)
 
   return {
     valid: true,
     reactionTimes,
     averageReactionMs,
     score,
+    correctTaps,
+    correctSkips,
+    wrongTaps,
+    missedTaps,
   }
 }
 
-function calculateReactionTimeScore(avgReactionMs: number, spec: ReactionTimeTurnSpec): number {
-  // Lower reaction time = higher score
-  // Best achievable ~9700 (human limits), max allowed = 0
-  // Perfect 100ms is nearly impossible for humans, so we use a curve
+function calculateReactionTimeScore(
+  avgReactionMs: number,
+  correctTaps: number,
+  correctSkips: number,
+  wrongTaps: number,
+  missedTaps: number,
+  spec: ReactionTimeTurnSpec
+): number {
   const maxScore = 9800
-  const perfectTime = 100
-  const excellentTime = 180 // More realistic excellent human reaction
-  const maxTime = spec.maxReactionMs
+  const tapRounds = spec.rounds.filter(r => r.shouldTap).length
+  const skipRounds = spec.numRounds - tapRounds
 
-  if (avgReactionMs >= maxTime) return 0
+  // Base score from reaction time (for correct taps only)
+  let reactionScore = 0
+  if (correctTaps > 0 && avgReactionMs > 0) {
+    const perfectTime = 150
+    const maxTime = spec.maxReactionMs
 
-  // Use a curve that rewards faster times but caps below max
-  // Even the fastest human reaction (~150ms avg) won't hit max score
-  let score: number
-  if (avgReactionMs <= perfectTime) {
-    // Theoretical perfect - still cap below max
-    score = maxScore - 200
-  } else if (avgReactionMs <= excellentTime) {
-    // Excellent range: 100-180ms, scale from 9600 to 9200
-    const range = excellentTime - perfectTime
-    const position = avgReactionMs - perfectTime
-    score = 9600 - (position / range) * 400
-  } else {
-    // Normal range: 180ms to max, scale from 9200 to 0
-    const range = maxTime - excellentTime
-    const position = avgReactionMs - excellentTime
-    score = 9200 * (1 - position / range)
+    if (avgReactionMs <= perfectTime) {
+      reactionScore = maxScore * 0.6
+    } else {
+      const range = maxTime - perfectTime
+      const position = avgReactionMs - perfectTime
+      reactionScore = maxScore * 0.6 * (1 - position / range)
+    }
   }
 
-  return Math.round(Math.min(9800, Math.max(0, score)))
+  // Accuracy bonus (40% of max score)
+  const totalRounds = spec.numRounds
+  const correctActions = correctTaps + correctSkips
+  const accuracyRatio = correctActions / totalRounds
+  const accuracyScore = maxScore * 0.4 * accuracyRatio
+
+  // Penalties
+  const wrongTapPenalty = wrongTaps * 500 // Heavy penalty for wrong taps
+  const missedTapPenalty = missedTaps * 300 // Moderate penalty for missed taps
+
+  const finalScore = Math.round(Math.max(0, reactionScore + accuracyScore - wrongTapPenalty - missedTapPenalty))
+  return Math.min(maxScore, finalScore)
 }
