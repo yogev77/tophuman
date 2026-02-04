@@ -21,32 +21,38 @@ export interface Database {
         Row: {
           id: string
           user_id: string
+          username: string
           display_name: string | null
           created_at: string
           updated_at: string
           banned_at: string | null
           ban_reason: string | null
           is_admin: boolean
+          username_changed_at: string | null
         }
         Insert: {
           id: string
           user_id: string
+          username: string
           display_name?: string | null
           created_at?: string
           updated_at?: string
           banned_at?: string | null
           ban_reason?: string | null
           is_admin?: boolean
+          username_changed_at?: string | null
         }
         Update: {
           id?: string
           user_id?: string
+          username?: string
           display_name?: string | null
           created_at?: string
           updated_at?: string
           banned_at?: string | null
           ban_reason?: string | null
           is_admin?: boolean
+          username_changed_at?: string | null
         }
       }
       credit_ledger: {

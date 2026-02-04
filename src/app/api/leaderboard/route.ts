@@ -45,10 +45,10 @@ export async function GET(request: NextRequest) {
       const userIds = [...new Set((allTimeData || []).map(e => e.user_id))]
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('user_id, display_name')
+        .select('user_id, display_name, username')
         .in('user_id', userIds)
 
-      const profileMap = new Map((profiles || []).map(p => [p.user_id, p.display_name]))
+      const profileMap = new Map((profiles || []).map(p => [p.user_id, p.display_name || p.username]))
 
       // Group by user, keeping best score
       const userBest = new Map<string, { score: number; timeMs: number | null; displayName: string; count: number }>()
@@ -111,10 +111,10 @@ export async function GET(request: NextRequest) {
       const userIds = [...new Set((todayData || []).map(e => e.user_id))]
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('user_id, display_name')
+        .select('user_id, display_name, username')
         .in('user_id', userIds)
 
-      const profileMap = new Map((profiles || []).map(p => [p.user_id, p.display_name]))
+      const profileMap = new Map((profiles || []).map(p => [p.user_id, p.display_name || p.username]))
 
       // Group by user, keeping best score for today
       const userBest = new Map<string, { score: number; timeMs: number | null; displayName: string; count: number }>()
