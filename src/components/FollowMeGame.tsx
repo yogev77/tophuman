@@ -100,6 +100,17 @@ export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
     drawCanvas()
   }, [drawCanvas])
 
+  // Draw canvas when phase becomes ready (canvas just mounted)
+  useEffect(() => {
+    if (phase === 'ready' || phase === 'draw') {
+      // Small delay to ensure canvas is mounted
+      const timer = setTimeout(() => {
+        drawCanvas()
+      }, 50)
+      return () => clearTimeout(timer)
+    }
+  }, [phase, drawCanvas])
+
   const startGame = useCallback(async () => {
     setPhase('loading')
     setError(null)
