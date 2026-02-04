@@ -193,27 +193,35 @@ export function validateDuckShootTurn(
   const hits = hitDucks.size
 
   const maxShots = 10
+  const maxTimeMs = 30000 // 30 seconds
 
   // Must hit at least 2 ducks (20% of max shots)
   if (hits < 2) {
     return { valid: false, reason: 'not_enough_hits', hits, totalDucks: maxShots }
   }
 
+  // Calculate time taken (from first to last shot)
+  const shotTimes = shoots.map(s => s.clientTimestampMs || 0).filter(t => t > 0)
+  const timeTakenMs = shotTimes.length >= 2
+    ? shotTimes[shotTimes.length - 1] - shotTimes[0]
+    : maxTimeMs
+
   // Average accuracy per hit (how close to duck center)
   const avgHitAccuracy = hits > 0 ? totalAccuracy / hits : 0
 
   // Score components:
-  // 1. Hits: 500 points per hit (up to 5000 for 10 hits)
-  const hitScore = hits * 500
+  // 1. Hits: 400 points per hit (up to 4000 for 10 hits)
+  const hitScore = hits * 400
 
   // 2. Precision bonus: up to 3000 points (based on how close to center of ducks)
   const precisionBonus = Math.round(avgHitAccuracy * 3000)
 
-  // 3. Efficiency bonus: up to 2000 points for using fewer shots
-  const shotsUsed = shoots.length
-  const efficiencyBonus = Math.max(0, Math.round((1 - shotsUsed / maxShots) * 2000))
+  // 3. Speed bonus: up to 3000 points (faster = more points)
+  // Full bonus if done in under 5 seconds, scales down to 0 at 30 seconds
+  const speedRatio = Math.max(0, 1 - (timeTakenMs - 5000) / (maxTimeMs - 5000))
+  const speedBonus = timeTakenMs < 5000 ? 3000 : Math.round(speedRatio * 3000)
 
-  const score = hitScore + precisionBonus + efficiencyBonus
+  const score = hitScore + precisionBonus + speedBonus
 
   return {
     valid: true,
