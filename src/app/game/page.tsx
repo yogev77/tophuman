@@ -37,6 +37,21 @@ import {
   LucideIcon,
 } from 'lucide-react'
 
+const GAME_ICON_COLORS: Record<string, { bg: string; icon: string }> = {
+  emoji_keypad: { bg: 'bg-rose-500/20', icon: 'text-rose-400' },
+  image_rotate: { bg: 'bg-sky-500/20', icon: 'text-sky-400' },
+  reaction_time: { bg: 'bg-amber-500/20', icon: 'text-amber-400' },
+  whack_a_mole: { bg: 'bg-green-500/20', icon: 'text-green-400' },
+  typing_speed: { bg: 'bg-violet-500/20', icon: 'text-violet-400' },
+  mental_math: { bg: 'bg-orange-500/20', icon: 'text-orange-400' },
+  color_match: { bg: 'bg-pink-500/20', icon: 'text-pink-400' },
+  visual_diff: { bg: 'bg-teal-500/20', icon: 'text-teal-400' },
+  audio_pattern: { bg: 'bg-indigo-500/20', icon: 'text-indigo-400' },
+  drag_sort: { bg: 'bg-lime-500/20', icon: 'text-lime-400' },
+  follow_me: { bg: 'bg-cyan-500/20', icon: 'text-cyan-400' },
+  duck_shoot: { bg: 'bg-emerald-500/20', icon: 'text-emerald-400' },
+}
+
 const GAME_CONFIG: Record<string, {
   component: React.ComponentType<{ onGameComplete?: () => void }>
   name: string
@@ -126,6 +141,7 @@ function GamePageContent() {
   // Use URL param or default to emoji_keypad
   const gameType = gameTypeParam && GAME_CONFIG[gameTypeParam] ? gameTypeParam : 'emoji_keypad'
   const config = GAME_CONFIG[gameType]
+  const iconColors = GAME_ICON_COLORS[gameType] || GAME_ICON_COLORS.emoji_keypad
   const GameIcon = config.icon
 
   const handleGameComplete = () => {
@@ -154,13 +170,13 @@ function GamePageContent() {
           <div className="flex justify-center gap-4">
             <Link
               href="/auth/login"
-              className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-6 rounded-lg transition"
+              className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-6 rounded-lg transition"
             >
               Login
             </Link>
             <Link
               href="/auth/signup"
-              className="bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 px-6 rounded-lg transition"
+              className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 px-6 rounded-lg transition"
             >
               Sign Up
             </Link>
@@ -200,8 +216,8 @@ function GamePageContent() {
           >
             <ArrowLeft className="h-6 w-6" />
           </Link>
-          <div className="p-2 bg-blue-500/20 rounded-lg">
-            <GameIcon className="w-6 h-6 text-blue-400" />
+          <div className={`p-2 ${iconColors.bg} rounded-lg`}>
+            <GameIcon className={`w-6 h-6 ${iconColors.icon}`} />
           </div>
           <h1 className="text-2xl font-bold text-white font-title">{config.name}</h1>
         </div>

@@ -4,7 +4,73 @@
 
 A **daily skill-based gaming platform** where users compete for credits. Players prove they're human by playing reflex/skill games, competing on leaderboards, and winning pooled credits.
 
+The homepage features a stats banner showing total pool, players, and time until settlement, followed by a scrolling ticker displaying top players across all games. Game tiles show pool size, player count, top score, and the current leader with a crown icon.
+
 **Future roadmap:** Allow purchasing credits with money and bridging credits to USDT.
+
+## Concept & Rationale
+
+### The Problem
+With AI and bots becoming increasingly sophisticated, there's a growing need for systems that can verify human presence and skill. CAPTCHAs are annoying and increasingly bypassable. We flip the script: instead of a chore, proving you're human becomes a **fun, competitive experience** with real rewards.
+
+### The Solution
+TopHuman is a "proof of humanity" gaming platform where:
+1. **Skills matter** - Games test reflexes, pattern recognition, memory, and dexterity that are hard for bots to fake convincingly
+2. **Stakes are real** - Credits have value, creating incentive to play honestly
+3. **Competition drives engagement** - Daily pools and leaderboards create urgency and community
+4. **Referrals grow the network** - 100 $Credits for inviting friends builds viral growth
+
+### Why These Games?
+Each game targets different human capabilities that are difficult to automate:
+- **Reaction Time** - Tests genuine reflexes, timing patterns reveal bots
+- **Emoji Keypad** - Memory + visual recognition + motor control
+- **Whack-a-Mole** - Unpredictable targets, reaction speed, accuracy
+- **Typing Speed** - Natural typing rhythm is hard to fake
+- **Mental Math** - Cognitive processing speed
+- **Color Match** - Visual perception and fine motor control
+- **Follow Me** - Path tracing requires human-like imprecision
+- **Audio Pattern** - Auditory memory and timing
+- **Visual Diff** - Attention to detail, scanning patterns
+- **Drag Sort** - Touch/mouse coordination
+- **Image Rotate** - Spatial reasoning
+- **Duck Shoot** - Tracking moving targets, prediction
+
+## Design System
+
+### Colors & Theme
+- **Dark/Light mode** toggle in header (Sun/Moon icons)
+- Dark mode: slate-900 background, slate-800 cards
+- Light mode: slate-100 background, white cards
+
+### Buttons
+- **Primary buttons**: Yellow (`bg-yellow-500 hover:bg-yellow-400 text-slate-900`)
+- **Secondary/Ghost buttons**: Yellow border (`border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500`)
+- **Disabled state**: Soft yellow (`disabled:bg-yellow-500/30 disabled:text-slate-900/50`)
+
+### Typography
+- **Titles**: Recursive font (Google Fonts) via `font-title` class
+- **Body**: System fonts (Arial, Helvetica, sans-serif)
+
+### Game Icons
+Each game has a unique pastel color scheme for its icon:
+- Emoji Keypad: Rose
+- Image Rotate: Sky
+- Reaction Time: Amber
+- Whack-a-Mole: Green
+- Typing Speed: Violet
+- Mental Math: Orange
+- Color Match: Pink
+- Visual Diff: Teal
+- Audio Pattern: Indigo
+- Drag Sort: Lime
+- Follow Me: Cyan
+- Duck Shoot: Emerald
+
+### UI Components
+- **Stats Banner**: Shows total credits, players, time until settlement
+- **Top Players Ticker**: Scrolling marquee of game leaders (icon, crown, name, score, pool size)
+- **Game Tiles**: Equal height cards with icon, title, description, stats grid, and top player footer
+- **Referral Banner**: Invite friends UI with copy/share buttons
 
 ## Core Mechanics
 
@@ -21,12 +87,69 @@ A **daily skill-based gaming platform** where users compete for credits. Players
 - Admin backend controls which games are active and when
 - Settlement happens at end of game period
 
-### Anti-Cheat
-- Server generates seeded random game specs (spawn sequences, puzzles, etc.)
-- Client actions logged with timestamps to `turn_events`
-- Server validates timing patterns on completion
-- Detects bots via: suspiciously consistent timing, impossible speeds
-- Turns can be flagged (`flagged: true`) and excluded from leaderboards
+### Anti-Cheat (CRITICAL)
+
+**Security is paramount.** Since credits have real value, cheating directly impacts honest players and platform integrity. Every feature must consider exploit vectors.
+
+#### Current Defenses
+- **Server-authoritative game specs** - Server generates seeded random sequences (spawn patterns, puzzles, target positions). Client cannot predict or manipulate.
+- **Event logging** - All client actions logged with timestamps to `turn_events` table
+- **Timing validation** - Server analyzes timing patterns on completion:
+  - Too consistent = bot (humans have natural variance)
+  - Impossible speeds = scripted (below human reaction limits ~150ms)
+  - Suspicious patterns = flagged for review
+- **Flagging system** - Turns can be flagged (`flagged: true`) and excluded from leaderboards/payouts
+
+#### Threat Vectors to Guard Against
+1. **API Tampering** - Direct API calls bypassing the UI
+   - Mitigation: Validate timing, require proper event sequences, server-side game state
+2. **Scripting/Automation** - Browser scripts, Selenium, Puppeteer
+   - Mitigation: Timing analysis, mouse movement patterns, interaction entropy
+3. **AI/Computer Vision** - Using AI to play games
+   - Mitigation: Time pressure, human-like variance requirements, CAPTCHA on suspicious accounts
+4. **Replay Attacks** - Replaying captured valid game sessions
+   - Mitigation: Unique turn tokens, timestamp validation, server-generated seeds
+5. **Collusion** - Multiple accounts, score manipulation
+   - Mitigation: IP tracking, device fingerprinting, referral abuse detection
+6. **Referral Fraud** - Fake accounts to farm referral bonuses
+   - See detailed mitigation below
+
+#### Referral Fraud Prevention
+Referral bonuses (100 $Credits) are high-value targets for abuse. Defenses:
+
+**Email Normalization**
+- Strip `+suffix` from Gmail/Google addresses (`john+test@gmail.com` → `john@gmail.com`)
+- Remove dots from Gmail local part (`j.o.h.n@gmail.com` → `john@gmail.com`)
+- Track normalized base email - reject if already exists
+- Apply similar rules for other providers (outlook, yahoo, etc.)
+
+**Account Quality Signals**
+- Don't grant referral bonus immediately on signup
+- Require referred user to:
+  - Verify email
+  - Play at least N games (e.g., 3-5)
+  - Have a minimum account age (e.g., 24 hours)
+- Only then credit the referrer
+
+**Pattern Detection**
+- Track signup IP addresses - flag multiple accounts from same IP
+- Device fingerprinting - same browser/device creating accounts
+- Referral velocity - if user refers 50 accounts in a day, flag for review
+- Referred account behavior - if referred accounts never play or all play identically, flag referrer
+
+**Database Schema Additions Needed**
+- `profiles.normalized_email` - Store normalized email for duplicate detection
+- `profiles.signup_ip` - Track registration IP
+- `profiles.device_fingerprint` - Browser fingerprint hash
+- `referral_pending` table - Hold referral bonuses until conditions met
+- `referral_flags` table - Track suspicious referral patterns
+
+#### Security Principles
+- **Never trust the client** - All scoring happens server-side
+- **Validate everything** - Timestamps, sequences, physically possible movements
+- **Statistical detection** - Flag outliers for manual review before payout
+- **Rate limiting** - Prevent brute force attempts
+- **Audit trail** - `credit_ledger` is append-only for forensics
 
 ## Tech Stack
 
@@ -37,6 +160,13 @@ A **daily skill-based gaming platform** where users compete for credits. Players
 | Auth | Supabase Auth |
 | Realtime | Supabase Realtime (leaderboard updates) |
 | Deploy | Vercel |
+
+### Why This Stack?
+- **Next.js** - Server components for secure game logic, API routes for backend, fast client hydration
+- **Supabase** - Postgres reliability, built-in auth, row-level security, realtime subscriptions for live leaderboards
+- **TypeScript** - Type safety critical for game logic and anti-cheat validation
+- **Vercel** - Edge deployment, automatic scaling for traffic spikes during settlement
+- **Tailwind** - Rapid UI iteration, consistent design system
 
 ## Project Structure
 
@@ -94,7 +224,7 @@ Key tables:
 - `turn_events` - Event log for each turn (for validation)
 - `settlements` - End-of-day prize distribution records
 
-## Games (10 Total)
+## Games (12 Total)
 
 | ID | Name | Status |
 |----|------|--------|
@@ -138,4 +268,4 @@ npm run dev
 (Add notes here during work sessions for continuity)
 
 ---
-*Last updated: Feb 4, 2025*
+*Last updated: Feb 4, 2026*

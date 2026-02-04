@@ -4,11 +4,13 @@ import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { useCredits } from '@/hooks/useCredits'
-import { Share2, Copy, Check, ChevronDown, Gift } from 'lucide-react'
+import { useTheme } from '@/hooks/useTheme'
+import { Share2, Copy, Check, Gift, Sun, Moon, Trophy } from 'lucide-react'
 
 export function Header() {
-  const { user, loading: authLoading, signOut } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const { balance, dailyGrantAvailable, claimDailyGrant, displayName, referralCode, loading: creditsLoading } = useCredits()
+  const { theme, toggleTheme } = useTheme()
   const [showCreditsMenu, setShowCreditsMenu] = useState(false)
   const [copied, setCopied] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -16,6 +18,9 @@ export function Header() {
   const referralUrl = typeof window !== 'undefined' && referralCode
     ? `${window.location.origin}/auth/signup?ref=${referralCode}`
     : ''
+
+  // Use displayName, or extract username from email if not set
+  const userName = displayName || (user?.email ? user.email.split('@')[0] : '?')
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -41,7 +46,7 @@ export function Header() {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Join TopHuman!',
+          title: 'Join Podium Arena!',
           text: 'Play skill games and win $Credits! Join using my link:',
           url: referralUrl,
         })
@@ -57,26 +62,23 @@ export function Header() {
     <header className="bg-slate-900 border-b border-slate-800">
       <div className="max-w-6xl mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
-          <Link href="/" className="text-2xl font-bold text-white font-title">
-            TopHuman
+          <Link href="/" className="flex items-center gap-2 text-2xl font-bold text-white font-title">
+            <Trophy className="w-6 h-6 text-yellow-400" />
+            Podium Arena
           </Link>
 
           <nav className="flex items-center gap-6">
             {!authLoading && user ? (
               <>
-                <Link href="/" className="text-slate-300 hover:text-white transition">
-                  Play
-                </Link>
-
                 <div className="flex items-center gap-3">
                   {!creditsLoading && (
                     <div className="relative" ref={menuRef}>
                       <button
                         onClick={() => setShowCreditsMenu(!showCreditsMenu)}
-                        className="flex items-center gap-2 text-yellow-400 font-semibold hover:text-yellow-300 transition"
+                        className="text-yellow-400 font-semibold hover:text-yellow-300 transition"
                       >
-                        {balance} $Credits
-                        <ChevronDown className={`w-4 h-4 transition-transform ${showCreditsMenu ? 'rotate-180' : ''}`} />
+                        <span className="sm:hidden">{balance} $C</span>
+                        <span className="hidden sm:inline">{balance} $Credits</span>
                       </button>
 
                       {showCreditsMenu && (
@@ -115,14 +117,14 @@ export function Header() {
                             <div className="flex gap-2">
                               <button
                                 onClick={handleCopy}
-                                className="flex-1 flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-600 text-white px-3 py-2 rounded-lg transition text-sm"
+                                className="flex-1 flex items-center justify-center gap-2 border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 px-3 py-2 rounded-lg transition text-sm"
                               >
                                 {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
                                 {copied ? 'Copied!' : 'Copy Link'}
                               </button>
                               <button
                                 onClick={handleShare}
-                                className="flex-1 flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-3 py-2 rounded-lg transition text-sm"
+                                className="flex-1 flex items-center justify-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-slate-900 px-3 py-2 rounded-lg transition text-sm"
                               >
                                 <Share2 className="w-4 h-4" />
                                 Share
@@ -134,36 +136,50 @@ export function Header() {
                     </div>
                   )}
 
-                  <Link
-                    href="/profile"
-                    className="text-slate-400 hover:text-white text-sm transition"
-                  >
-                    {displayName || user.email}
-                  </Link>
-
-                  <button
-                    onClick={signOut}
-                    className="text-slate-400 hover:text-white text-sm transition"
-                  >
-                    Sign Out
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <Link
+                      href="/profile"
+                      className="text-slate-400 hover:text-white text-sm transition"
+                    >
+                      <span className="sm:hidden w-9 h-9 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-white font-semibold text-sm">
+                        {userName[0].toUpperCase()}
+                      </span>
+                      <span className="hidden sm:inline">{userName}</span>
+                    </Link>
+                    <button
+                      onClick={toggleTheme}
+                      className="hidden sm:block p-2 rounded-lg bg-slate-800 hover:bg-slate-700 transition"
+                      aria-label="Toggle theme"
+                    >
+                      {theme === 'dark' ? (
+                        <Sun className="w-5 h-5 text-yellow-400" />
+                      ) : (
+                        <Moon className="w-5 h-5 text-slate-600" />
+                      )}
+                    </button>
+                  </div>
                 </div>
               </>
             ) : !authLoading ? (
-              <>
-                <Link
-                  href="/auth/login"
-                  className="text-slate-300 hover:text-white transition"
-                >
-                  Login
-                </Link>
+              <div className="flex items-center gap-3">
                 <Link
                   href="/auth/signup"
-                  className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg transition"
+                  className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 transition text-slate-400 hover:text-white text-sm font-medium"
                 >
-                  Sign Up
+                  Connect
                 </Link>
-              </>
+                <button
+                  onClick={toggleTheme}
+                  className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 transition"
+                  aria-label="Toggle theme"
+                >
+                  {theme === 'dark' ? (
+                    <Sun className="w-5 h-5 text-yellow-400" />
+                  ) : (
+                    <Moon className="w-5 h-5 text-slate-600" />
+                  )}
+                </button>
+              </div>
             ) : null}
           </nav>
         </div>

@@ -99,7 +99,7 @@ export function Leaderboard({ gameType, gameTypeName }: LeaderboardProps) {
           onClick={() => setPeriod('today')}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
             period === 'today'
-              ? 'bg-blue-600 text-white'
+              ? 'bg-yellow-500 text-slate-900'
               : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
           }`}
         >
@@ -109,7 +109,7 @@ export function Leaderboard({ gameType, gameTypeName }: LeaderboardProps) {
           onClick={() => setPeriod('alltime')}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
             period === 'alltime'
-              ? 'bg-blue-600 text-white'
+              ? 'bg-yellow-500 text-slate-900'
               : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
           }`}
         >

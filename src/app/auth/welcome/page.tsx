@@ -46,7 +46,7 @@ function WelcomeContent() {
     <div className="min-h-[80vh] flex items-center justify-center px-4">
       <div className="bg-slate-800 rounded-xl p-8 max-w-md w-full text-center">
         <div className="text-6xl mb-4">🎉</div>
-        <h2 className="text-2xl font-bold text-white mb-4">Welcome to TopHuman!</h2>
+        <h2 className="text-2xl font-bold text-white mb-4">Welcome to Podium Arena!</h2>
         <p className="text-slate-300 mb-4">Your email has been verified.</p>
         <div className="flex items-center justify-center gap-2 text-blue-400">
           <div className="animate-spin w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full"></div>

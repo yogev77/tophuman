@@ -24,17 +24,59 @@ export interface ImageRotateValidationResult {
   flag?: boolean
 }
 
-// Available puzzle images
+// Available puzzle images - using Unsplash for perfect squares (400x400)
+// Categories: cats, puppies, intersections, abstract art, memes
 const PUZZLE_IMAGES = [
-  '/images/puzzles/cat1.jpg',
-  '/images/puzzles/cat2.jpg',
-  '/images/puzzles/cat3.jpg',
-  '/images/puzzles/cat4.jpg',
-  '/images/puzzles/cat5.jpg',
-  '/images/puzzles/cat6.jpg',
-  '/images/puzzles/cat7.jpg',
-  '/images/puzzles/cat8.jpg',
-  '/images/puzzles/cat9.jpg',
+  // Cats (9)
+  'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=400&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1573865526739-10659fec78a5?w=400&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1495360010541-f48722b34f7d?w=400&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1526336024174-e58f5cdd8e13?w=400&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1511044568932-338cba0ad803?w=400&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1518791841217-8f162f1e1131?w=400&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1543852786-1cf6624b9987?w=400&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1478098711619-5ab0b478d6e6?w=400&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1519052537078-e6302a4968d4?w=400&h=400&fit=crop',
+  // Puppies (9)
+  'https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=400&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1517849845537-4d257902454a?w=400&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=400&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=400&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1537151625747-768eb6cf92b2?w=400&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1588943211346-0908a1fb0b01?w=400&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1477884213360-7e9d7dcc1e48?w=400&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1560807707-8cc77767d783?w=400&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1534361960057-19889db9621e?w=400&h=400&fit=crop',
+  // Intersections / City Streets (9)
+  'https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?w=400&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=400&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=400&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1514565131-fce0801e5785?w=400&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=400&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1444723121867-7a241cacace9?w=400&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1460472178825-e5240623afd5?w=400&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1517732306149-e8f829eb588a?w=400&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1494522855154-9297ac14b55f?w=400&h=400&fit=crop',
+  // Abstract Art (9)
+  'https://images.unsplash.com/photo-1541701494587-cb58502866ab?w=400&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1507908708918-778587c9e563?w=400&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1549490349-8643362247b5?w=400&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1518640467707-6811f4a6ab73?w=400&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1567359781514-3b964e2b04d6?w=400&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1573096108468-702f6014ef28?w=400&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1482160549825-59d1b23cb208?w=400&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1504253163759-c23fccaebb55?w=400&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1557672172-298e090bd0f1?w=400&h=400&fit=crop',
+  // Fun / Meme-worthy (9)
+  'https://images.unsplash.com/photo-1533738363-b7f9aef128ce?w=400&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1574158622682-e40e69881006?w=400&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=400&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1518020382113-a7e8fc38eac9?w=400&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1583337130417-3346a1be7dee?w=400&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1596854407944-bf87f6fdd49e?w=400&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1425082661705-1834bfd09dca?w=400&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1561037404-61cd46aa615b?w=400&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1450778869180-41d0601e046e?w=400&h=400&fit=crop',
 ]
 
 // Seeded random number generator

@@ -113,6 +113,7 @@ export async function GET() {
     const gameStats = new Map<string, {
       players: Set<string>
       topScore: number
+      topPlayerId: string | null
       turnCount: number
     }>()
 
@@ -121,6 +122,7 @@ export async function GET() {
         gameStats.set(turn.game_type_id, {
           players: new Set(),
           topScore: 0,
+          topPlayerId: null,
           turnCount: 0,
         })
       }
@@ -129,6 +131,24 @@ export async function GET() {
       stats.turnCount++
       if (turn.score && turn.score > stats.topScore) {
         stats.topScore = turn.score
+        stats.topPlayerId = turn.user_id
+      }
+    }
+
+    // Get display names for top players
+    const topPlayerIds = Array.from(gameStats.values())
+      .map(s => s.topPlayerId)
+      .filter((id): id is string => id !== null)
+
+    const topPlayerNames = new Map<string, string>()
+    if (topPlayerIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, display_name')
+        .in('user_id', topPlayerIds)
+
+      for (const profile of profiles || []) {
+        topPlayerNames.set(profile.user_id, profile.display_name || 'Anonymous')
       }
     }
 
@@ -145,6 +165,9 @@ export async function GET() {
       // Game is playable if active AND (no opens_at OR opens_at has passed)
       const isPlayable = isActive && (!opensAt || opensAt <= now)
 
+      const topPlayerId = stats?.topPlayerId
+      const topPlayerName = topPlayerId ? topPlayerNames.get(topPlayerId) : null
+
       return {
         id,
         name: info.name,
@@ -156,6 +179,7 @@ export async function GET() {
         todayStats: {
           playerCount: stats?.players.size ?? 0,
           topScore: stats?.topScore ?? 0,
+          topPlayerName: topPlayerName || null,
           turnCount: stats?.turnCount ?? 0,
         },
       }

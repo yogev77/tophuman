@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import {
   Target,
@@ -17,6 +17,8 @@ import {
   Crosshair,
   Clock,
   Lock,
+  Crown,
+  Users,
   LucideIcon,
 } from 'lucide-react'
 
@@ -35,6 +37,21 @@ const GAME_ICONS: Record<string, LucideIcon> = {
   duck_shoot: Crosshair,
 }
 
+const GAME_ICON_COLORS: Record<string, { bg: string; icon: string }> = {
+  emoji_keypad: { bg: 'bg-rose-500/20', icon: 'text-rose-400' },
+  image_rotate: { bg: 'bg-sky-500/20', icon: 'text-sky-400' },
+  reaction_time: { bg: 'bg-amber-500/20', icon: 'text-amber-400' },
+  whack_a_mole: { bg: 'bg-green-500/20', icon: 'text-green-400' },
+  typing_speed: { bg: 'bg-violet-500/20', icon: 'text-violet-400' },
+  mental_math: { bg: 'bg-orange-500/20', icon: 'text-orange-400' },
+  color_match: { bg: 'bg-pink-500/20', icon: 'text-pink-400' },
+  visual_diff: { bg: 'bg-teal-500/20', icon: 'text-teal-400' },
+  audio_pattern: { bg: 'bg-indigo-500/20', icon: 'text-indigo-400' },
+  drag_sort: { bg: 'bg-lime-500/20', icon: 'text-lime-400' },
+  follow_me: { bg: 'bg-cyan-500/20', icon: 'text-cyan-400' },
+  duck_shoot: { bg: 'bg-emerald-500/20', icon: 'text-emerald-400' },
+}
+
 
 interface GameInfo {
   id: string
@@ -47,6 +64,7 @@ interface GameInfo {
   todayStats: {
     playerCount: number
     topScore: number
+    topPlayerName: string | null
     turnCount: number
   }
 }
@@ -94,8 +112,57 @@ function formatOpensAt(opensAt: string): string {
   return `Opens ${date.toLocaleDateString([], { month: 'short', day: 'numeric' })} ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
 }
 
+function TopPlayersTicker({ games }: { games: GameInfo[] }) {
+  const [shouldAnimate, setShouldAnimate] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
+
+  const topPlayers = games.filter(g => g.todayStats.topPlayerName && g.todayStats.topScore > 0)
+
+  useEffect(() => {
+    if (containerRef.current && contentRef.current) {
+      const containerWidth = containerRef.current.offsetWidth
+      const contentWidth = contentRef.current.scrollWidth
+      setShouldAnimate(contentWidth > containerWidth)
+    }
+  }, [topPlayers])
+
+  if (topPlayers.length === 0) return null
+
+  const tickerItems = topPlayers.map(game => {
+    const Icon = GAME_ICONS[game.id] || Target
+    const iconColors = GAME_ICON_COLORS[game.id] || GAME_ICON_COLORS.emoji_keypad
+
+    return (
+      <div key={game.id} className="flex items-center gap-2 px-4 whitespace-nowrap">
+        <div className={`p-1.5 rounded ${iconColors.bg}`}>
+          <Icon className={`w-4 h-4 ${iconColors.icon}`} />
+        </div>
+        <Crown className="w-3 h-3 text-yellow-400" />
+        <span className="text-white font-medium">{game.todayStats.topPlayerName}</span>
+        <span className="text-green-400 font-bold">{game.todayStats.topScore.toLocaleString()}</span>
+        <span className="text-yellow-400">{game.poolSize} $C</span>
+      </div>
+    )
+  })
+
+  return (
+    <div ref={containerRef} className="mb-8 overflow-hidden">
+      <div
+        ref={contentRef}
+        className={`flex items-center py-3 ${shouldAnimate ? 'animate-ticker hover:pause-animation' : 'justify-center'}`}
+        style={shouldAnimate ? { width: 'max-content' } : undefined}
+      >
+        {tickerItems}
+        {shouldAnimate && tickerItems}
+      </div>
+    </div>
+  )
+}
+
 function GameTile({ game, msUntilSettlement }: { game: GameInfo; msUntilSettlement: number }) {
   const Icon = GAME_ICONS[game.id] || Target
+  const iconColors = GAME_ICON_COLORS[game.id] || GAME_ICON_COLORS.emoji_keypad
   const isPlayable = game.isPlayable
 
   // Determine status badge
@@ -126,47 +193,60 @@ function GameTile({ game, msUntilSettlement }: { game: GameInfo; msUntilSettleme
   }
 
   const content = (
-    <>
-      <div className="flex items-start justify-between mb-3">
-        <div className={`p-2 rounded-lg ${isPlayable ? 'bg-blue-500/20' : 'bg-slate-600/30'}`}>
-          <Icon className={`w-8 h-8 ${isPlayable ? 'text-blue-400' : 'text-slate-500'}`} />
+    <div className="flex flex-col h-full">
+      <div className="flex-1">
+        <div className="flex items-start justify-between mb-3">
+          <div className={`p-2 rounded-lg ${isPlayable ? iconColors.bg : 'bg-slate-600/30'}`}>
+            <Icon className={`w-8 h-8 ${isPlayable ? iconColors.icon : 'text-slate-500'}`} />
+          </div>
+          {statusBadge}
         </div>
-        {statusBadge}
+
+        <h3 className={`text-lg font-bold mb-1 font-title ${isPlayable ? 'text-white' : 'text-slate-400'}`}>
+          {game.name}
+        </h3>
+        <p className="text-sm text-slate-400">{game.description}</p>
       </div>
 
-      <h3 className={`text-lg font-bold mb-1 font-title ${isPlayable ? 'text-white' : 'text-slate-400'}`}>
-        {game.name}
-      </h3>
-      <p className="text-sm text-slate-400 mb-4">{game.description}</p>
+      <div className="mt-4">
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="bg-slate-900/50 rounded-lg py-2 px-1">
+            <div className={`text-lg font-bold ${isPlayable ? 'text-yellow-400' : 'text-slate-500'}`}>
+              {game.poolSize > 0 ? game.poolSize.toLocaleString() : '-'}
+            </div>
+            <div className="text-xs text-slate-500">$Credits Pool</div>
+          </div>
+          <div className="bg-slate-900/50 rounded-lg py-2 px-1">
+            <div className={`text-lg font-bold ${isPlayable ? 'text-white' : 'text-slate-500'}`}>
+              {game.todayStats.playerCount}
+            </div>
+            <div className="text-xs text-slate-500">Players</div>
+          </div>
+          <div className="bg-slate-900/50 rounded-lg py-2 px-1">
+            <div className={`text-lg font-bold ${isPlayable ? 'text-green-400' : 'text-slate-500'}`}>
+              {game.todayStats.topScore > 0 ? game.todayStats.topScore.toLocaleString() : '-'}
+            </div>
+            <div className="text-xs text-slate-500">Top Score</div>
+          </div>
+        </div>
 
-      <div className="grid grid-cols-3 gap-2 text-center">
-        <div className="bg-slate-900/50 rounded-lg py-2 px-1">
-          <div className={`text-lg font-bold ${isPlayable ? 'text-yellow-400' : 'text-slate-500'}`}>
-            {game.poolSize > 0 ? game.poolSize.toLocaleString() : '-'}
+        {game.todayStats.topPlayerName && game.todayStats.topScore > 0 && (
+          <div className="mt-3 pt-3 border-t border-slate-700 flex items-center justify-center gap-2 text-sm">
+            <Crown className="w-4 h-4 text-yellow-400" />
+            <span className="text-slate-400">Top Player:</span>
+            <span className="text-white font-semibold">{game.todayStats.topPlayerName}</span>
+            <span className="text-green-400 font-bold">{game.todayStats.topScore.toLocaleString()}</span>
           </div>
-          <div className="text-xs text-slate-500">$Credits Pool</div>
-        </div>
-        <div className="bg-slate-900/50 rounded-lg py-2 px-1">
-          <div className={`text-lg font-bold ${isPlayable ? 'text-white' : 'text-slate-500'}`}>
-            {game.todayStats.playerCount}
-          </div>
-          <div className="text-xs text-slate-500">Players</div>
-        </div>
-        <div className="bg-slate-900/50 rounded-lg py-2 px-1">
-          <div className={`text-lg font-bold ${isPlayable ? 'text-green-400' : 'text-slate-500'}`}>
-            {game.todayStats.topScore > 0 ? game.todayStats.topScore.toLocaleString() : '-'}
-          </div>
-          <div className="text-xs text-slate-500">Top Score</div>
-        </div>
+        )}
       </div>
-    </>
+    </div>
   )
 
   if (isPlayable) {
     return (
       <Link
         href={`/game?type=${game.id}`}
-        className="block bg-slate-800 rounded-xl p-6 transition hover:scale-[1.02] hover:bg-slate-750 cursor-pointer border border-slate-700 hover:border-slate-600"
+        className="block h-full bg-slate-800 rounded-xl p-6 transition hover:scale-[1.02] cursor-pointer"
       >
         {content}
       </Link>
@@ -174,7 +254,7 @@ function GameTile({ game, msUntilSettlement }: { game: GameInfo; msUntilSettleme
   }
 
   return (
-    <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-800 opacity-70">
+    <div className="h-full bg-slate-800/50 rounded-xl p-6 opacity-70">
       {content}
     </div>
   )
@@ -227,17 +307,16 @@ export default function HomePage() {
       {/* Hero Section */}
       <div className="text-center mb-10">
         <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 font-title">
-          Daily Skill Games
+          New Champions. Every Day.
         </h1>
-        <p className="text-xl text-slate-300 max-w-2xl mx-auto">
-          Prove you&apos;re human by playing daily skill games.<br />
-          Top the leaderboard and claim your share of the pool!
+        <p className="text-xl text-slate-300">
+          Every entry grows the prize pool. Rise to the top when the day closes and claim your share.
         </p>
       </div>
 
       {/* Pool Info Bar */}
       {data && (
-        <div className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 border border-blue-500/30 rounded-xl p-4 mb-8">
+        <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 mb-4">
           <div className="flex flex-wrap items-center justify-center gap-6 text-center">
             <div>
               <div className="text-2xl font-bold text-yellow-400">
@@ -254,7 +333,7 @@ export default function HomePage() {
             </div>
             <div className="h-8 w-px bg-slate-600 hidden sm:block"></div>
             <div>
-              <div className="text-2xl font-bold text-blue-400">
+              <div className="text-2xl font-bold text-green-400">
                 {formatTimeLeft(timeLeft)}
               </div>
               <div className="text-sm text-slate-400">Until Settlement</div>
@@ -262,6 +341,9 @@ export default function HomePage() {
           </div>
         </div>
       )}
+
+      {/* Top Players Ticker */}
+      {data && <TopPlayersTicker games={data.games} />}
 
       {/* Games Grid */}
       {loading ? (
@@ -373,17 +455,31 @@ export default function HomePage() {
         <div className="inline-flex gap-4">
           <Link
             href="/auth/signup"
-            className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg transition"
+            className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg transition"
           >
             Get Started
           </Link>
           <Link
             href="/auth/login"
-            className="bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 px-8 rounded-lg transition"
+            className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 px-8 rounded-lg transition"
           >
             Login
           </Link>
         </div>
+      </div>
+
+      {/* Play With Friends Footer */}
+      <div className="mt-16 mb-8 text-center">
+        <Link
+          href="/auth/signup"
+          className="inline-flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg transition"
+        >
+          <Users className="w-5 h-5" />
+          Play With Friends
+        </Link>
+        <p className="mt-4 text-slate-400">
+          Invite friends and get <span className="text-yellow-400 font-bold">100 $Credits</span> when they join!
+        </p>
       </div>
     </div>
   )

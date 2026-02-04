@@ -45,3 +45,61 @@ export function generateTurnToken(): string {
   const hex = Array.from(random).map(b => b.toString(16).padStart(2, '0')).join('')
   return `turn_${hex}_${Date.now()}`
 }
+
+/**
+ * Normalizes an email address to detect duplicate accounts using aliases.
+ *
+ * Gmail rules:
+ * - Dots are ignored: j.o.h.n@gmail.com = john@gmail.com
+ * - Plus suffixes are ignored: john+spam@gmail.com = john@gmail.com
+ * - googlemail.com = gmail.com
+ *
+ * Other providers (outlook, yahoo, etc.):
+ * - Plus suffixes are ignored
+ *
+ * @returns Normalized lowercase email
+ */
+export function normalizeEmail(email: string): string {
+  const [localPart, domain] = email.toLowerCase().trim().split('@')
+
+  if (!localPart || !domain) {
+    return email.toLowerCase().trim()
+  }
+
+  // Normalize domain
+  let normalizedDomain = domain
+  if (domain === 'googlemail.com') {
+    normalizedDomain = 'gmail.com'
+  }
+
+  // Normalize local part
+  let normalizedLocal = localPart
+
+  // Remove everything after + for all providers
+  const plusIndex = normalizedLocal.indexOf('+')
+  if (plusIndex !== -1) {
+    normalizedLocal = normalizedLocal.substring(0, plusIndex)
+  }
+
+  // For Gmail, also remove dots
+  if (normalizedDomain === 'gmail.com') {
+    normalizedLocal = normalizedLocal.replace(/\./g, '')
+  }
+
+  return `${normalizedLocal}@${normalizedDomain}`
+}
+
+/**
+ * Checks if an email appears to be a disposable/temporary email service.
+ * This is a basic check - consider using a dedicated service for production.
+ */
+export function isDisposableEmail(email: string): boolean {
+  const disposableDomains = [
+    'tempmail.com', 'throwaway.email', 'guerrillamail.com', 'mailinator.com',
+    '10minutemail.com', 'temp-mail.org', 'fakeinbox.com', 'trashmail.com',
+    'yopmail.com', 'maildrop.cc', 'getnada.com', 'mohmal.com'
+  ]
+
+  const domain = email.toLowerCase().split('@')[1]
+  return disposableDomains.includes(domain)
+}

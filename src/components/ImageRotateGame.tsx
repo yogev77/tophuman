@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { formatTime } from '@/lib/utils'
 import Image from 'next/image'
+import { ShareScore } from './ShareScore'
 
 type GamePhase = 'idle' | 'loading' | 'play' | 'checking' | 'completed' | 'failed'
 
@@ -236,7 +237,7 @@ export function ImageRotateGame({ onGameComplete }: ImageRotateGameProps) {
           </p>
           <button
             onClick={startGame}
-            className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg text-lg transition"
+            className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg text-lg transition"
           >
             Start Game (1 $Credit)
           </button>
@@ -338,7 +339,7 @@ export function ImageRotateGame({ onGameComplete }: ImageRotateGameProps) {
           <div className="flex gap-4 justify-center">
             <button
               onClick={startGame}
-              className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg transition"
+              className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg transition"
             >
               Play Again
             </button>
@@ -346,6 +347,7 @@ export function ImageRotateGame({ onGameComplete }: ImageRotateGameProps) {
               New Game
             </Link>
           </div>
+          <ShareScore gameName="Image Rotate" score={result.score || 0} rank={result.rank} />
         </div>
       )}
 
@@ -363,7 +365,7 @@ export function ImageRotateGame({ onGameComplete }: ImageRotateGameProps) {
           <div className="flex gap-4 justify-center">
             <button
               onClick={startGame}
-              className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg transition"
+              className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg transition"
             >
               Try Again
             </button>

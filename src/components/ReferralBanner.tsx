@@ -28,7 +28,7 @@ export function ReferralBanner({ referralCode }: ReferralBannerProps) {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Join TopHuman!',
+          title: 'Join Podium Arena!',
           text: 'Play skill games and win $Credits! Join using my link:',
           url: referralUrl,
         })
@@ -61,14 +61,14 @@ export function ReferralBanner({ referralCode }: ReferralBannerProps) {
             <div className="flex gap-2">
               <button
                 onClick={handleCopy}
-                className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg transition"
+                className="flex items-center gap-2 border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 px-4 py-2 rounded-lg transition"
               >
                 {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
                 {copied ? 'Copied!' : 'Copy'}
               </button>
               <button
                 onClick={handleShare}
-                className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-lg transition"
+                className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-slate-900 px-4 py-2 rounded-lg transition"
               >
                 <Share2 className="w-4 h-4" />
                 Share

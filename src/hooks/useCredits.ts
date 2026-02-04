@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { createClient } from '@/lib/supabase/client'
 
 interface CreditsState {
   balance: number
@@ -53,7 +54,29 @@ export function useCredits() {
   }, [])
 
   useEffect(() => {
+    const supabase = createClient()
+
+    // Fetch balance initially
     fetchBalance()
+
+    // Re-fetch when auth state changes (login/logout)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        fetchBalance()
+      } else if (event === 'SIGNED_OUT') {
+        setState({
+          balance: 0,
+          dailyGrantAvailable: false,
+          userId: null,
+          displayName: null,
+          referralCode: null,
+          loading: false,
+          error: null,
+        })
+      }
+    })
+
+    return () => subscription.unsubscribe()
   }, [fetchBalance])
 
   const claimDailyGrant = async () => {

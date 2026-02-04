@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { formatTime } from '@/lib/utils'
+import { ShareScore } from './ShareScore'
 
 type GamePhase = 'idle' | 'loading' | 'play' | 'checking' | 'completed' | 'failed'
 
@@ -226,7 +227,7 @@ export function VisualDiffGame({ onGameComplete }: VisualDiffGameProps) {
           </p>
           <button
             onClick={startGame}
-            className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg text-lg transition"
+            className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg text-lg transition"
           >
             Start Game (1 $Credit)
           </button>
@@ -317,17 +318,18 @@ export function VisualDiffGame({ onGameComplete }: VisualDiffGameProps) {
               <div className="text-sm text-slate-400">Differences Found</div>
             </div>
           </div>
-          <div className="flex gap-4 justify-center">
+          <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto">
             <button
               onClick={startGame}
-              className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg transition"
+              className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 rounded-lg transition"
             >
               Play Again
             </button>
-            <Link href="/" className="bg-slate-600 hover:bg-slate-500 text-white font-bold py-3 px-8 rounded-lg transition">
+            <Link href="/" className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 rounded-lg transition text-center">
               New Game
             </Link>
           </div>
+          <ShareScore gameName="Visual Diff" score={result.score || 0} rank={result.rank} />
         </div>
       )}
 
@@ -343,7 +345,7 @@ export function VisualDiffGame({ onGameComplete }: VisualDiffGameProps) {
           <div className="flex gap-4 justify-center">
             <button
               onClick={startGame}
-              className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg transition"
+              className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg transition"
             >
               Try Again
             </button>

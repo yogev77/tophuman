@@ -1,5 +1,6 @@
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { normalizeEmail, isDisposableEmail } from '@/lib/utils'
 
 export async function POST(request: Request) {
   try {
@@ -17,6 +18,34 @@ export async function POST(request: Request) {
 
     if (!referralCode) {
       return NextResponse.json({ error: 'Referral code required' }, { status: 400 })
+    }
+
+    // Anti-fraud: Check for disposable email
+    if (user.email && isDisposableEmail(user.email)) {
+      console.warn(`Referral blocked: disposable email ${user.email}`)
+      return NextResponse.json({ error: 'Referral not available for this account' }, { status: 400 })
+    }
+
+    // Anti-fraud: Normalize email and check for duplicates
+    const normalizedEmail = user.email ? normalizeEmail(user.email) : null
+
+    if (normalizedEmail) {
+      // Check if another account with the same normalized email already used a referral
+      const { data: existingReferrals } = await serviceSupabase
+        .from('profiles')
+        .select('user_id, normalized_email, referred_by')
+        .eq('normalized_email', normalizedEmail)
+        .not('referred_by', 'is', null)
+
+      // If another account with same base email already got a referral, block
+      const otherAccountUsedReferral = existingReferrals?.some(
+        p => p.user_id !== `usr_${user.id.replace(/-/g, '')}`
+      )
+
+      if (otherAccountUsedReferral) {
+        console.warn(`Referral blocked: duplicate normalized email ${normalizedEmail}`)
+        return NextResponse.json({ error: 'Referral not available for this account' }, { status: 400 })
+      }
     }
 
     // Get current user's profile
@@ -55,13 +84,17 @@ export async function POST(request: Request) {
 
     const today = new Date().toISOString().split('T')[0]
 
-    // Mark current user as referred
+    // Mark current user as referred and store normalized email
     await serviceSupabase
       .from('profiles')
-      .update({ referred_by: referrer.user_id })
+      .update({
+        referred_by: referrer.user_id,
+        normalized_email: normalizedEmail,
+      })
       .eq('user_id', currentProfile.user_id)
 
     // Grant 100 credits to referrer
+    // TODO: Consider deferring this until referred user plays N games
     await serviceSupabase
       .from('credit_ledger')
       .insert({
