@@ -1,0 +1,380 @@
+'use client'
+
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { formatTime } from '@/lib/utils'
+
+type GamePhase = 'idle' | 'loading' | 'play' | 'checking' | 'completed' | 'failed'
+
+interface TurnSpec {
+  gridSize: number
+  numMoles: number
+  numBombs: number
+  moleDurationMs: number
+  timeLimitMs: number
+  spawnSequence: [number, number, number][] // [timeOffset, cellIndex, type] where type: 0=mole, 1=bomb
+}
+
+interface GameResult {
+  valid: boolean
+  hits?: number
+  misses?: number
+  bombHits?: number
+  score?: number
+  rank?: number
+  reason?: string
+}
+
+interface WhackAMoleGameProps {
+  onGameComplete?: (result: GameResult) => void
+}
+
+export function WhackAMoleGame({ onGameComplete }: WhackAMoleGameProps) {
+  const [phase, setPhase] = useState<GamePhase>('idle')
+  const [turnToken, setTurnToken] = useState<string | null>(null)
+  const [spec, setSpec] = useState<TurnSpec | null>(null)
+  const [activeEntities, setActiveEntities] = useState<Map<number, { cellIndex: number; type: number }>>(new Map()) // id -> {cellIndex, type}
+  const [hits, setHits] = useState(0)
+  const [misses, setMisses] = useState(0)
+  const [bombHits, setBombHits] = useState(0)
+  const [timeLeft, setTimeLeft] = useState(0)
+  const [result, setResult] = useState<GameResult | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const spawnTimersRef = useRef<NodeJS.Timeout[]>([])
+  const gameStartTimeRef = useRef<number>(0)
+
+  const startGame = useCallback(async () => {
+    setPhase('loading')
+    setError(null)
+    setHits(0)
+    setMisses(0)
+    setBombHits(0)
+    setActiveEntities(new Map())
+    setResult(null)
+
+    // Clear any existing timers
+    spawnTimersRef.current.forEach(t => clearTimeout(t))
+    spawnTimersRef.current = []
+
+    try {
+      const createRes = await fetch('/api/game/turn/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gameType: 'whack_a_mole' }),
+      })
+      if (!createRes.ok) {
+        const data = await createRes.json()
+        throw new Error(data.error || 'Failed to create turn')
+      }
+      const turnData = await createRes.json()
+
+      setTurnToken(turnData.turnToken)
+      setSpec(turnData.spec)
+      setTimeLeft(turnData.spec.timeLimitMs)
+
+      // Start turn on server
+      const startRes = await fetch('/api/game/turn/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ turnToken: turnData.turnToken }),
+      })
+
+      if (!startRes.ok) {
+        throw new Error('Failed to start turn')
+      }
+
+      setPhase('play')
+      gameStartTimeRef.current = Date.now()
+
+      // Schedule all entity spawns (moles and bombs)
+      const newSpec = turnData.spec as TurnSpec
+      newSpec.spawnSequence.forEach(([timeOffset, cellIndex, type], entityId) => {
+        const spawnTimer = setTimeout(() => {
+          spawnEntity(entityId, cellIndex, type, newSpec.moleDurationMs)
+        }, timeOffset)
+        spawnTimersRef.current.push(spawnTimer)
+      })
+
+      // Start countdown timer
+      const startTime = Date.now()
+      timerRef.current = setInterval(() => {
+        const elapsed = Date.now() - startTime
+        const remaining = newSpec.timeLimitMs - elapsed
+        setTimeLeft(Math.max(0, remaining))
+
+        if (remaining <= 0) {
+          completeGame(turnData.turnToken)
+        }
+      }, 100)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error')
+      setPhase('idle')
+    }
+  }, [])
+
+  const spawnEntity = (entityId: number, cellIndex: number, type: number, duration: number) => {
+    setActiveEntities(prev => {
+      const next = new Map(prev)
+      next.set(entityId, { cellIndex, type })
+      return next
+    })
+
+    // Auto-despawn after duration
+    const despawnTimer = setTimeout(() => {
+      setActiveEntities(prev => {
+        const next = new Map(prev)
+        next.delete(entityId)
+        return next
+      })
+    }, duration)
+    spawnTimersRef.current.push(despawnTimer)
+  }
+
+  const handleCellClick = async (cellIndex: number) => {
+    if (phase !== 'play' || !turnToken) return
+
+    // Check if there's an entity in this cell
+    let hitEntityId: number | null = null
+    let hitEntityType: number | null = null
+    activeEntities.forEach((entity, entityId) => {
+      if (entity.cellIndex === cellIndex) {
+        hitEntityId = entityId
+        hitEntityType = entity.type
+      }
+    })
+
+    if (hitEntityId !== null) {
+      // Remove the entity
+      setActiveEntities(prev => {
+        const next = new Map(prev)
+        next.delete(hitEntityId!)
+        return next
+      })
+
+      if (hitEntityType === 0) {
+        // Hit a mole - good!
+        setHits(h => h + 1)
+        await fetch('/api/game/turn/event', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            turnToken,
+            eventType: 'hit',
+            cellIndex,
+            moleId: hitEntityId,
+            clientTimestampMs: Date.now(),
+          }),
+        })
+      } else {
+        // Hit a bomb - bad!
+        setBombHits(b => b + 1)
+        await fetch('/api/game/turn/event', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            turnToken,
+            eventType: 'bomb_hit',
+            cellIndex,
+            moleId: hitEntityId,
+            clientTimestampMs: Date.now(),
+          }),
+        })
+      }
+    } else {
+      // Miss!
+      setMisses(m => m + 1)
+
+      await fetch('/api/game/turn/event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          turnToken,
+          eventType: 'miss',
+          cellIndex,
+          clientTimestampMs: Date.now(),
+        }),
+      })
+    }
+  }
+
+  const completeGame = async (token?: string) => {
+    const finalToken = token || turnToken
+    if (!finalToken) return
+
+    // Stop all timers
+    if (timerRef.current) {
+      clearInterval(timerRef.current)
+      timerRef.current = null
+    }
+    spawnTimersRef.current.forEach(t => clearTimeout(t))
+    spawnTimersRef.current = []
+
+    setPhase('checking')
+
+    try {
+      const completeRes = await fetch('/api/game/turn/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ turnToken: finalToken }),
+      })
+
+      const data = await completeRes.json()
+      setResult(data)
+      setPhase(data.valid ? 'completed' : 'failed')
+
+      if (onGameComplete) {
+        onGameComplete(data)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error')
+      setPhase('failed')
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+      spawnTimersRef.current.forEach(t => clearTimeout(t))
+    }
+  }, [])
+
+  const gridSize = spec?.gridSize || 3
+
+  return (
+    <div className="bg-slate-800 rounded-xl p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-bold text-white">Whack-a-Mole</h2>
+        {phase === 'play' && (
+          <div className="flex items-center gap-4">
+            <span className="text-green-400">Hits: {hits}</span>
+            <span className="text-yellow-400">Misses: {misses}</span>
+            <span className="text-red-400">Bombs: {bombHits}</span>
+            <span className={`text-2xl font-mono ${timeLeft < 5000 ? 'text-red-400' : 'text-yellow-400'}`}>
+              {formatTime(timeLeft)}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {phase === 'idle' && (
+        <div className="text-center py-12">
+          <p className="text-slate-300 mb-6">
+            Click the moles 🐹 as fast as you can, but avoid the bombs 💣!
+          </p>
+          <button
+            onClick={startGame}
+            className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg text-lg transition"
+          >
+            Start Game (1 $Credit)
+          </button>
+        </div>
+      )}
+
+      {phase === 'loading' && (
+        <div className="text-center py-12">
+          <div className="animate-spin w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-slate-300">Preparing game...</p>
+        </div>
+      )}
+
+      {phase === 'play' && spec && (
+        <div className="flex justify-center">
+          <div
+            className="grid gap-2"
+            style={{ gridTemplateColumns: `repeat(${gridSize}, 80px)` }}
+          >
+            {Array.from({ length: gridSize * gridSize }).map((_, index) => {
+              let entityType: number | null = null
+              activeEntities.forEach((entity) => {
+                if (entity.cellIndex === index) entityType = entity.type
+              })
+
+              const hasMole = entityType === 0
+              const hasBomb = entityType === 1
+
+              return (
+                <button
+                  key={index}
+                  onClick={() => handleCellClick(index)}
+                  className={`w-20 h-20 rounded-xl transition-all transform ${
+                    hasMole || hasBomb
+                      ? 'bg-amber-600 hover:bg-amber-500 scale-110'
+                      : 'bg-slate-700 hover:bg-slate-600'
+                  }`}
+                >
+                  {hasMole && <span className="text-3xl">🐹</span>}
+                  {hasBomb && <span className="text-3xl">💣</span>}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {phase === 'checking' && (
+        <div className="text-center py-12">
+          <div className="animate-spin w-12 h-12 border-4 border-yellow-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-slate-300">Calculating results...</p>
+        </div>
+      )}
+
+      {phase === 'completed' && result && (
+        <div className="text-center py-8">
+          <div className="text-6xl mb-4">🎯</div>
+          <h3 className="text-2xl font-bold text-green-400 mb-4">Great Job!</h3>
+          <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto mb-6">
+            <div className="bg-slate-700 rounded-lg p-4">
+              <div className="text-3xl font-bold text-white">{result.score?.toLocaleString()}</div>
+              <div className="text-sm text-slate-400">Score</div>
+            </div>
+            <div className="bg-slate-700 rounded-lg p-4">
+              <div className="text-3xl font-bold text-white">#{result.rank}</div>
+              <div className="text-sm text-slate-400">Rank</div>
+            </div>
+            <div className="bg-slate-700 rounded-lg p-4">
+              <div className="text-xl font-bold text-green-400">{result.hits}</div>
+              <div className="text-sm text-slate-400">Hits</div>
+            </div>
+            <div className="bg-slate-700 rounded-lg p-4">
+              <div className="text-xl font-bold text-yellow-400">{result.misses}</div>
+              <div className="text-sm text-slate-400">Misses</div>
+            </div>
+            {result.bombHits !== undefined && result.bombHits > 0 && (
+              <div className="bg-slate-700 rounded-lg p-4 col-span-2">
+                <div className="text-xl font-bold text-red-400">{result.bombHits}</div>
+                <div className="text-sm text-slate-400">Bombs Hit</div>
+              </div>
+            )}
+          </div>
+          <button
+            onClick={startGame}
+            className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg transition"
+          >
+            Play Again
+          </button>
+        </div>
+      )}
+
+      {phase === 'failed' && (
+        <div className="text-center py-8">
+          <div className="text-6xl mb-4">😢</div>
+          <h3 className="text-2xl font-bold text-red-400 mb-4">Failed!</h3>
+          <p className="text-slate-300 mb-6">Better luck next time!</p>
+          <button
+            onClick={startGame}
+            className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg transition"
+          >
+            Try Again
+          </button>
+        </div>
+      )}
+
+      {error && (
+        <div className="mt-4 p-4 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-center">
+          {error}
+        </div>
+      )}
+    </div>
+  )
+}
