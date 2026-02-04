@@ -53,7 +53,7 @@ const GAME_COLORS: Record<string, { bg: string; icon: string; border: string }> 
 }
 
 const GAME_CONFIG: Record<string, {
-  component: React.ComponentType<{ onGameComplete?: () => void }>
+  component: React.ComponentType<{ onGameComplete?: () => void; colorBg?: string; colorBorder?: string }>
   name: string
   leaderboardType: string
   icon: LucideIcon
@@ -250,9 +250,11 @@ function GamePageContent() {
           )}
 
           {(balance >= 1 || dailyGrantAvailable) && (
-            <div className={`${colors.bg} border ${colors.border} rounded-xl p-6`}>
-              <GameComponent onGameComplete={handleGameComplete} />
-            </div>
+            <GameComponent
+              onGameComplete={handleGameComplete}
+              colorBg={colors.bg}
+              colorBorder={colors.border}
+            />
           )}
         </div>
 

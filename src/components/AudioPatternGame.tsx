@@ -24,12 +24,16 @@ interface GameResult {
 
 interface AudioPatternGameProps {
   onGameComplete?: (result: GameResult) => void
+  colorBg?: string
+  colorBorder?: string
 }
 
 const BUTTON_COLORS = ['bg-red-500', 'bg-green-500', 'bg-blue-500', 'bg-yellow-500']
 const BUTTON_ACTIVE_COLORS = ['bg-red-300', 'bg-green-300', 'bg-blue-300', 'bg-yellow-300']
 
-export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
+export function AudioPatternGame({ onGameComplete, colorBg, colorBorder }: AudioPatternGameProps) {
+  const bgClass = colorBg || 'bg-slate-800'
+  const borderClass = colorBorder ? `border ${colorBorder}` : ''
   const [phase, setPhase] = useState<GamePhase>('idle')
   const [turnToken, setTurnToken] = useState<string | null>(null)
   const [spec, setSpec] = useState<TurnSpec | null>(null)
@@ -245,7 +249,7 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
   }, [])
 
   return (
-    <div className="bg-slate-800 rounded-xl p-6">
+    <div className={`${bgClass} ${borderClass} rounded-xl p-6`}>
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold text-white">Audio Pattern</h2>
         {(phase === 'play' || phase === 'listen') && spec && (
