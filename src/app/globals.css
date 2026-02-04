@@ -10,6 +10,11 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-title: var(--font-title);
+}
+
+.font-title {
+  font-family: var(--font-title), serif;
 }
 
 @media (prefers-color-scheme: dark) {

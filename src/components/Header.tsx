@@ -57,7 +57,7 @@ export function Header() {
     <header className="bg-slate-900 border-b border-slate-800">
       <div className="max-w-6xl mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
-          <Link href="/" className="text-2xl font-bold text-white">
+          <Link href="/" className="text-2xl font-bold text-white font-title">
             TopHuman
           </Link>
 

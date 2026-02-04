@@ -23,13 +23,9 @@ interface GameResult {
 
 interface DragSortGameProps {
   onGameComplete?: (result: GameResult) => void
-  colorBg?: string
-  colorBorder?: string
 }
 
-export function DragSortGame({ onGameComplete, colorBg, colorBorder }: DragSortGameProps) {
-  const bgClass = colorBg || 'bg-slate-800'
-  const borderClass = colorBorder ? `border ${colorBorder}` : ''
+export function DragSortGame({ onGameComplete }: DragSortGameProps) {
   const [phase, setPhase] = useState<GamePhase>('idle')
   const [turnToken, setTurnToken] = useState<string | null>(null)
   const [spec, setSpec] = useState<TurnSpec | null>(null)
@@ -209,7 +205,7 @@ export function DragSortGame({ onGameComplete, colorBg, colorBorder }: DragSortG
   }
 
   return (
-    <div className={`${bgClass} ${borderClass} rounded-xl p-6`}>
+    <div className="bg-slate-800 rounded-xl p-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold text-white">Drag & Sort</h2>
         {phase === 'play' && (

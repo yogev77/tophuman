@@ -26,13 +26,9 @@ interface GameResult {
 
 interface ImageRotateGameProps {
   onGameComplete?: (result: GameResult) => void
-  colorBg?: string
-  colorBorder?: string
 }
 
-export function ImageRotateGame({ onGameComplete, colorBg, colorBorder }: ImageRotateGameProps) {
-  const bgClass = colorBg || 'bg-slate-800'
-  const borderClass = colorBorder ? `border ${colorBorder}` : ''
+export function ImageRotateGame({ onGameComplete }: ImageRotateGameProps) {
   const [phase, setPhase] = useState<GamePhase>('idle')
   const [turnToken, setTurnToken] = useState<string | null>(null)
   const [spec, setSpec] = useState<TurnSpec | null>(null)
@@ -223,7 +219,7 @@ export function ImageRotateGame({ onGameComplete, colorBg, colorBorder }: ImageR
   const tileSize = 100 // pixels per tile
 
   return (
-    <div className={`${bgClass} ${borderClass} rounded-xl p-6`}>
+    <div className="bg-slate-800 rounded-xl p-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold text-white">Image Rotation Puzzle</h2>
         {phase === 'play' && (

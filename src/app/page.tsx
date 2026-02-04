@@ -35,92 +35,6 @@ const GAME_ICONS: Record<string, LucideIcon> = {
   duck_shoot: Crosshair,
 }
 
-const GAME_COLORS: Record<string, { bg: string; bgHover: string; icon: string; border: string; accent: string }> = {
-  emoji_keypad: {
-    bg: 'bg-rose-500/10',
-    bgHover: 'hover:bg-rose-500/20',
-    icon: 'text-rose-400',
-    border: 'border-rose-500/30 hover:border-rose-400/50',
-    accent: 'text-rose-400',
-  },
-  image_rotate: {
-    bg: 'bg-sky-500/10',
-    bgHover: 'hover:bg-sky-500/20',
-    icon: 'text-sky-400',
-    border: 'border-sky-500/30 hover:border-sky-400/50',
-    accent: 'text-sky-400',
-  },
-  reaction_time: {
-    bg: 'bg-amber-500/10',
-    bgHover: 'hover:bg-amber-500/20',
-    icon: 'text-amber-400',
-    border: 'border-amber-500/30 hover:border-amber-400/50',
-    accent: 'text-amber-400',
-  },
-  whack_a_mole: {
-    bg: 'bg-green-500/10',
-    bgHover: 'hover:bg-green-500/20',
-    icon: 'text-green-400',
-    border: 'border-green-500/30 hover:border-green-400/50',
-    accent: 'text-green-400',
-  },
-  typing_speed: {
-    bg: 'bg-violet-500/10',
-    bgHover: 'hover:bg-violet-500/20',
-    icon: 'text-violet-400',
-    border: 'border-violet-500/30 hover:border-violet-400/50',
-    accent: 'text-violet-400',
-  },
-  mental_math: {
-    bg: 'bg-orange-500/10',
-    bgHover: 'hover:bg-orange-500/20',
-    icon: 'text-orange-400',
-    border: 'border-orange-500/30 hover:border-orange-400/50',
-    accent: 'text-orange-400',
-  },
-  color_match: {
-    bg: 'bg-pink-500/10',
-    bgHover: 'hover:bg-pink-500/20',
-    icon: 'text-pink-400',
-    border: 'border-pink-500/30 hover:border-pink-400/50',
-    accent: 'text-pink-400',
-  },
-  visual_diff: {
-    bg: 'bg-teal-500/10',
-    bgHover: 'hover:bg-teal-500/20',
-    icon: 'text-teal-400',
-    border: 'border-teal-500/30 hover:border-teal-400/50',
-    accent: 'text-teal-400',
-  },
-  audio_pattern: {
-    bg: 'bg-indigo-500/10',
-    bgHover: 'hover:bg-indigo-500/20',
-    icon: 'text-indigo-400',
-    border: 'border-indigo-500/30 hover:border-indigo-400/50',
-    accent: 'text-indigo-400',
-  },
-  drag_sort: {
-    bg: 'bg-lime-500/10',
-    bgHover: 'hover:bg-lime-500/20',
-    icon: 'text-lime-400',
-    border: 'border-lime-500/30 hover:border-lime-400/50',
-    accent: 'text-lime-400',
-  },
-  follow_me: {
-    bg: 'bg-cyan-500/10',
-    bgHover: 'hover:bg-cyan-500/20',
-    icon: 'text-cyan-400',
-    border: 'border-cyan-500/30 hover:border-cyan-400/50',
-    accent: 'text-cyan-400',
-  },
-  duck_shoot: {
-    bg: 'bg-emerald-500/10',
-    bgHover: 'hover:bg-emerald-500/20',
-    icon: 'text-emerald-400',
-    border: 'border-emerald-500/30 hover:border-emerald-400/50',
-    accent: 'text-emerald-400',
-  },
-}
 
 interface GameInfo {
   id: string
@@ -182,7 +96,6 @@ function formatOpensAt(opensAt: string): string {
 
 function GameTile({ game, msUntilSettlement }: { game: GameInfo; msUntilSettlement: number }) {
   const Icon = GAME_ICONS[game.id] || Target
-  const colors = GAME_COLORS[game.id] || GAME_COLORS.emoji_keypad
   const isPlayable = game.isPlayable
 
   // Determine status badge
@@ -215,13 +128,13 @@ function GameTile({ game, msUntilSettlement }: { game: GameInfo; msUntilSettleme
   const content = (
     <>
       <div className="flex items-start justify-between mb-3">
-        <div className={`p-3 rounded-lg ${isPlayable ? colors.bg : 'bg-slate-600/30'}`}>
-          <Icon className={`w-8 h-8 ${isPlayable ? colors.icon : 'text-slate-500'}`} />
+        <div className={`p-2 rounded-lg ${isPlayable ? 'bg-blue-500/20' : 'bg-slate-600/30'}`}>
+          <Icon className={`w-8 h-8 ${isPlayable ? 'text-blue-400' : 'text-slate-500'}`} />
         </div>
         {statusBadge}
       </div>
 
-      <h3 className={`text-lg font-bold mb-1 ${isPlayable ? 'text-white' : 'text-slate-400'}`}>
+      <h3 className={`text-lg font-bold mb-1 font-title ${isPlayable ? 'text-white' : 'text-slate-400'}`}>
         {game.name}
       </h3>
       <p className="text-sm text-slate-400 mb-4">{game.description}</p>
@@ -240,7 +153,7 @@ function GameTile({ game, msUntilSettlement }: { game: GameInfo; msUntilSettleme
           <div className="text-xs text-slate-500">Players</div>
         </div>
         <div className="bg-slate-900/50 rounded-lg py-2 px-1">
-          <div className={`text-lg font-bold ${isPlayable ? colors.accent : 'text-slate-500'}`}>
+          <div className={`text-lg font-bold ${isPlayable ? 'text-green-400' : 'text-slate-500'}`}>
             {game.todayStats.topScore > 0 ? game.todayStats.topScore.toLocaleString() : '-'}
           </div>
           <div className="text-xs text-slate-500">Top Score</div>
@@ -253,7 +166,7 @@ function GameTile({ game, msUntilSettlement }: { game: GameInfo; msUntilSettleme
     return (
       <Link
         href={`/game?type=${game.id}`}
-        className={`block ${colors.bg} ${colors.bgHover} rounded-xl p-6 transition hover:scale-[1.02] cursor-pointer border ${colors.border}`}
+        className="block bg-slate-800 rounded-xl p-6 transition hover:scale-[1.02] hover:bg-slate-750 cursor-pointer border border-slate-700 hover:border-slate-600"
       >
         {content}
       </Link>
@@ -313,12 +226,12 @@ export default function HomePage() {
     <div className="max-w-6xl mx-auto px-4 py-8">
       {/* Hero Section */}
       <div className="text-center mb-10">
-        <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+        <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 font-title">
           Daily Skill Games
         </h1>
         <p className="text-xl text-slate-300 max-w-2xl mx-auto">
-          Prove you&apos;re human by competing in daily skill-based games.
-          Win $Credits, climb the leaderboard, and claim your share of the daily pool!
+          Prove you&apos;re human by playing daily skill games.<br />
+          Top the leaderboard and claim your share of the pool!
         </p>
       </div>
 
@@ -371,7 +284,7 @@ export default function HomePage() {
           {/* Active Games */}
           {playableGames.length > 0 && (
             <>
-              <h2 className="text-2xl font-bold text-white mb-6">Play Now</h2>
+              <h2 className="text-2xl font-bold text-white mb-6 font-title">Play Now</h2>
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
                 {playableGames.map(game => (
                   <GameTile
@@ -430,7 +343,7 @@ export default function HomePage() {
 
       {/* How It Works */}
       <div className="mt-16">
-        <h2 className="text-2xl font-bold text-white text-center mb-8">How It Works</h2>
+        <h2 className="text-2xl font-bold text-white text-center mb-8 font-title">How It Works</h2>
         <div className="grid md:grid-cols-4 gap-6">
           <div className="bg-slate-800 rounded-xl p-6 text-center">
             <div className="text-4xl font-bold text-blue-400 mb-4">1</div>

@@ -26,13 +26,9 @@ interface GameResult {
 
 interface EmojiKeypadGameProps {
   onGameComplete?: (result: GameResult) => void
-  colorBg?: string
-  colorBorder?: string
 }
 
-export function EmojiKeypadGame({ onGameComplete, colorBg, colorBorder }: EmojiKeypadGameProps) {
-  const bgClass = colorBg || 'bg-slate-800'
-  const borderClass = colorBorder ? `border ${colorBorder}` : ''
+export function EmojiKeypadGame({ onGameComplete }: EmojiKeypadGameProps) {
   const [phase, setPhase] = useState<GamePhase>('idle')
   const [turnToken, setTurnToken] = useState<string | null>(null)
   const [spec, setSpec] = useState<TurnSpec | null>(null)
@@ -241,7 +237,7 @@ export function EmojiKeypadGame({ onGameComplete, colorBg, colorBorder }: EmojiK
   const cols = spec ? Math.ceil(Math.sqrt(spec.keypad.length)) : 3
 
   return (
-    <div className={`${bgClass} ${borderClass} rounded-xl p-6`}>
+    <div className="bg-slate-800 rounded-xl p-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold text-white">Emoji Keypad Sequence</h2>
         {phase === 'play' && (

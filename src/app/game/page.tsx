@@ -37,23 +37,8 @@ import {
   LucideIcon,
 } from 'lucide-react'
 
-const GAME_COLORS: Record<string, { bg: string; icon: string; border: string }> = {
-  emoji_keypad: { bg: 'bg-rose-500/20', icon: 'text-rose-400', border: 'border-rose-500/30' },
-  image_rotate: { bg: 'bg-sky-500/20', icon: 'text-sky-400', border: 'border-sky-500/30' },
-  reaction_time: { bg: 'bg-amber-500/20', icon: 'text-amber-400', border: 'border-amber-500/30' },
-  whack_a_mole: { bg: 'bg-green-500/20', icon: 'text-green-400', border: 'border-green-500/30' },
-  typing_speed: { bg: 'bg-violet-500/20', icon: 'text-violet-400', border: 'border-violet-500/30' },
-  mental_math: { bg: 'bg-orange-500/20', icon: 'text-orange-400', border: 'border-orange-500/30' },
-  color_match: { bg: 'bg-pink-500/20', icon: 'text-pink-400', border: 'border-pink-500/30' },
-  visual_diff: { bg: 'bg-teal-500/20', icon: 'text-teal-400', border: 'border-teal-500/30' },
-  audio_pattern: { bg: 'bg-indigo-500/20', icon: 'text-indigo-400', border: 'border-indigo-500/30' },
-  drag_sort: { bg: 'bg-lime-500/20', icon: 'text-lime-400', border: 'border-lime-500/30' },
-  follow_me: { bg: 'bg-cyan-500/20', icon: 'text-cyan-400', border: 'border-cyan-500/30' },
-  duck_shoot: { bg: 'bg-emerald-500/20', icon: 'text-emerald-400', border: 'border-emerald-500/30' },
-}
-
 const GAME_CONFIG: Record<string, {
-  component: React.ComponentType<{ onGameComplete?: () => void; colorBg?: string; colorBorder?: string }>
+  component: React.ComponentType<{ onGameComplete?: () => void }>
   name: string
   leaderboardType: string
   icon: LucideIcon
@@ -141,7 +126,6 @@ function GamePageContent() {
   // Use URL param or default to emoji_keypad
   const gameType = gameTypeParam && GAME_CONFIG[gameTypeParam] ? gameTypeParam : 'emoji_keypad'
   const config = GAME_CONFIG[gameType]
-  const colors = GAME_COLORS[gameType] || GAME_COLORS.emoji_keypad
   const GameIcon = config.icon
 
   const handleGameComplete = () => {
@@ -216,16 +200,16 @@ function GamePageContent() {
           >
             <ArrowLeft className="h-6 w-6" />
           </Link>
-          <div className={`p-2 ${colors.bg} rounded-lg`}>
-            <GameIcon className={`w-6 h-6 ${colors.icon}`} />
+          <div className="p-2 bg-blue-500/20 rounded-lg">
+            <GameIcon className="w-6 h-6 text-blue-400" />
           </div>
-          <h1 className="text-2xl font-bold text-white">{config.name}</h1>
+          <h1 className="text-2xl font-bold text-white font-title">{config.name}</h1>
         </div>
       </div>
 
       <div className="grid md:grid-cols-3 gap-8">
         <div className="md:col-span-2">
-          <div className={`${colors.bg} border ${colors.border} rounded-xl p-4 mb-6 flex items-center justify-between`}>
+          <div className="bg-slate-800 rounded-xl p-4 mb-6 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <span className="text-slate-400">Your Balance:</span>
               {creditsLoading ? (
@@ -250,11 +234,7 @@ function GamePageContent() {
           )}
 
           {(balance >= 1 || dailyGrantAvailable) && (
-            <GameComponent
-              onGameComplete={handleGameComplete}
-              colorBg={colors.bg}
-              colorBorder={colors.border}
-            />
+            <GameComponent onGameComplete={handleGameComplete} />
           )}
         </div>
 
@@ -262,8 +242,6 @@ function GamePageContent() {
           <Leaderboard
             gameType={config.leaderboardType}
             gameTypeName={config.name}
-            colorBg={colors.bg}
-            colorBorder={colors.border}
           />
         </div>
       </div>

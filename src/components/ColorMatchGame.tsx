@@ -22,8 +22,6 @@ interface GameResult {
 
 interface ColorMatchGameProps {
   onGameComplete?: (result: GameResult) => void
-  colorBg?: string
-  colorBorder?: string
 }
 
 // HSV to RGB conversion
@@ -196,9 +194,7 @@ function ColorPicker({ color, onChange }: {
   )
 }
 
-export function ColorMatchGame({ onGameComplete, colorBg, colorBorder }: ColorMatchGameProps) {
-  const bgClass = colorBg || 'bg-slate-800'
-  const borderClass = colorBorder ? `border ${colorBorder}` : ''
+export function ColorMatchGame({ onGameComplete }: ColorMatchGameProps) {
   const [phase, setPhase] = useState<GamePhase>('idle')
   const [turnToken, setTurnToken] = useState<string | null>(null)
   const [spec, setSpec] = useState<TurnSpec | null>(null)
@@ -331,7 +327,7 @@ export function ColorMatchGame({ onGameComplete, colorBg, colorBorder }: ColorMa
   const targetColor = spec?.targetColors[currentRound]
 
   return (
-    <div className={`${bgClass} ${borderClass} rounded-xl p-6`}>
+    <div className="bg-slate-800 rounded-xl p-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold text-white">Color Match</h2>
         {phase === 'play' && spec && (

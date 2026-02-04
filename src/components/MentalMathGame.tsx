@@ -29,13 +29,9 @@ interface GameResult {
 
 interface MentalMathGameProps {
   onGameComplete?: (result: GameResult) => void
-  colorBg?: string
-  colorBorder?: string
 }
 
-export function MentalMathGame({ onGameComplete, colorBg, colorBorder }: MentalMathGameProps) {
-  const bgClass = colorBg || 'bg-slate-800'
-  const borderClass = colorBorder ? `border ${colorBorder}` : ''
+export function MentalMathGame({ onGameComplete }: MentalMathGameProps) {
   const [phase, setPhase] = useState<GamePhase>('idle')
   const [turnToken, setTurnToken] = useState<string | null>(null)
   const [spec, setSpec] = useState<TurnSpec | null>(null)
@@ -193,7 +189,7 @@ export function MentalMathGame({ onGameComplete, colorBg, colorBorder }: MentalM
   const currentProb = spec?.problems[currentProblem]
 
   return (
-    <div className={`${bgClass} ${borderClass} rounded-xl p-6`}>
+    <div className="bg-slate-800 rounded-xl p-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold text-white">Mental Math</h2>
         {phase === 'play' && spec && (

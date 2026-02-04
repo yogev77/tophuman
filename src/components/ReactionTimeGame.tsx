@@ -22,13 +22,9 @@ interface GameResult {
 
 interface ReactionTimeGameProps {
   onGameComplete?: (result: GameResult) => void
-  colorBg?: string
-  colorBorder?: string
 }
 
-export function ReactionTimeGame({ onGameComplete, colorBg, colorBorder }: ReactionTimeGameProps) {
-  const bgClass = colorBg || 'bg-slate-800'
-  const borderClass = colorBorder ? `border ${colorBorder}` : ''
+export function ReactionTimeGame({ onGameComplete }: ReactionTimeGameProps) {
   const [phase, setPhase] = useState<GamePhase>('idle')
   const [turnToken, setTurnToken] = useState<string | null>(null)
   const [spec, setSpec] = useState<TurnSpec | null>(null)
@@ -208,7 +204,7 @@ export function ReactionTimeGame({ onGameComplete, colorBg, colorBorder }: React
   }, [])
 
   return (
-    <div className={`${bgClass} ${borderClass} rounded-xl p-6`}>
+    <div className="bg-slate-800 rounded-xl p-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold text-white">Reaction Time</h2>
         {(phase === 'waiting' || phase === 'ready') && spec && (
