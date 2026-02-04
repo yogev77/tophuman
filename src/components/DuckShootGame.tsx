@@ -261,6 +261,9 @@ export function DuckShootGame({ onGameComplete }: DuckShootGameProps) {
 
     const elapsed = Date.now() - gameStartTimeRef.current
 
+    // Speed multiplier increases with each shot (10% faster per shot)
+    const speedMultiplier = 1 + (shots * 0.15)
+
     // Update active ducks
     setActiveDucks(prev => {
       const updated: ActiveDuck[] = []
@@ -271,11 +274,12 @@ export function DuckShootGame({ onGameComplete }: DuckShootGameProps) {
           const existingDuck = prev.find(d => d.index === i)
           if (existingDuck) {
             const duckAge = elapsed - spawn.spawnTimeMs
+            const adjustedSpeed = spawn.speed * speedMultiplier
             let newX: number
             if (spawn.fromLeft) {
-              newX = -spec.duckSize + (duckAge / 1000) * spawn.speed
+              newX = -spec.duckSize + (duckAge / 1000) * adjustedSpeed
             } else {
-              newX = spec.canvasWidth - (duckAge / 1000) * spawn.speed
+              newX = spec.canvasWidth - (duckAge / 1000) * adjustedSpeed
             }
 
             if (newX > -spec.duckSize && newX < spec.canvasWidth + spec.duckSize) {
@@ -298,7 +302,7 @@ export function DuckShootGame({ onGameComplete }: DuckShootGameProps) {
 
     drawGame()
     animationRef.current = requestAnimationFrame(gameLoop)
-  }, [phase, spec, drawGame])
+  }, [phase, spec, drawGame, shots])
 
   useEffect(() => {
     if (phase === 'playing') {
