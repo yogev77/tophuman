@@ -171,18 +171,24 @@ function TopPlayersTicker({ games }: { games: GameInfo[] }) {
   )
 }
 
-function GameTile({ game }: { game: GameInfo }) {
+function GameTile({ game, msUntilSettlement }: { game: GameInfo; msUntilSettlement: number }) {
   const Icon = GAME_ICONS[game.id] || Target
   const iconColors = GAME_ICON_COLORS[game.id] || GAME_ICON_COLORS.emoji_keypad
   const isPlayable = game.isPlayable
 
   const content = (
-    <div>
-      <div className="flex items-start gap-3 mb-3">
+    <div className="relative">
+      {isPlayable && (
+        <span className="absolute top-0 right-0 text-[10px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full flex items-center gap-1">
+          <Clock className="w-3 h-3" />
+          {formatTimeLeft(msUntilSettlement)}
+        </span>
+      )}
+      <div className="flex items-start gap-3 mb-6">
         <div className={`p-4 rounded-lg shrink-0 ${isPlayable ? iconColors.bg : 'bg-slate-600/30'}`}>
           <Icon className={`w-7 h-7 ${isPlayable ? iconColors.icon : 'text-slate-500'}`} />
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0 pr-16">
           <h3 className={`text-base font-bold font-title leading-tight ${isPlayable ? 'text-white' : 'text-slate-400'}`}>
             {game.name}
           </h3>
@@ -419,7 +425,7 @@ export default function HomePage() {
                   <GameTile
                     key={game.id}
                     game={game}
-
+                    msUntilSettlement={timeLeft}
                   />
                 ))}
               </div>
@@ -435,7 +441,7 @@ export default function HomePage() {
                   <GameTile
                     key={game.id}
                     game={game}
-
+                    msUntilSettlement={timeLeft}
                   />
                 ))}
               </div>
@@ -451,7 +457,7 @@ export default function HomePage() {
                   <GameTile
                     key={game.id}
                     game={game}
-
+                    msUntilSettlement={timeLeft}
                   />
                 ))}
               </div>
