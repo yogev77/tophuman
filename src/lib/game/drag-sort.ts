@@ -26,6 +26,7 @@ export interface DragEvent {
   fromIndex?: number
   toIndex?: number
   finalOrder?: number[]
+  round?: number
   serverTimestamp: Date
   clientTimestampMs?: number
 }
@@ -71,14 +72,22 @@ function shuffleArray<T>(array: T[], random: () => number): T[] {
 function generateRound(
   random: () => number,
   numItems: number,
-  sortType: 'numbers' | 'alphabet'
+  sortType: 'numbers' | 'alphabet' | 'numbers_large'
 ): RoundSpec {
   let sortedItems: string[]
 
   if (sortType === 'numbers') {
+    // Numbers 0-100
     const numbers = new Set<number>()
     while (numbers.size < numItems) {
       numbers.add(Math.floor(random() * 100) + 1)
+    }
+    sortedItems = Array.from(numbers).sort((a, b) => a - b).map(n => n.toString())
+  } else if (sortType === 'numbers_large') {
+    // Numbers 100-1000
+    const numbers = new Set<number>()
+    while (numbers.size < numItems) {
+      numbers.add(Math.floor(random() * 900) + 100)
     }
     sortedItems = Array.from(numbers).sort((a, b) => a - b).map(n => n.toString())
   } else {
@@ -102,7 +111,7 @@ function generateRound(
   return {
     items: shuffledItems,
     correctOrder: indices,
-    sortType,
+    sortType: sortType === 'numbers_large' ? 'numbers' : sortType, // Client sees both as 'numbers'
   }
 }
 
@@ -115,9 +124,9 @@ export function generateDragSortTurnSpec(
   const random = seededRandom(seed)
 
   if (config.sort_type === 'mixed') {
-    // Generate two rounds: numbers then letters
+    // Generate two rounds: small numbers (0-100) then large numbers (100-1000)
     const round1 = generateRound(random, config.num_items, 'numbers')
-    const round2 = generateRound(random, config.num_items, 'alphabet')
+    const round2 = generateRound(random, config.num_items, 'numbers_large')
 
     return {
       seed,
@@ -181,6 +190,19 @@ export function getDragSortClientSpec(spec: DragSortTurnSpec): {
   }
 }
 
+function sortItemsByType(items: string[], sortType: string): string[] {
+  const MONTH_ORDER = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+  return [...items].sort((a, b) => {
+    if (sortType === 'numbers') {
+      return parseInt(a) - parseInt(b)
+    }
+    if (sortType === 'dates') {
+      return MONTH_ORDER.indexOf(a) - MONTH_ORDER.indexOf(b)
+    }
+    return a.localeCompare(b)
+  })
+}
+
 export function validateDragSortTurn(
   spec: DragSortTurnSpec,
   events: DragEvent[]
@@ -217,36 +239,58 @@ export function validateDragSortTurn(
     }
   }
 
-  // Check how many items are in correct position
-  // The submitted order should match the sorted items
-  const sortedItems = [...spec.items].sort((a, b) => {
-    if (spec.sortType === 'numbers') {
-      return parseInt(a) - parseInt(b)
-    }
-    return a.localeCompare(b)
-  })
-
-  // Apply the submitted order to original items
-  const submittedOrder = submitEvent.finalOrder.map(i => spec.items[i])
-
+  // Validate item order per round
   let correctPositions = 0
-  for (let i = 0; i < submittedOrder.length; i++) {
-    if (submittedOrder[i] === sortedItems[i]) {
-      correctPositions++
+  let totalItems = 0
+
+  if (spec.sortType === 'mixed' && spec.rounds && spec.rounds.length > 0) {
+    // Mixed mode: validate each round separately
+    const roundSubmits = events.filter(e => e.eventType === 'submit_round')
+
+    for (let r = 0; r < spec.rounds.length; r++) {
+      const round = spec.rounds[r]
+      const roundEvent = roundSubmits.find(e => e.round === r + 1)
+
+      // Use submit_round event for each round; fall back to final submit for last round
+      const roundOrder = roundEvent?.finalOrder
+        ?? (r === spec.rounds.length - 1 ? submitEvent.finalOrder : null)
+
+      if (!roundOrder) continue
+
+      const sortedRoundItems = sortItemsByType(round.items, round.sortType)
+      const submitted = roundOrder.map(i => round.items[i])
+
+      for (let i = 0; i < submitted.length; i++) {
+        if (submitted[i] === sortedRoundItems[i]) {
+          correctPositions++
+        }
+      }
+      totalItems += round.items.length
     }
+  } else {
+    // Single-round mode
+    const sortedItems = sortItemsByType(spec.items, spec.sortType)
+    const submittedOrder = submitEvent.finalOrder.map(i => spec.items[i])
+
+    for (let i = 0; i < submittedOrder.length; i++) {
+      if (submittedOrder[i] === sortedItems[i]) {
+        correctPositions++
+      }
+    }
+    totalItems = spec.items.length
   }
 
   // Must get at least 80% correct
-  if (correctPositions < spec.items.length * 0.8) {
+  if (correctPositions < totalItems * 0.8) {
     return {
       valid: false,
       reason: 'incorrect_order',
       correctPositions,
-      total: spec.items.length,
+      total: totalItems,
     }
   }
 
-  const accuracy = correctPositions / spec.items.length
+  const accuracy = correctPositions / totalItems
 
   // Calculate time taken for speed component
   const times = events.map(e => e.clientTimestampMs || 0).filter(t => t > 0)
@@ -267,7 +311,7 @@ export function validateDragSortTurn(
   return {
     valid: true,
     correctPositions,
-    total: spec.items.length,
+    total: totalItems,
     score,
   }
 }

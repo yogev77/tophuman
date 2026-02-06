@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createServiceClient()
+    const supabase = createServiceClient()
 
     const searchParams = request.nextUrl.searchParams
     const day = searchParams.get('day') || new Date().toISOString().split('T')[0]

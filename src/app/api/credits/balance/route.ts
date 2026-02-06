@@ -1,9 +1,10 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
   try {
     const supabase = await createClient()
+    const serviceClient = await createServiceClient()
 
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
@@ -43,12 +44,24 @@ export async function GET() {
 
     const alreadyGranted = grantToday && grantToday.length > 0
 
+    // Check for pending claims (settlement winnings)
+    const { data: pendingClaims } = await supabase
+      .from('pending_claims')
+      .select('id, claim_type, amount, utc_day, metadata')
+      .eq('user_id', profile.user_id)
+      .is('claimed_at', null)
+      .order('created_at', { ascending: false })
+
+    const pendingTotal = pendingClaims?.reduce((sum, c) => sum + c.amount, 0) ?? 0
+
     // Generate referral code from user_id (use last 8 chars for cleaner URLs)
     const referralCode = profile.user_id.replace('usr_', '').slice(-8)
 
     return NextResponse.json({
       balance: balance ?? 0,
       dailyGrantAvailable: !alreadyGranted,
+      pendingClaims: pendingClaims ?? [],
+      pendingTotal,
       userId: profile.user_id,
       displayName: profile.display_name,
       referralCode,

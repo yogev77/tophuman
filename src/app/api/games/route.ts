@@ -57,14 +57,14 @@ const GAME_INFO: Record<string, { name: string; description: string }> = {
     description: 'Trace the path as accurately as possible',
   },
   duck_shoot: {
-    name: 'Duck Shoot',
-    description: 'Shoot the moving ducks before they escape',
+    name: 'Target Shoot',
+    description: 'Hit the moving targets with precision',
   },
 }
 
 export async function GET() {
   try {
-    const supabase = await createServiceClient()
+    const supabase = createServiceClient()
     const today = new Date().toISOString().split('T')[0]
     const now = new Date()
 
@@ -88,6 +88,9 @@ export async function GET() {
       .eq('utc_day', today)
       .single()
 
+    // Check if pool has been settled
+    const isPoolSettled = pool?.status === 'settled' || pool?.status === 'frozen'
+
     // Calculate time until midnight UTC (settlement)
     const midnight = new Date(Date.UTC(
       now.getUTCFullYear(),
@@ -98,15 +101,19 @@ export async function GET() {
     const msUntilSettlement = midnight.getTime() - now.getTime()
 
     // Get ALL turns today (including incomplete) for pool calculation
-    const { data: allTurns } = await supabase
-      .from('game_turns')
-      .select('game_type_id')
-      .eq('utc_day', today)
-
-    // Calculate pool per game (each turn = 1 credit)
+    // Only count if pool is not settled
     const gamePoolSize = new Map<string, number>()
-    for (const turn of allTurns || []) {
-      gamePoolSize.set(turn.game_type_id, (gamePoolSize.get(turn.game_type_id) || 0) + 1)
+
+    if (!isPoolSettled) {
+      const { data: allTurns } = await supabase
+        .from('game_turns')
+        .select('game_type_id')
+        .eq('utc_day', today)
+
+      // Calculate pool per game (each turn = 1 credit)
+      for (const turn of allTurns || []) {
+        gamePoolSize.set(turn.game_type_id, (gamePoolSize.get(turn.game_type_id) || 0) + 1)
+      }
     }
 
     // Process stats per game (from completed turns only)
@@ -188,9 +195,10 @@ export async function GET() {
     return NextResponse.json({
       games,
       pool: {
-        totalCredits: pool?.total_credits ?? 0,
-        uniquePlayers: pool?.unique_players ?? 0,
-        totalTurns: pool?.total_turns ?? 0,
+        totalCredits: isPoolSettled ? 0 : (pool?.total_credits ?? 0),
+        uniquePlayers: isPoolSettled ? 0 : (pool?.unique_players ?? 0),
+        totalTurns: isPoolSettled ? 0 : (pool?.total_turns ?? 0),
+        status: pool?.status ?? 'active',
       },
       msUntilSettlement,
       utcDay: today,

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
+import { Calculator } from 'lucide-react'
 import { formatTime } from '@/lib/utils'
 import { ShareScore } from './ShareScore'
 
@@ -190,7 +191,7 @@ export function MentalMathGame({ onGameComplete }: MentalMathGameProps) {
   const currentProb = spec?.problems[currentProblem]
 
   return (
-    <div className="bg-slate-800 rounded-xl p-6">
+    <div className="bg-slate-800 rounded-xl p-4 sm:p-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold text-white">Mental Math</h2>
         {phase === 'play' && spec && (
@@ -228,7 +229,7 @@ export function MentalMathGame({ onGameComplete }: MentalMathGameProps) {
 
       {phase === 'play' && currentProb && (
         <div className="text-center py-8">
-          <div className="text-6xl font-bold text-white mb-8 font-mono">
+          <div className="text-4xl sm:text-6xl font-bold text-white mb-8 font-mono">
             {currentProb.a} {currentProb.operation} {currentProb.b} = ?
           </div>
 
@@ -278,7 +279,9 @@ export function MentalMathGame({ onGameComplete }: MentalMathGameProps) {
 
       {phase === 'completed' && result && (
         <div className="text-center py-8">
-          <div className="text-6xl mb-4">🧮</div>
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-orange-500/20 flex items-center justify-center">
+            <Calculator className="w-10 h-10 text-orange-400" />
+          </div>
           <h3 className="text-2xl font-bold text-green-400 mb-4">Great Job!</h3>
           <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto mb-6">
             <div className="bg-slate-700 rounded-lg p-4">
@@ -317,7 +320,9 @@ export function MentalMathGame({ onGameComplete }: MentalMathGameProps) {
 
       {phase === 'failed' && (
         <div className="text-center py-8">
-          <div className="text-6xl mb-4">😢</div>
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-orange-500/20 flex items-center justify-center">
+            <Calculator className="w-10 h-10 text-orange-400" />
+          </div>
           <h3 className="text-2xl font-bold text-red-400 mb-4">Failed!</h3>
           <p className="text-slate-300 mb-6">
             {result?.reason === 'too_few_correct'

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
+import { Crosshair } from 'lucide-react'
 import { ShareScore } from './ShareScore'
 
 type GamePhase = 'idle' | 'loading' | 'playing' | 'checking' | 'completed' | 'failed'
@@ -11,6 +12,7 @@ interface DuckSpawn {
   fromLeft: boolean
   yPosition: number
   speed: number
+  isDecoy: boolean
 }
 
 interface TurnSpec {
@@ -40,15 +42,49 @@ interface ActiveDuck {
   spawn: DuckSpawn
   x: number
   hit: boolean
+  decoyHit: boolean
 }
 
 interface BulletTrail {
   hit: boolean
-  hitY?: number // Y position of hit duck
+  decoy: boolean
+  hitY?: number
   startTime: number
 }
 
 const MAX_SHOTS = 10
+
+function drawTarget(ctx: CanvasRenderingContext2D, cx: number, cy: number, size: number, isDecoy: boolean) {
+  const radius = size / 2
+  const ringCount = 5
+  const ringWidth = radius / ringCount
+
+  // Draw rings from outside in
+  for (let i = 0; i < ringCount; i++) {
+    const r = radius - i * ringWidth
+
+    // Alternate: black ring, white gap
+    // Even rings = black fill, odd rings = white fill
+    ctx.beginPath()
+    ctx.arc(cx, cy, r, 0, Math.PI * 2)
+    ctx.fillStyle = i % 2 === 0 ? '#1a1a1a' : '#ffffff'
+    ctx.fill()
+
+    // Black ring outline
+    ctx.beginPath()
+    ctx.arc(cx, cy, r, 0, Math.PI * 2)
+    ctx.strokeStyle = '#000000'
+    ctx.lineWidth = 1.5
+    ctx.stroke()
+  }
+
+  // Center dot
+  const dotRadius = ringWidth * 0.7
+  ctx.beginPath()
+  ctx.arc(cx, cy, dotRadius, 0, Math.PI * 2)
+  ctx.fillStyle = isDecoy ? '#22c55e' : '#ef4444'
+  ctx.fill()
+}
 
 export function DuckShootGame({ onGameComplete }: DuckShootGameProps) {
   const [phase, setPhase] = useState<GamePhase>('idle')
@@ -59,6 +95,7 @@ export function DuckShootGame({ onGameComplete }: DuckShootGameProps) {
   const [timeLeft, setTimeLeft] = useState(30000)
   const [activeDucks, setActiveDucks] = useState<ActiveDuck[]>([])
   const [hits, setHits] = useState(0)
+  const [penalties, setPenalties] = useState(0)
   const [shots, setShots] = useState(0)
   const [bulletTrails, setBulletTrails] = useState<BulletTrail[]>([])
 
@@ -66,6 +103,7 @@ export function DuckShootGame({ onGameComplete }: DuckShootGameProps) {
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const animationRef = useRef<number | null>(null)
   const gameStartTimeRef = useRef<number>(0)
+  const lastShotTimeRef = useRef<number>(0)
 
   const drawGame = useCallback(() => {
     const canvas = canvasRef.current
@@ -76,38 +114,27 @@ export function DuckShootGame({ onGameComplete }: DuckShootGameProps) {
 
     const now = Date.now()
 
-    // Sky gradient background
+    // Minimalist range background
     const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height)
-    gradient.addColorStop(0, '#4A90D9')
-    gradient.addColorStop(0.5, '#87CEEB')
-    gradient.addColorStop(0.75, '#98D8C8')
-    gradient.addColorStop(1, '#2D5016')
+    gradient.addColorStop(0, '#e2e8f0')
+    gradient.addColorStop(0.85, '#cbd5e1')
+    gradient.addColorStop(0.85, '#64748b')
+    gradient.addColorStop(1, '#475569')
     ctx.fillStyle = gradient
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-    // Draw clouds
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'
-    ctx.beginPath()
-    ctx.arc(50, 40, 25, 0, Math.PI * 2)
-    ctx.arc(75, 35, 30, 0, Math.PI * 2)
-    ctx.arc(100, 40, 25, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.beginPath()
-    ctx.arc(280, 60, 20, 0, Math.PI * 2)
-    ctx.arc(305, 55, 28, 0, Math.PI * 2)
-    ctx.arc(335, 60, 22, 0, Math.PI * 2)
-    ctx.fill()
-
-    // Draw grass with texture
-    ctx.fillStyle = '#2D5016'
-    ctx.fillRect(0, canvas.height - 30, canvas.width, 30)
-    ctx.fillStyle = '#3D6B1E'
-    for (let i = 0; i < canvas.width; i += 8) {
-      ctx.fillRect(i, canvas.height - 30, 4, 4)
+    // Subtle lane lines
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.3)'
+    ctx.lineWidth = 1
+    for (let y = 60; y < canvas.height - 50; y += 50) {
+      ctx.beginPath()
+      ctx.moveTo(0, y)
+      ctx.lineTo(canvas.width, y)
+      ctx.stroke()
     }
 
     const cannonX = canvas.width / 2
-    const cannonY = canvas.height - 32 // Top of cannon barrel (lowered)
+    const cannonY = canvas.height - 32
 
     // Draw bullet trails straight up from cannon
     const activeTrails = bulletTrails.filter(t => now - t.startTime < 300)
@@ -116,151 +143,89 @@ export function DuckShootGame({ onGameComplete }: DuckShootGameProps) {
       const age = now - trail.startTime
       const opacity = 1 - age / 300
 
-      // Bullet goes straight up
       const targetY = trail.hit && trail.hitY !== undefined ? trail.hitY : 0
 
-      ctx.strokeStyle = trail.hit
-        ? `rgba(255, 215, 0, ${opacity})`
-        : `rgba(255, 100, 100, ${opacity})`
-      ctx.lineWidth = trail.hit ? 4 : 2
+      if (trail.decoy) {
+        ctx.strokeStyle = `rgba(34, 197, 94, ${opacity})`
+      } else {
+        ctx.strokeStyle = trail.hit
+          ? `rgba(234, 179, 8, ${opacity})`
+          : `rgba(239, 68, 68, ${opacity * 0.5})`
+      }
+      ctx.lineWidth = trail.hit ? 3 : 1.5
       ctx.beginPath()
       ctx.moveTo(cannonX, cannonY)
       ctx.lineTo(cannonX, targetY)
       ctx.stroke()
 
-      // Muzzle flash at cannon
+      // Muzzle flash
       if (age < 80) {
         ctx.fillStyle = `rgba(255, 200, 50, ${opacity})`
         ctx.beginPath()
-        ctx.arc(cannonX, cannonY - 5, 8, 0, Math.PI * 2)
+        ctx.arc(cannonX, cannonY - 5, 6, 0, Math.PI * 2)
         ctx.fill()
       }
 
-      // Impact marker at hit position
+      // Impact marker
       if (trail.hit && trail.hitY !== undefined && age < 200) {
-        ctx.fillStyle = `rgba(255, 100, 50, ${opacity})`
-        ctx.beginPath()
-        ctx.arc(cannonX, trail.hitY, 10 * (1 - age / 200), 0, Math.PI * 2)
-        ctx.fill()
+        if (trail.decoy) {
+          // Green X for decoy hit
+          const s = 8 * (1 - age / 200)
+          ctx.strokeStyle = `rgba(34, 197, 94, ${opacity})`
+          ctx.lineWidth = 3
+          ctx.beginPath()
+          ctx.moveTo(cannonX - s, trail.hitY - s)
+          ctx.lineTo(cannonX + s, trail.hitY + s)
+          ctx.moveTo(cannonX + s, trail.hitY - s)
+          ctx.lineTo(cannonX - s, trail.hitY + s)
+          ctx.stroke()
+        } else {
+          ctx.fillStyle = `rgba(239, 68, 68, ${opacity})`
+          ctx.beginPath()
+          ctx.arc(cannonX, trail.hitY, 8 * (1 - age / 200), 0, Math.PI * 2)
+          ctx.fill()
+        }
       }
     }
 
-    // Draw ducks
+    // Draw targets
     for (const duck of activeDucks) {
-      if (duck.hit) continue
+      if (duck.hit || duck.decoyHit) continue
 
-      const duckX = duck.x
-      const duckY = duck.spawn.yPosition
+      const targetCX = duck.x + spec.duckSize / 2
+      const targetCY = duck.spawn.yPosition + spec.duckSize / 2
 
-      // Shadow
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.2)'
-      ctx.beginPath()
-      ctx.ellipse(
-        duckX + spec.duckSize / 2,
-        duckY + spec.duckSize / 2 + 8,
-        spec.duckSize / 2.5,
-        spec.duckSize / 6,
-        0, 0, Math.PI * 2
-      )
-      ctx.fill()
-
-      // Duck body (brown)
-      ctx.fillStyle = '#8B4513'
-      ctx.beginPath()
-      ctx.ellipse(
-        duckX + spec.duckSize / 2,
-        duckY + spec.duckSize / 2,
-        spec.duckSize / 2,
-        spec.duckSize / 3,
-        0, 0, Math.PI * 2
-      )
-      ctx.fill()
-
-      // Duck head (green)
-      ctx.fillStyle = '#1B6B1B'
-      const headX = duck.spawn.fromLeft
-        ? duckX + spec.duckSize * 0.8
-        : duckX + spec.duckSize * 0.2
-      ctx.beginPath()
-      ctx.arc(headX, duckY + spec.duckSize * 0.3, spec.duckSize / 4.5, 0, Math.PI * 2)
-      ctx.fill()
-
-      // White neck ring
-      ctx.strokeStyle = '#FFFFFF'
-      ctx.lineWidth = 2
-      ctx.beginPath()
-      ctx.arc(headX, duckY + spec.duckSize * 0.3, spec.duckSize / 4.5 + 1, Math.PI * 0.6, Math.PI * 1.4)
-      ctx.stroke()
-
-      // Beak (orange)
-      ctx.fillStyle = '#FF8C00'
-      const beakDir = duck.spawn.fromLeft ? 1 : -1
-      ctx.beginPath()
-      ctx.moveTo(headX + beakDir * spec.duckSize / 4.5, duckY + spec.duckSize * 0.28)
-      ctx.lineTo(headX + beakDir * (spec.duckSize / 4.5 + 15), duckY + spec.duckSize * 0.32)
-      ctx.lineTo(headX + beakDir * spec.duckSize / 4.5, duckY + spec.duckSize * 0.38)
-      ctx.closePath()
-      ctx.fill()
-
-      // Eye
-      ctx.fillStyle = '#000'
-      ctx.beginPath()
-      ctx.arc(headX + beakDir * 3, duckY + spec.duckSize * 0.25, 3, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.fillStyle = '#FFF'
-      ctx.beginPath()
-      ctx.arc(headX + beakDir * 2, duckY + spec.duckSize * 0.24, 1, 0, Math.PI * 2)
-      ctx.fill()
-
-      // Wing
-      ctx.fillStyle = '#6B3A0F'
-      ctx.beginPath()
-      ctx.ellipse(
-        duckX + spec.duckSize / 2,
-        duckY + spec.duckSize / 2 + 3,
-        spec.duckSize / 3.5,
-        spec.duckSize / 6,
-        duck.spawn.fromLeft ? 0.2 : -0.2,
-        0, Math.PI * 2
-      )
-      ctx.fill()
+      drawTarget(ctx, targetCX, targetCY, spec.duckSize, duck.spawn.isDecoy)
     }
 
-    // Draw compact gun at bottom center
+    // Draw gun at bottom center - minimalist
     const gunX = canvas.width / 2
     const gunY = canvas.height - 12
 
-    // Gun barrel - short and compact
-    const barrelGradient = ctx.createLinearGradient(gunX - 4, 0, gunX + 4, 0)
-    barrelGradient.addColorStop(0, '#1A1A1A')
-    barrelGradient.addColorStop(0.5, '#4A4A4A')
-    barrelGradient.addColorStop(1, '#1A1A1A')
-    ctx.fillStyle = barrelGradient
+    // Barrel
+    ctx.fillStyle = '#1e293b'
     ctx.fillRect(gunX - 3, gunY - 18, 6, 20)
 
-    // Barrel tip with sight
-    ctx.fillStyle = '#FF4444'
+    // Sight dot
+    ctx.fillStyle = '#ef4444'
     ctx.beginPath()
     ctx.arc(gunX, gunY - 20, 3, 0, Math.PI * 2)
     ctx.fill()
 
     // Gun body
-    ctx.fillStyle = '#3D3D3D'
+    ctx.fillStyle = '#334155'
     ctx.beginPath()
     ctx.roundRect(gunX - 10, gunY - 2, 20, 10, 3)
     ctx.fill()
 
-  }, [spec, activeDucks, bulletTrails, shots])
+  }, [spec, activeDucks, bulletTrails])
 
   const gameLoop = useCallback(() => {
     if (phase !== 'playing' || !spec) return
 
     const elapsed = Date.now() - gameStartTimeRef.current
-
-    // Speed multiplier increases with each shot (10% faster per shot)
     const speedMultiplier = 1 + (shots * 0.15)
 
-    // Update active ducks
     setActiveDucks(prev => {
       const updated: ActiveDuck[] = []
 
@@ -288,7 +253,7 @@ export function DuckShootGame({ onGameComplete }: DuckShootGameProps) {
             } else {
               initialX = spec.canvasWidth
             }
-            updated.push({ index: i, spawn, x: initialX, hit: false })
+            updated.push({ index: i, spawn, x: initialX, hit: false, decoyHit: false })
           }
         }
       }
@@ -317,6 +282,7 @@ export function DuckShootGame({ onGameComplete }: DuckShootGameProps) {
     setResult(null)
     setActiveDucks([])
     setHits(0)
+    setPenalties(0)
     setShots(0)
     setBulletTrails([])
     setTimeLeft(30000)
@@ -370,8 +336,12 @@ export function DuckShootGame({ onGameComplete }: DuckShootGameProps) {
 
   const handleShoot = async (e: React.MouseEvent | React.TouchEvent) => {
     if (phase !== 'playing' || !turnToken || !spec) return
-    if (shots >= MAX_SHOTS) return // No more shots
+    if (shots >= MAX_SHOTS) return
     e.preventDefault()
+
+    const now = Date.now()
+    if (now - lastShotTimeRef.current < 200) return
+    lastShotTimeRef.current = now
 
     const canvas = canvasRef.current
     if (!canvas) return
@@ -379,46 +349,51 @@ export function DuckShootGame({ onGameComplete }: DuckShootGameProps) {
     const newShots = shots + 1
     setShots(newShots)
 
-    // Cannon shoots straight up from center
     const cannonX = canvas.width / 2
 
-    // Check for duck hit - duck must be crossing the center vertical line
     let hitDuckIndex: number | undefined
     let hitDuck: ActiveDuck | undefined
     let hitAccuracy = 0
 
     for (const duck of activeDucks) {
-      if (duck.hit) continue
+      if (duck.hit || duck.decoyHit) continue
 
       const duckLeft = duck.x
       const duckRight = duck.x + spec.duckSize
       const duckCenterX = duck.x + spec.duckSize / 2
       const duckCenterY = duck.spawn.yPosition + spec.duckSize / 2
 
-      // Check if the cannon's vertical line passes through the duck
       if (cannonX >= duckLeft && cannonX <= duckRight) {
         hitDuckIndex = duck.index
         hitDuck = duck
-        // Calculate accuracy: 1.0 = perfect center, 0 = edge of duck
         const distanceFromCenter = Math.abs(cannonX - duckCenterX)
         const maxDistance = spec.duckSize / 2
         hitAccuracy = Math.max(0, 1 - (distanceFromCenter / maxDistance))
-        setHits(prev => prev + 1)
-        setActiveDucks(prev =>
-          prev.map(d => (d.index === duck.index ? { ...d, hit: true } : d))
-        )
+
+        if (duck.spawn.isDecoy) {
+          // Decoy hit — penalty
+          setPenalties(prev => prev + 1)
+          setActiveDucks(prev =>
+            prev.map(d => (d.index === duck.index ? { ...d, decoyHit: true } : d))
+          )
+        } else {
+          // Valid hit
+          setHits(prev => prev + 1)
+          setActiveDucks(prev =>
+            prev.map(d => (d.index === duck.index ? { ...d, hit: true } : d))
+          )
+        }
         break
       }
     }
 
-    // Add bullet trail straight up
     setBulletTrails(prev => [...prev, {
       hit: !!hitDuck,
+      decoy: hitDuck?.spawn.isDecoy ?? false,
       hitY: hitDuck ? hitDuck.spawn.yPosition + spec.duckSize / 2 : undefined,
       startTime: Date.now()
     }])
 
-    // Send shoot event
     await fetch('/api/game/turn/event', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -433,7 +408,6 @@ export function DuckShootGame({ onGameComplete }: DuckShootGameProps) {
       }),
     })
 
-    // Auto-complete immediately when out of shots
     if (newShots >= MAX_SHOTS) {
       completeGame()
     }
@@ -491,7 +465,6 @@ export function DuckShootGame({ onGameComplete }: DuckShootGameProps) {
     }
   }, [phase, drawGame])
 
-  // Clean up old bullet trails
   useEffect(() => {
     if (bulletTrails.length === 0) return
     const timer = setTimeout(() => {
@@ -501,14 +474,15 @@ export function DuckShootGame({ onGameComplete }: DuckShootGameProps) {
   }, [bulletTrails])
 
   return (
-    <div className="bg-slate-800 rounded-xl p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold text-white">Duck Shoot</h2>
+    <div className="bg-slate-800 rounded-xl p-4 sm:p-6">
+      <div className="flex items-center justify-between mb-4 sm:mb-6 flex-wrap gap-2">
+        <h2 className="text-xl font-bold text-white">Target Shoot</h2>
         {phase === 'playing' && spec && (
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4 text-sm sm:text-base">
             <span className="text-green-400 font-bold">{hits} hits</span>
-            <span className="text-yellow-400 font-bold">{MAX_SHOTS - shots} shots left</span>
-            <span className={`text-2xl font-mono ${timeLeft < 10000 ? 'text-red-400' : 'text-green-400'}`}>
+            {penalties > 0 && <span className="text-red-400 font-bold">-{penalties}</span>}
+            <span className="text-yellow-400 font-bold">{MAX_SHOTS - shots} left</span>
+            <span className={`text-xl sm:text-2xl font-mono ${timeLeft < 10000 ? 'text-red-400' : 'text-green-400'}`}>
               {Math.ceil(timeLeft / 1000)}s
             </span>
           </div>
@@ -518,7 +492,7 @@ export function DuckShootGame({ onGameComplete }: DuckShootGameProps) {
       {phase === 'idle' && (
         <div className="text-center py-12">
           <p className="text-slate-300 mb-6">
-            Shoot the ducks! You have {MAX_SHOTS} shots. Tap anywhere to fire straight up - time it right when a duck crosses!
+            Hit the <span className="text-red-400 font-semibold">red</span> targets! Avoid the <span className="text-green-400 font-semibold">green</span> ones. You have {MAX_SHOTS} shots — tap to fire straight up.
           </p>
           <button
             onClick={startGame}
@@ -532,14 +506,14 @@ export function DuckShootGame({ onGameComplete }: DuckShootGameProps) {
       {phase === 'loading' && (
         <div className="text-center py-12">
           <div className="animate-spin w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-slate-300">Loading ducks...</p>
+          <p className="text-slate-300">Loading targets...</p>
         </div>
       )}
 
       {phase === 'playing' && spec && (
         <div className="text-center">
           <div
-            className="inline-block border-4 border-slate-600 rounded-lg overflow-hidden cursor-crosshair"
+            className="inline-block border-4 border-slate-600 rounded-lg overflow-hidden cursor-crosshair max-w-full"
             onClick={handleShoot}
             onTouchStart={handleShoot}
           >
@@ -551,20 +525,22 @@ export function DuckShootGame({ onGameComplete }: DuckShootGameProps) {
               style={{ maxWidth: '100%', height: 'auto' }}
             />
           </div>
-          <p className="text-slate-400 mt-2 text-sm">Tap anywhere to shoot - time it when a duck crosses the center!</p>
+          <p className="text-slate-400 mt-2 text-sm">Tap to shoot when a <span className="text-red-400">red</span> target crosses the center!</p>
         </div>
       )}
 
       {phase === 'checking' && (
         <div className="text-center py-12">
           <div className="animate-spin w-12 h-12 border-4 border-yellow-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-slate-300">Counting hits...</p>
+          <p className="text-slate-300">Calculating score...</p>
         </div>
       )}
 
       {phase === 'completed' && result && (
         <div className="text-center py-8">
-          <div className="text-6xl mb-4">{result.hits && result.hits >= (result.totalDucks || 0) * 0.5 ? '🎯' : '🦆'}</div>
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-emerald-500/20 flex items-center justify-center">
+            <Crosshair className="w-10 h-10 text-emerald-400" />
+          </div>
           <h3 className="text-2xl font-bold text-green-400 mb-4">Great Shooting!</h3>
           <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto mb-6">
             <div className="bg-slate-700 rounded-lg p-4">
@@ -599,19 +575,21 @@ export function DuckShootGame({ onGameComplete }: DuckShootGameProps) {
               New Game
             </Link>
           </div>
-          <ShareScore gameName="Duck Shoot" score={result.score || 0} rank={result.rank} />
+          <ShareScore gameName="Target Shoot" score={result.score || 0} rank={result.rank} />
         </div>
       )}
 
       {phase === 'failed' && (
         <div className="text-center py-8">
-          <div className="text-6xl mb-4">😅</div>
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-emerald-500/20 flex items-center justify-center">
+            <Crosshair className="w-10 h-10 text-emerald-400" />
+          </div>
           <h3 className="text-2xl font-bold text-red-400 mb-4">Not Enough Hits!</h3>
           <p className="text-slate-300 mb-6">
             {result?.reason === 'no_shots'
-              ? 'You need to shoot the ducks!'
+              ? 'You need to fire at the targets!'
               : result?.reason === 'not_enough_hits'
-              ? `Only hit ${result.hits} ducks. Try to hit more!`
+              ? `Only hit ${result.hits} targets. Try to hit more!`
               : 'Keep practicing your aim!'}
           </p>
           <div className="flex gap-4 justify-center">

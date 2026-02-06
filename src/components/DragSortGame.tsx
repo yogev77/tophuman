@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
+import { GripVertical } from 'lucide-react'
 import { formatTime } from '@/lib/utils'
 import { ShareScore } from './ShareScore'
 
@@ -263,7 +264,7 @@ export function DragSortGame({ onGameComplete }: DragSortGameProps) {
   }
 
   return (
-    <div className="bg-slate-800 rounded-xl p-6">
+    <div className="bg-slate-800 rounded-xl p-4 sm:p-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold text-white">Drag & Sort</h2>
         {phase === 'play' && (
@@ -373,7 +374,9 @@ export function DragSortGame({ onGameComplete }: DragSortGameProps) {
 
       {phase === 'completed' && result && (
         <div className="text-center py-8">
-          <div className="text-6xl mb-4">📋</div>
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-lime-500/20 flex items-center justify-center">
+            <GripVertical className="w-10 h-10 text-lime-400" />
+          </div>
           <h3 className="text-2xl font-bold text-green-400 mb-4">Perfectly Sorted!</h3>
           <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto mb-6">
             <div className="bg-slate-700 rounded-lg p-4">
@@ -406,7 +409,9 @@ export function DragSortGame({ onGameComplete }: DragSortGameProps) {
 
       {phase === 'failed' && (
         <div className="text-center py-8">
-          <div className="text-6xl mb-4">😢</div>
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-lime-500/20 flex items-center justify-center">
+            <GripVertical className="w-10 h-10 text-lime-400" />
+          </div>
           <h3 className="text-2xl font-bold text-red-400 mb-4">Incorrect Order!</h3>
           <p className="text-slate-300 mb-6">
             {result?.reason === 'incorrect_order'

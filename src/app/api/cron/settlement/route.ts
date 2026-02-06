@@ -1,4 +1,4 @@
-import { createServiceClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 
@@ -32,15 +32,16 @@ export async function GET(request: NextRequest) {
 // Also allow POST for manual triggering from admin panel
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServiceClient()
+    // Use regular client for auth (has cookies)
+    const authClient = await createClient()
 
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { user } } = await authClient.auth.getUser()
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Check if admin
-    const { data: profile } = await supabase
+    const { data: profile } = await authClient
       .from('profiles')
       .select('is_admin')
       .eq('id', user.id)
@@ -57,10 +58,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'utcDay required' }, { status: 400 })
     }
 
-    const result = await settleDay(supabase, utcDay)
+    // Use service client for settlement operations (bypasses RLS)
+    const serviceClient = await createServiceClient()
+    const result = await settleDay(serviceClient, utcDay)
 
     // Log admin action
-    await supabase.from('audit_logs').insert({
+    await serviceClient.from('audit_logs').insert({
       actor_type: 'admin',
       actor_id: user.id,
       action: 'manual_settlement',
@@ -212,27 +215,27 @@ async function settleDay(supabase: any, utcDay: string) {
     throw new Error('Failed to create settlement')
   }
 
-  // Create ledger entries
+  // Create pending claims (users must claim their winnings)
   // Winner prize
-  await supabase.from('credit_ledger').insert({
+  await supabase.from('pending_claims').insert({
     user_id: winner.user_id,
-    event_type: 'prize_win',
+    claim_type: 'prize_win',
     amount: winnerAmount,
+    settlement_id: settlement.id,
     utc_day: utcDay,
-    reference_id: settlement.id,
-    reference_type: 'settlement',
+    metadata: { rank: 1 },
   })
 
   // Rebates
   for (const r of rebates) {
     if (r.amount > 0) {
-      await supabase.from('credit_ledger').insert({
+      await supabase.from('pending_claims').insert({
         user_id: r.userId,
-        event_type: 'rebate',
+        claim_type: 'rebate',
         amount: r.amount,
+        settlement_id: settlement.id,
         utc_day: utcDay,
-        reference_id: settlement.id,
-        reference_type: 'settlement',
+        metadata: { turns: r.weight },
       })
     }
   }

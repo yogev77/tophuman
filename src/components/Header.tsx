@@ -3,13 +3,13 @@
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
-import { useCredits } from '@/hooks/useCredits'
+import { useCreditsNotification } from './CreditsNotificationProvider'
 import { useTheme } from '@/hooks/useTheme'
-import { Share2, Copy, Check, Gift, Sun, Moon, Trophy } from 'lucide-react'
+import { Share2, Copy, Check, Gift, Sun, Moon, Trophy, History } from 'lucide-react'
 
 export function Header() {
   const { user, loading: authLoading } = useAuth()
-  const { balance, dailyGrantAvailable, claimDailyGrant, displayName, referralCode, loading: creditsLoading } = useCredits()
+  const { balance, dailyGrantAvailable, hasPendingClaims, pendingTotal, claimCredits, displayName, referralCode, loading: creditsLoading, isCounterAnimating } = useCreditsNotification()
   const { theme, toggleTheme } = useTheme()
   const [showCreditsMenu, setShowCreditsMenu] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -75,10 +75,15 @@ export function Header() {
                     <div className="relative" ref={menuRef}>
                       <button
                         onClick={() => setShowCreditsMenu(!showCreditsMenu)}
-                        className="text-yellow-400 font-semibold hover:text-yellow-300 transition"
+                        className="relative text-yellow-400 font-semibold hover:text-yellow-300 transition"
                       >
-                        <span className="sm:hidden">{balance} $C</span>
-                        <span className="hidden sm:inline">{balance} $Credits</span>
+                        <span className={isCounterAnimating ? 'credit-counter-animate' : ''}>
+                          <span className="sm:hidden">{balance} $C</span>
+                          <span className="hidden sm:inline">{balance} $Credits</span>
+                        </span>
+                        {dailyGrantAvailable && (
+                          <span className="absolute -top-1 -right-2 w-2 h-2 bg-red-500 rounded-full" />
+                        )}
                       </button>
 
                       {showCreditsMenu && (
@@ -90,25 +95,50 @@ export function Header() {
                             </div>
                           </div>
 
-                          {dailyGrantAvailable && (
+                          {hasPendingClaims && (
                             <button
                               onClick={() => {
-                                claimDailyGrant()
+                                claimCredits()
                                 setShowCreditsMenu(false)
                               }}
-                              className="w-full px-4 py-3 flex items-center gap-3 hover:bg-slate-700 transition text-left"
+                              className="w-full px-4 py-3 flex items-center gap-3 hover:bg-slate-700 transition text-left ring-1 ring-yellow-400/30 animate-pulse-subtle"
                             >
-                              <Gift className="w-5 h-5 text-green-400" />
+                              <Trophy className="w-5 h-5 text-yellow-400" />
                               <div>
-                                <div className="text-white font-semibold">Claim Daily $Credits</div>
-                                <div className="text-sm text-slate-400">Get 5 free credits</div>
+                                <div className="text-yellow-400 font-semibold">Claim {pendingTotal} $Credits!</div>
+                                <div className="text-sm text-slate-400">You have unclaimed winnings</div>
                               </div>
                             </button>
                           )}
 
+                          {dailyGrantAvailable && !hasPendingClaims && (
+                            <button
+                              onClick={() => {
+                                claimCredits()
+                                setShowCreditsMenu(false)
+                              }}
+                              className="w-full px-4 py-3 flex items-center gap-3 hover:bg-slate-700 transition text-left ring-1 ring-green-400/30 animate-pulse-subtle"
+                            >
+                              <Gift className="w-5 h-5 text-green-400" />
+                              <div>
+                                <div className="text-white font-semibold">Claim Daily $Credits</div>
+                                <div className="text-sm text-slate-400">Your daily credits are ready</div>
+                              </div>
+                            </button>
+                          )}
+
+                          <Link
+                            href="/credits"
+                            onClick={() => setShowCreditsMenu(false)}
+                            className="w-full px-4 py-3 flex items-center gap-3 hover:bg-slate-700 transition text-left"
+                          >
+                            <History className="w-5 h-5 text-slate-400" />
+                            <div className="text-white font-semibold">Credit History</div>
+                          </Link>
+
                           <div className="p-4 border-t border-slate-700">
                             <div className="flex items-center gap-2 mb-3">
-                              <Share2 className="w-4 h-4 text-purple-400" />
+                              <Share2 className="w-4 h-4 text-yellow-400" />
                               <span className="text-white font-semibold">Invite Friends</span>
                             </div>
                             <p className="text-sm text-slate-400 mb-3">

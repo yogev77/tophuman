@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
+import { Target } from 'lucide-react'
 import { formatTime } from '@/lib/utils'
 import { ShareScore } from './ShareScore'
 
@@ -335,7 +336,9 @@ export function EmojiKeypadGame({ onGameComplete }: EmojiKeypadGameProps) {
 
       {phase === 'completed' && result && (
         <div className="text-center py-8">
-          <div className="text-6xl mb-4">🎉</div>
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-rose-500/20 flex items-center justify-center">
+            <Target className="w-10 h-10 text-rose-400" />
+          </div>
           <h3 className="text-2xl font-bold text-green-400 mb-4">Completed!</h3>
           <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto mb-6">
             <div className="bg-slate-700 rounded-lg p-4">
@@ -372,7 +375,9 @@ export function EmojiKeypadGame({ onGameComplete }: EmojiKeypadGameProps) {
 
       {phase === 'failed' && (
         <div className="text-center py-8">
-          <div className="text-6xl mb-4">😢</div>
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-rose-500/20 flex items-center justify-center">
+            <Target className="w-10 h-10 text-rose-400" />
+          </div>
           <h3 className="text-2xl font-bold text-red-400 mb-4">
             {result?.reason === 'timeout' ? 'Time\'s Up!' : 'Wrong Sequence!'}
           </h3>

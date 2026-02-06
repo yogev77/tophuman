@@ -33,7 +33,7 @@ Each game targets different human capabilities that are difficult to automate:
 - **Visual Diff** - Attention to detail, scanning patterns
 - **Drag Sort** - Touch/mouse coordination
 - **Image Rotate** - Spatial reasoning
-- **Duck Shoot** - Tracking moving targets, prediction
+- **Target Shoot** (ID: `duck_shoot`) - Olympic-style target shooting with red (hit) and green (avoid) targets
 
 ## Design System
 
@@ -64,7 +64,7 @@ Each game has a unique pastel color scheme for its icon:
 - Audio Pattern: Indigo
 - Drag Sort: Lime
 - Follow Me: Cyan
-- Duck Shoot: Emerald
+- Target Shoot: Emerald
 
 ### UI Components
 - **Stats Banner**: Shows total credits, players, time until settlement
@@ -75,7 +75,7 @@ Each game has a unique pastel color scheme for its icon:
 ## Core Mechanics
 
 ### Credits System
-- Users claim **5 free credits daily**
+- Users claim **10 free credits daily**
 - Each game turn costs **1 credit**
 - Credits go into the **game's daily pool**
 - Pool is distributed back to players based on winning conditions (top scorers)
@@ -175,13 +175,14 @@ src/
 ├── app/
 │   ├── api/
 │   │   ├── auth/          # Auth endpoints
-│   │   ├── credits/       # Credit operations
+│   │   ├── credits/       # Credit operations (grant, history)
 │   │   ├── game/          # Turn create/start/event/complete
 │   │   ├── games/         # List games, status
 │   │   ├── leaderboard/   # Leaderboard data
 │   │   ├── admin/         # Admin operations
 │   │   └── cron/          # Settlement jobs
 │   ├── auth/              # Login/signup pages
+│   ├── credits/           # Credit history page
 │   ├── game/              # Game play page
 │   ├── profile/           # User profile
 │   └── admin/             # Admin dashboard
@@ -239,7 +240,7 @@ Key tables:
 | `audio_pattern` | Audio Pattern | Working |
 | `drag_sort` | Drag Sort | Working |
 | `follow_me` | Follow Me | Working |
-| `duck_shoot` | Duck Shoot | Working |
+| `duck_shoot` | Target Shoot | Working |
 
 ## Known Issues
 
@@ -263,9 +264,63 @@ npm run dev
 # http://localhost:3000
 ```
 
+## Important Architecture Notes
+
+### Supabase Client Pattern (CRITICAL)
+There are two Supabase clients in `src/lib/supabase/server.ts`:
+
+1. **`createClient()`** — Uses `@supabase/ssr`'s `createServerClient` with cookies. Respects RLS, tied to the logged-in user's session. Use for user-facing operations.
+
+2. **`createServiceClient()`** — Uses `@supabase/supabase-js`'s `createClient` directly with the service role key, **without cookies**. Bypasses RLS entirely. Use for cross-user operations (leaderboards, admin, ticker).
+
+**Past bug:** `createServiceClient()` previously used `createServerClient` from `@supabase/ssr` which passes session cookies. The cookies caused Supabase to apply RLS even with the service role key, making the client only see the logged-in user's data. This broke: admin grant credits (couldn't find other users), homepage ticker (only showed logged-in user), leaderboards. Fixed by switching to `createClient` from `@supabase/supabase-js` (no cookies).
+
+### Credit Ledger Event Types
+The `credit_ledger` table has a `LedgerEventType` enum. Valid values:
+- `daily_grant`, `turn_spend`, `prize_win`, `rebate`, `expiration`, `admin_adjustment`, `referral_bonus`
+
+**Note:** `admin_grant` is NOT a valid event type. Use `admin_adjustment`.
+
+### Game ID Mapping
+The `emoji_keypad` game is stored as `emoji_keypad_sequence` in the database (legacy). The mapping is in `src/app/api/games/route.ts` (`DB_GAME_TYPE_MAP`). All other games use their UI ID directly as the DB ID.
+
+### Target Shoot (formerly Duck Shoot)
+The game was redesigned from ducks to Olympic-style target shooting. The DB ID remains `duck_shoot` everywhere (database, gameType params, file names) to preserve existing data. Only UI-facing labels say "Target Shoot".
+
+Key mechanics:
+- Targets are concentric circles with a red (shoot) or green (avoid) center dot
+- ~25% of targets are decoys (green dot, `isDecoy: true` in spawn data)
+- Shooting a decoy = -200 score penalty
+- Server validates decoy hits in `src/lib/game/duck-shoot.ts`
+- Background is a minimalist gray gradient (no sky/grass)
+
 ## Session Notes
 
-(Add notes here during work sessions for continuity)
+### Feb 5, 2026
+
+**Features added:**
+- **Credit History page** (`/credits`) — Shows full credit ledger grouped by day. Same event types within a day are collapsed (e.g., "Game Played x5"). Pagination with "Load more". Accessible from History button in credits dropdown in Header.
+  - API: `src/app/api/credits/history/route.ts`
+  - Page: `src/app/credits/page.tsx`
+  - Header link added in `src/components/Header.tsx`
+
+- **Target Shoot redesign** — Complete visual overhaul of DuckShootGame from duck sprites to minimalist concentric ring targets. Added decoy mechanic (green targets = penalty). All text renamed across UI files.
+  - `src/components/DuckShootGame.tsx` — New `drawTarget()` rendering, decoy handling
+  - `src/lib/game/duck-shoot.ts` — `isDecoy` field, decoy validation, -200 penalty scoring
+
+- **Daily credits increased** from 5 to 10. Changed in:
+  - Postgres function `grant_daily_credits` (run SQL in Supabase dashboard)
+  - `src/app/api/credits/grant/route.ts` response
+
+**Bugs fixed:**
+- **Admin grant credits 404** — Multiple issues: invalid `event_type` (`admin_grant` → `admin_adjustment`), `.single()` failing (→ `.limit(1)`), RLS blocking cross-user profile lookups (→ fixed service client globally)
+- **`createServiceClient()` RLS bypass** — Root cause fix in `src/lib/supabase/server.ts`. Affected all service client consumers (games, leaderboard, admin, ticker).
+- **Ticker only showing logged-in user** — Same RLS root cause, fixed by the global service client fix.
+
+**Pending (manual, Supabase Dashboard):**
+- Update Site URL from `localhost:3000` to `https://www.podiumarena.com` in Authentication → URL Configuration (fixes confirmation email linking to localhost)
+- Customize confirmation email template in Authentication → Email Templates (HTML template with Podium Arena branding was provided)
+- Optional: Set up custom SMTP (e.g., Resend) to change sender name from "Supabase Auth" to "Podium Arena"
 
 ---
-*Last updated: Feb 4, 2026*
+*Last updated: Feb 5, 2026*

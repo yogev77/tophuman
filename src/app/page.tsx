@@ -20,6 +20,9 @@ import {
   Crown,
   Users,
   LucideIcon,
+  Share2,
+  Copy,
+  Check,
 } from 'lucide-react'
 
 const GAME_ICONS: Record<string, LucideIcon> = {
@@ -212,9 +215,9 @@ function GameTile({ game, msUntilSettlement }: { game: GameInfo; msUntilSettleme
         <div className="grid grid-cols-3 gap-2 text-center">
           <div className="bg-slate-900/50 rounded-lg py-2 px-1">
             <div className={`text-lg font-bold ${isPlayable ? 'text-yellow-400' : 'text-slate-500'}`}>
-              {game.poolSize > 0 ? game.poolSize.toLocaleString() : '-'}
+              {game.poolSize > 0 ? `${game.poolSize.toLocaleString()} $C` : '-'}
             </div>
-            <div className="text-xs text-slate-500">$Credits Pool</div>
+            <div className="text-xs text-slate-500">$Credits pool</div>
           </div>
           <div className="bg-slate-900/50 rounded-lg py-2 px-1">
             <div className={`text-lg font-bold ${isPlayable ? 'text-white' : 'text-slate-500'}`}>
@@ -246,7 +249,7 @@ function GameTile({ game, msUntilSettlement }: { game: GameInfo; msUntilSettleme
     return (
       <Link
         href={`/game?type=${game.id}`}
-        className="block h-full bg-slate-800 rounded-xl p-6 transition hover:scale-[1.02] cursor-pointer"
+        className="block h-full bg-slate-800 rounded-xl p-6 pb-4 transition hover:scale-[1.02] cursor-pointer"
       >
         {content}
       </Link>
@@ -254,7 +257,7 @@ function GameTile({ game, msUntilSettlement }: { game: GameInfo; msUntilSettleme
   }
 
   return (
-    <div className="h-full bg-slate-800/50 rounded-xl p-6 opacity-70">
+    <div className="h-full bg-slate-800/50 rounded-xl p-6 pb-4 opacity-70">
       {content}
     </div>
   )
@@ -264,6 +267,48 @@ export default function HomePage() {
   const [data, setData] = useState<GamesData | null>(null)
   const [loading, setLoading] = useState(true)
   const [timeLeft, setTimeLeft] = useState(0)
+  const [showSharePopup, setShowSharePopup] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const sharePopupRef = useRef<HTMLDivElement>(null)
+
+  const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/auth/signup` : ''
+
+  // Click outside to close popup
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (sharePopupRef.current && !sharePopupRef.current.contains(event.target as Node)) {
+        setShowSharePopup(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (err) {
+      console.error('Failed to copy:', err)
+    }
+  }
+
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Join Podium Arena!',
+          text: 'Play skill games and win $Credits! Join using my link:',
+          url: shareUrl,
+        })
+      } catch {
+        handleCopy()
+      }
+    } else {
+      handleCopy()
+    }
+  }
 
   useEffect(() => {
     const fetchGames = async () => {
@@ -469,17 +514,50 @@ export default function HomePage() {
       </div>
 
       {/* Play With Friends Footer */}
-      <div className="mt-16 mb-8 text-center">
-        <Link
-          href="/auth/signup"
+      <div className="mt-16 mb-8 text-center relative">
+        <button
+          onClick={() => setShowSharePopup(!showSharePopup)}
           className="inline-flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg transition"
         >
           <Users className="w-5 h-5" />
           Play With Friends
-        </Link>
+        </button>
         <p className="mt-4 text-slate-400">
           Invite friends and get <span className="text-yellow-400 font-bold">100 $Credits</span> when they join!
         </p>
+
+        {showSharePopup && (
+          <div
+            ref={sharePopupRef}
+            className="absolute left-1/2 -translate-x-1/2 bottom-full mb-4 w-80 bg-slate-800 rounded-xl shadow-xl border border-slate-700 z-50 overflow-hidden"
+          >
+            <div className="p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Share2 className="w-4 h-4 text-yellow-400" />
+                <span className="text-white font-semibold">Invite Friends</span>
+              </div>
+              <p className="text-sm text-slate-400 mb-3 text-left">
+                Get <span className="text-yellow-400 font-bold">100 $Credits</span> when friends join!
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleCopy}
+                  className="flex-1 flex items-center justify-center gap-2 border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 px-3 py-2 rounded-lg transition text-sm"
+                >
+                  {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                  {copied ? 'Copied!' : 'Copy Link'}
+                </button>
+                <button
+                  onClick={handleShare}
+                  className="flex-1 flex items-center justify-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-slate-900 px-3 py-2 rounded-lg transition text-sm"
+                >
+                  <Share2 className="w-4 h-4" />
+                  Share
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

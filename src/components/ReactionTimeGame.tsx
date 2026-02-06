@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
+import { Zap } from 'lucide-react'
 import { ShareScore } from './ShareScore'
 
 type GamePhase = 'idle' | 'loading' | 'waiting' | 'signal' | 'feedback' | 'checking' | 'completed' | 'failed'
@@ -59,6 +60,7 @@ export function ReactionTimeGame({ onGameComplete }: ReactionTimeGameProps) {
   const signalTimeRef = useRef<number>(0)
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
   const eventQueueRef = useRef<{ event: object; sent: boolean }[]>([])
+  const phaseRef = useRef<GamePhase>('idle')
 
   // Background event sender
   const sendQueuedEvents = useCallback(async () => {
@@ -87,6 +89,7 @@ export function ReactionTimeGame({ onGameComplete }: ReactionTimeGameProps) {
 
   const startGame = useCallback(async () => {
     setPhase('loading')
+    phaseRef.current = 'loading'
     setError(null)
     setCurrentRound(0)
     setRoundResults([])
@@ -125,11 +128,13 @@ export function ReactionTimeGame({ onGameComplete }: ReactionTimeGameProps) {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error')
       setPhase('idle')
+      phaseRef.current = 'idle'
     }
   }, [])
 
   const startRound = (gameSpec: TurnSpec, round: number) => {
     setPhase('waiting')
+    phaseRef.current = 'waiting'
     setCurrentColor('#64748b') // Slate waiting color
 
     const roundSpec = gameSpec.rounds[round]
@@ -145,6 +150,7 @@ export function ReactionTimeGame({ onGameComplete }: ReactionTimeGameProps) {
     setCurrentColor(roundSpec.color)
     setCurrentShouldTap(roundSpec.shouldTap)
     setPhase('signal')
+    phaseRef.current = 'signal'
 
     // Queue signal event
     queueEvent({
@@ -153,12 +159,13 @@ export function ReactionTimeGame({ onGameComplete }: ReactionTimeGameProps) {
       clientTimestampMs: signalTimeRef.current,
     })
 
-    // Auto-advance after max reaction time if no tap
+    // Auto-advance after 2-4 seconds if no tap (random duration per round)
+    const autoAdvanceMs = 2000 + Math.random() * 2000
     timeoutRef.current = setTimeout(() => {
-      if (phase === 'signal') {
+      if (phaseRef.current === 'signal') {
         handleRoundComplete(gameSpec, round, false)
       }
-    }, gameSpec.maxReactionMs)
+    }, autoAdvanceMs)
   }
 
   const handleTap = () => {
@@ -167,6 +174,7 @@ export function ReactionTimeGame({ onGameComplete }: ReactionTimeGameProps) {
       setFeedbackText('Too early!')
       setFeedbackColor('text-red-400')
       setPhase('feedback')
+      phaseRef.current = 'feedback'
 
       setTimeout(() => {
         if (spec) {
@@ -209,6 +217,7 @@ export function ReactionTimeGame({ onGameComplete }: ReactionTimeGameProps) {
     }
 
     setPhase('feedback')
+    phaseRef.current = 'feedback'
 
     // Record result
     const roundResult: RoundResult = {
@@ -241,6 +250,7 @@ export function ReactionTimeGame({ onGameComplete }: ReactionTimeGameProps) {
 
   const completeGame = async () => {
     setPhase('checking')
+    phaseRef.current = 'checking'
     setCurrentColor('#64748b')
 
     // Wait for events to flush
@@ -256,7 +266,9 @@ export function ReactionTimeGame({ onGameComplete }: ReactionTimeGameProps) {
 
       const data = await completeRes.json()
       setResult(data)
-      setPhase(data.valid ? 'completed' : 'failed')
+      const finalPhase = data.valid ? 'completed' : 'failed'
+      setPhase(finalPhase)
+      phaseRef.current = finalPhase
 
       if (onGameComplete) {
         onGameComplete(data)
@@ -264,6 +276,7 @@ export function ReactionTimeGame({ onGameComplete }: ReactionTimeGameProps) {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error')
       setPhase('failed')
+      phaseRef.current = 'failed'
     }
   }
 
@@ -372,7 +385,9 @@ export function ReactionTimeGame({ onGameComplete }: ReactionTimeGameProps) {
 
       {phase === 'completed' && result && (
         <div className="text-center py-6 sm:py-8">
-          <div className="text-5xl sm:text-6xl mb-4">⚡</div>
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-amber-500/20 flex items-center justify-center">
+            <Zap className="w-10 h-10 text-amber-400" />
+          </div>
           <h3 className="text-xl sm:text-2xl font-bold text-green-400 mb-4">Great Job!</h3>
           <div className="grid grid-cols-2 gap-3 sm:gap-4 max-w-xs mx-auto mb-4 sm:mb-6">
             <div className="bg-slate-700 rounded-lg p-3 sm:p-4">
@@ -411,7 +426,9 @@ export function ReactionTimeGame({ onGameComplete }: ReactionTimeGameProps) {
 
       {phase === 'failed' && (
         <div className="text-center py-8">
-          <div className="text-6xl mb-4">😢</div>
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-amber-500/20 flex items-center justify-center">
+            <Zap className="w-10 h-10 text-amber-400" />
+          </div>
           <h3 className="text-2xl font-bold text-red-400 mb-4">Game Over</h3>
           <p className="text-slate-300 mb-6">
             {result?.reason === 'impossible_speed'

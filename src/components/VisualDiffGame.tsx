@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
+import { ScanEye } from 'lucide-react'
 import { formatTime } from '@/lib/utils'
 import { ShareScore } from './ShareScore'
 
@@ -106,8 +107,11 @@ export function VisualDiffGame({ onGameComplete }: VisualDiffGameProps) {
     if (phase !== 'play' || !turnToken || !spec) return
 
     const rect = e.currentTarget.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
+    // Convert screen coordinates to SVG viewBox coordinates
+    const scaleX = spec.gridSize / rect.width
+    const scaleY = spec.gridSize / rect.height
+    const x = (e.clientX - rect.left) * scaleX
+    const y = (e.clientY - rect.top) * scaleY
 
     setClicks(prev => [...prev, { x, y, side }])
 
@@ -205,8 +209,8 @@ export function VisualDiffGame({ onGameComplete }: VisualDiffGameProps) {
   }
 
   return (
-    <div className="bg-slate-800 rounded-xl p-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="bg-slate-800 rounded-xl p-4 sm:p-6">
+      <div className="flex items-center justify-between mb-4 sm:mb-6">
         <h2 className="text-xl font-bold text-white">Spot the Difference</h2>
         {phase === 'play' && spec && (
           <div className="flex items-center gap-4">
@@ -246,13 +250,12 @@ export function VisualDiffGame({ onGameComplete }: VisualDiffGameProps) {
           <p className="text-slate-400 text-sm text-center mb-4">
             Find {spec.numDifferences} differences - click on them in either image
           </p>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div>
               <p className="text-slate-400 text-xs text-center mb-1">Original</p>
               <svg
-                width={spec.gridSize}
-                height={spec.gridSize}
-                className="bg-slate-900 rounded-lg cursor-crosshair mx-auto"
+                viewBox={`0 0 ${spec.gridSize} ${spec.gridSize}`}
+                className="w-full bg-slate-900 rounded-lg cursor-crosshair"
                 onClick={(e) => handleClick(e, 'left')}
               >
                 {spec.baseShapes.map((shape, i) => renderShape(shape, i))}
@@ -268,9 +271,8 @@ export function VisualDiffGame({ onGameComplete }: VisualDiffGameProps) {
             <div>
               <p className="text-slate-400 text-xs text-center mb-1">Modified</p>
               <svg
-                width={spec.gridSize}
-                height={spec.gridSize}
-                className="bg-slate-900 rounded-lg cursor-crosshair mx-auto"
+                viewBox={`0 0 ${spec.gridSize} ${spec.gridSize}`}
+                className="w-full bg-slate-900 rounded-lg cursor-crosshair"
                 onClick={(e) => handleClick(e, 'right')}
               >
                 {spec.modifiedShapes.map((shape, i) => renderShape(shape, i))}
@@ -302,7 +304,9 @@ export function VisualDiffGame({ onGameComplete }: VisualDiffGameProps) {
 
       {phase === 'completed' && result && (
         <div className="text-center py-8">
-          <div className="text-6xl mb-4">🔍</div>
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-teal-500/20 flex items-center justify-center">
+            <ScanEye className="w-10 h-10 text-teal-400" />
+          </div>
           <h3 className="text-2xl font-bold text-green-400 mb-4">Sharp Eyes!</h3>
           <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto mb-6">
             <div className="bg-slate-700 rounded-lg p-4">
@@ -335,7 +339,9 @@ export function VisualDiffGame({ onGameComplete }: VisualDiffGameProps) {
 
       {phase === 'failed' && (
         <div className="text-center py-8">
-          <div className="text-6xl mb-4">😢</div>
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-teal-500/20 flex items-center justify-center">
+            <ScanEye className="w-10 h-10 text-teal-400" />
+          </div>
           <h3 className="text-2xl font-bold text-red-400 mb-4">Failed!</h3>
           <p className="text-slate-300 mb-6">
             {result?.reason === 'not_enough_found'

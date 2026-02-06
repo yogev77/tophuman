@@ -14,6 +14,7 @@ export interface DuckSpawn {
   fromLeft: boolean // true = enters from left, false = enters from right
   yPosition: number
   speed: number
+  isDecoy: boolean // green dot target - should NOT be shot
 }
 
 export interface DuckShootTurnSpec {
@@ -87,11 +88,14 @@ export function generateDuckShootTurnSpec(
     const fromLeft = random() > 0.5
     const yPosition = minY + random() * (maxY - minY)
 
+    const isDecoy = random() < 0.25 // ~25% are decoy (green) targets
+
     duckSpawns.push({
       spawnTimeMs: currentTime,
       fromLeft,
       yPosition,
       speed: currentSpeed,
+      isDecoy,
     })
 
     // Time until next duck based on screen width and speed
@@ -177,20 +181,26 @@ export function validateDuckShootTurn(
 
   // Calculate hits and accuracy - trust client's hit detection
   const hitDucks = new Set<number>()
+  const hitDecoys = new Set<number>()
   let totalAccuracy = 0
 
   for (const shoot of shoots) {
-    if (shoot.duckIndex !== undefined && !hitDucks.has(shoot.duckIndex)) {
+    if (shoot.duckIndex !== undefined && !hitDucks.has(shoot.duckIndex) && !hitDecoys.has(shoot.duckIndex)) {
       // Validate duck index is valid
       if (shoot.duckIndex >= 0 && shoot.duckIndex < spec.duckSpawns.length) {
-        hitDucks.add(shoot.duckIndex)
-        // Add accuracy for this hit (how close to center)
-        totalAccuracy += shoot.hitAccuracy ?? 0.5
+        const spawn = spec.duckSpawns[shoot.duckIndex]
+        if (spawn.isDecoy) {
+          hitDecoys.add(shoot.duckIndex)
+        } else {
+          hitDucks.add(shoot.duckIndex)
+          totalAccuracy += shoot.hitAccuracy ?? 0.5
+        }
       }
     }
   }
 
   const hits = hitDucks.size
+  const decoyHits = hitDecoys.size
 
   const maxShots = 10
   const maxTimeMs = 30000 // 30 seconds
@@ -221,7 +231,10 @@ export function validateDuckShootTurn(
   const speedRatio = Math.max(0, 1 - (timeTakenMs - 5000) / (maxTimeMs - 5000))
   const speedBonus = timeTakenMs < 5000 ? 3000 : Math.round(speedRatio * 3000)
 
-  const score = hitScore + precisionBonus + speedBonus
+  // 4. Decoy penalty: -200 per green target hit
+  const decoyPenalty = decoyHits * 200
+
+  const score = Math.max(0, hitScore + precisionBonus + speedBonus - decoyPenalty)
 
   return {
     valid: true,

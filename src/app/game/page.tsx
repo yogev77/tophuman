@@ -2,6 +2,7 @@
 
 import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { useCredits } from '@/hooks/useCredits'
 import { EmojiKeypadGame } from '@/components/EmojiKeypadGame'
@@ -33,7 +34,6 @@ import {
   Pencil,
   Crosshair,
   ArrowLeft,
-  Gift,
   LucideIcon,
 } from 'lucide-react'
 
@@ -126,7 +126,7 @@ const GAME_CONFIG: Record<string, {
   },
   duck_shoot: {
     component: DuckShootGame,
-    name: 'Duck Shoot',
+    name: 'Target Shoot',
     leaderboardType: 'duck_shoot',
     icon: Crosshair,
   },
@@ -136,21 +136,38 @@ function GamePageContent() {
   const searchParams = useSearchParams()
   const gameTypeParam = searchParams.get('type')
   const { user, loading: authLoading } = useAuth()
-  const { balance, dailyGrantAvailable, claimDailyGrant, refreshBalance, referralCode, loading: creditsLoading } = useCredits()
+  const { balance, dailyGrantAvailable, refreshBalance, referralCode, loading: creditsLoading } = useCredits()
 
   // Use URL param or default to emoji_keypad
   const gameType = gameTypeParam && GAME_CONFIG[gameTypeParam] ? gameTypeParam : 'emoji_keypad'
   const config = GAME_CONFIG[gameType]
   const iconColors = GAME_ICON_COLORS[gameType] || GAME_ICON_COLORS.emoji_keypad
   const GameIcon = config.icon
+  const [poolSize, setPoolSize] = useState<number | null>(null)
+
+  const fetchPoolSize = useCallback(async () => {
+    try {
+      const res = await fetch('/api/games')
+      if (res.ok) {
+        const data = await res.json()
+        const game = data.games?.find((g: { id: string }) => g.id === gameType)
+        if (game) setPoolSize(game.poolSize)
+      }
+    } catch {}
+  }, [gameType])
+
+  useEffect(() => {
+    fetchPoolSize()
+  }, [fetchPoolSize])
 
   const handleGameComplete = () => {
     refreshBalance()
+    fetchPoolSize()
   }
 
   if (authLoading) {
     return (
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="max-w-6xl mx-auto px-4 py-8 overflow-x-hidden">
         <div className="animate-pulse">
           <div className="h-8 bg-slate-800 rounded w-1/4 mb-8"></div>
           <div className="h-96 bg-slate-800 rounded"></div>
@@ -161,7 +178,7 @@ function GamePageContent() {
 
   if (!user) {
     return (
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="max-w-6xl mx-auto px-4 py-8 overflow-x-hidden">
         <div className="bg-slate-800 rounded-xl p-8 text-center">
           <h2 className="text-2xl font-bold text-white mb-4">Login Required</h2>
           <p className="text-slate-300 mb-6">
@@ -188,7 +205,7 @@ function GamePageContent() {
 
   if (!user.email_confirmed_at) {
     return (
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="max-w-6xl mx-auto px-4 py-8 overflow-x-hidden">
         <div className="bg-slate-800 rounded-xl p-8 text-center">
           <h2 className="text-2xl font-bold text-white mb-4">Email Verification Required</h2>
           <p className="text-slate-300 mb-6">
@@ -206,7 +223,7 @@ function GamePageContent() {
   const GameComponent = config.component
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
+    <div className="max-w-6xl mx-auto px-4 py-8 overflow-x-hidden">
       {/* Game Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
@@ -225,26 +242,6 @@ function GamePageContent() {
 
       <div className="grid md:grid-cols-3 gap-8">
         <div className="md:col-span-2">
-          <div className="bg-slate-800 rounded-xl p-4 mb-6 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <span className="text-slate-400">Your Balance:</span>
-              {creditsLoading ? (
-                <div className="h-8 w-20 bg-slate-700 animate-pulse rounded"></div>
-              ) : (
-                <span className="text-2xl font-bold text-yellow-400">{balance} $Credits</span>
-              )}
-            </div>
-            {dailyGrantAvailable && (
-              <button
-                onClick={claimDailyGrant}
-                className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg transition flex items-center gap-2"
-              >
-                <Gift className="w-5 h-5" />
-                Claim 5 Daily $Credits
-              </button>
-            )}
-          </div>
-
           {!creditsLoading && balance < 1 && !dailyGrantAvailable && referralCode && (
             <ReferralBanner referralCode={referralCode} />
           )}
@@ -255,6 +252,15 @@ function GamePageContent() {
         </div>
 
         <div>
+          <div className="bg-slate-800 rounded-xl p-4 mb-6">
+            <div className="text-lg font-bold text-yellow-400">
+              {poolSize !== null ? (
+                poolSize > 0 ? `${poolSize.toLocaleString()} $Credits Pool` : 'No Pool Yet'
+              ) : (
+                <span className="animate-pulse">Loading...</span>
+              )}
+            </div>
+          </div>
           <Leaderboard
             gameType={config.leaderboardType}
             gameTypeName={config.name}
@@ -268,7 +274,7 @@ function GamePageContent() {
 export default function GamePage() {
   return (
     <Suspense fallback={
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="max-w-6xl mx-auto px-4 py-8 overflow-x-hidden">
         <div className="animate-pulse">
           <div className="h-8 bg-slate-800 rounded w-1/4 mb-8"></div>
           <div className="h-96 bg-slate-800 rounded"></div>

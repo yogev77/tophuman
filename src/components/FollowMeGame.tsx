@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
+import { Pencil } from 'lucide-react'
 import { ShareScore } from './ShareScore'
 
 type GamePhase = 'idle' | 'loading' | 'ready' | 'draw' | 'checking' | 'completed' | 'failed'
@@ -328,8 +329,8 @@ export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
   }, [])
 
   return (
-    <div className="bg-slate-800 rounded-xl p-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="bg-slate-800 rounded-xl p-4 sm:p-6">
+      <div className="flex items-center justify-between mb-4 sm:mb-6">
         <h2 className="text-xl font-bold text-white">Follow Me</h2>
         {(phase === 'ready' || phase === 'draw') && spec && (
           <span className={`text-2xl font-mono ${timeLeft < 10000 ? 'text-red-400' : 'text-green-400'}`}>
@@ -383,7 +384,7 @@ export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
               ? `Line ${currentRound}/${TOTAL_ROUNDS}: Start from the green dot!`
               : `Line ${currentRound}/${TOTAL_ROUNDS}: Keep tracing to the red dot!`}
           </p>
-          <div className="inline-block border-4 border-slate-600 rounded-lg overflow-hidden touch-none">
+          <div className="inline-block border-4 border-slate-600 rounded-lg overflow-hidden touch-none max-w-full">
             <canvas
               ref={canvasRef}
               width={spec.canvasSize}
@@ -429,7 +430,9 @@ export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
 
       {phase === 'completed' && result && (
         <div className="text-center py-8">
-          <div className="text-6xl mb-4">{result.accuracy && result.accuracy > 0.8 ? '🎯' : '👍'}</div>
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-cyan-500/20 flex items-center justify-center">
+            <Pencil className="w-10 h-10 text-cyan-400" />
+          </div>
           <h3 className="text-2xl font-bold text-green-400 mb-4">Great Tracing!</h3>
           <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto mb-6">
             <div className="bg-slate-700 rounded-lg p-4">
@@ -470,7 +473,9 @@ export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
 
       {phase === 'failed' && (
         <div className="text-center py-8">
-          <div className="text-6xl mb-4">😅</div>
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-cyan-500/20 flex items-center justify-center">
+            <Pencil className="w-10 h-10 text-cyan-400" />
+          </div>
           <h3 className="text-2xl font-bold text-red-400 mb-4">Not Quite!</h3>
           <p className="text-slate-300 mb-6">
             {result?.reason === 'no_drawing'

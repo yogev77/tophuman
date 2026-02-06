@@ -101,7 +101,6 @@ export async function POST(request: NextRequest) {
         description: getGameDescription(gameId),
         active: isActive,
         opens_at: opensAt || null,
-        updated_at: new Date().toISOString(),
       }, {
         onConflict: 'id'
       })
@@ -136,7 +135,7 @@ function getGameName(gameId: string): string {
     audio_pattern: 'Audio Pattern',
     drag_sort: 'Drag & Sort',
     follow_me: 'Follow Me',
-    duck_shoot: 'Duck Shoot',
+    duck_shoot: 'Target Shoot',
   }
   return names[gameId] || gameId
 }
@@ -154,7 +153,7 @@ function getGameDescription(gameId: string): string {
     audio_pattern: 'Listen and repeat the sound sequence',
     drag_sort: 'Arrange items in the correct order',
     follow_me: 'Trace the path as accurately as possible',
-    duck_shoot: 'Shoot the moving ducks with precision',
+    duck_shoot: 'Hit the moving targets with precision',
   }
   return descriptions[gameId] || ''
 }

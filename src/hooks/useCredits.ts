@@ -3,9 +3,19 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
+interface PendingClaim {
+  id: string
+  claim_type: string
+  amount: number
+  utc_day: string
+  metadata: Record<string, unknown> | null
+}
+
 interface CreditsState {
   balance: number
   dailyGrantAvailable: boolean
+  pendingClaims: PendingClaim[]
+  pendingTotal: number
   userId: string | null
   displayName: string | null
   referralCode: string | null
@@ -17,6 +27,8 @@ export function useCredits() {
   const [state, setState] = useState<CreditsState>({
     balance: 0,
     dailyGrantAvailable: false,
+    pendingClaims: [],
+    pendingTotal: 0,
     userId: null,
     displayName: null,
     referralCode: null,
@@ -38,6 +50,8 @@ export function useCredits() {
       setState({
         balance: data.balance,
         dailyGrantAvailable: data.dailyGrantAvailable,
+        pendingClaims: data.pendingClaims || [],
+        pendingTotal: data.pendingTotal || 0,
         userId: data.userId,
         displayName: data.displayName,
         referralCode: data.referralCode,
@@ -67,6 +81,8 @@ export function useCredits() {
         setState({
           balance: 0,
           dailyGrantAvailable: false,
+          pendingClaims: [],
+          pendingTotal: 0,
           userId: null,
           displayName: null,
           referralCode: null,
@@ -102,9 +118,39 @@ export function useCredits() {
     }
   }
 
+  const claimWinnings = async (): Promise<{ success: boolean; totalClaimed: number; newBalance: number; primaryType: 'prize' | 'rebate' | 'referral' | 'daily' } | null> => {
+    try {
+      const res = await fetch('/api/credits/claim-winnings', { method: 'POST' })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to claim winnings')
+      }
+      const data = await res.json()
+      setState(s => ({
+        ...s,
+        balance: data.newBalance,
+        pendingClaims: [],
+        pendingTotal: 0,
+      }))
+      return {
+        success: true,
+        totalClaimed: data.totalClaimed,
+        newBalance: data.newBalance,
+        primaryType: data.primaryType,
+      }
+    } catch (err) {
+      setState(s => ({
+        ...s,
+        error: err instanceof Error ? err.message : 'Unknown error',
+      }))
+      return null
+    }
+  }
+
   return {
     ...state,
     claimDailyGrant,
+    claimWinnings,
     refreshBalance: fetchBalance,
   }
 }

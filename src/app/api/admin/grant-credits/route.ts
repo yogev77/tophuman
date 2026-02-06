@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check if user is admin
+    // Check if user is admin (own profile, readable via RLS)
     const { data: adminProfile } = await supabase
       .from('profiles')
       .select('is_admin')
@@ -23,7 +23,8 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { userId, amount, reason } = body
+    const { userId: rawUserId, amount, reason } = body
+    const userId = typeof rawUserId === 'string' ? rawUserId.trim() : rawUserId
 
     if (!userId || typeof userId !== 'string') {
       return NextResponse.json({ error: 'User ID required' }, { status: 400 })
@@ -33,26 +34,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Amount must be between 1 and 1000' }, { status: 400 })
     }
 
+    // Use service client to bypass RLS for cross-user operations
+    const serviceClient = createServiceClient()
+
     // Verify target user exists
-    const { data: targetProfile } = await supabase
+    const { data: targetProfiles, error: profileLookupError } = await serviceClient
       .from('profiles')
       .select('user_id, display_name')
       .eq('user_id', userId)
-      .single()
+      .limit(1)
 
-    if (!targetProfile) {
+    const targetProfile = targetProfiles?.[0]
+
+    if (profileLookupError || !targetProfile) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
     const today = new Date().toISOString().split('T')[0]
 
     // Insert credit ledger entry
-    const { error: ledgerError } = await supabase
+    const { error: ledgerError } = await serviceClient
       .from('credit_ledger')
       .insert({
         user_id: userId,
         amount: amount,
-        event_type: 'admin_grant',
+        event_type: 'admin_adjustment',
         utc_day: today,
         metadata: {
           granted_by: user.id,
@@ -66,7 +72,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get new balance
-    const { data: newBalance } = await supabase.rpc('get_user_balance', {
+    const { data: newBalance } = await serviceClient.rpc('get_user_balance', {
       p_user_id: userId,
     })
 

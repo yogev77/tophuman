@@ -72,7 +72,7 @@ const GAME_OPTIONS: GameOption[] = [
   { id: 'audio_pattern', icon: Music, name: 'Audio Pattern', desc: 'Repeat the sound pattern' },
   { id: 'drag_sort', icon: GripVertical, name: 'Drag & Sort', desc: 'Sort items in order' },
   { id: 'follow_me', icon: Pencil, name: 'Follow Me', desc: 'Trace the path accurately' },
-  { id: 'duck_shoot', icon: Crosshair, name: 'Duck Shoot', desc: 'Shoot the moving ducks' },
+  { id: 'duck_shoot', icon: Crosshair, name: 'Target Shoot', desc: 'Hit the moving targets' },
 ]
 
 export default function AdminPage() {
