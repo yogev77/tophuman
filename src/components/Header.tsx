@@ -9,7 +9,7 @@ import { Share2, Copy, Check, Gift, Sun, Moon, Trophy, History } from 'lucide-re
 
 export function Header() {
   const { user, loading: authLoading } = useAuth()
-  const { balance, dailyGrantAvailable, hasPendingClaims, pendingTotal, claimCredits, displayName, referralCode, loading: creditsLoading, isCounterAnimating } = useCreditsNotification()
+  const { balance, dailyGrantAvailable, hasPendingClaims, pendingTotal, claimCredits, displayName, referralCode, loading: creditsLoading, isCounterAnimating, hasUnseenNotification, markNotificationSeen } = useCreditsNotification()
   const { theme, toggleTheme } = useTheme()
   const [showCreditsMenu, setShowCreditsMenu] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -74,15 +74,22 @@ export function Header() {
                   {!creditsLoading && (
                     <div className="relative" ref={menuRef}>
                       <button
-                        onClick={() => setShowCreditsMenu(!showCreditsMenu)}
+                        onClick={() => {
+                          const wasOpen = showCreditsMenu
+                          setShowCreditsMenu(!showCreditsMenu)
+                          // Mark notification as seen when opening the popup
+                          if (!wasOpen && hasUnseenNotification) {
+                            markNotificationSeen()
+                          }
+                        }}
                         className="relative text-yellow-400 font-semibold hover:text-yellow-300 transition"
                       >
                         <span className={isCounterAnimating ? 'credit-counter-animate' : ''}>
                           <span className="sm:hidden">{balance} $C</span>
                           <span className="hidden sm:inline">{balance} $Credits</span>
                         </span>
-                        {dailyGrantAvailable && (
-                          <span className="absolute -top-1 -right-2 w-2 h-2 bg-red-500 rounded-full" />
+                        {hasUnseenNotification && (
+                          <span className="absolute -top-1 -right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
                         )}
                       </button>
 

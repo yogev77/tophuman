@@ -97,21 +97,34 @@ export default function AdminPage() {
       const supabase = createClient()
       const today = new Date().toISOString().split('T')[0]
 
-      // Fetch today's pool stats
-      const { data: pool } = await supabase
-        .from('daily_pools')
-        .select('*')
-        .eq('utc_day', today)
-        .single() as { data: DailyPool | null }
-
-      if (pool) {
+      // Fetch today's stats from games API (cycle-aware)
+      const gamesRes = await fetch('/api/games')
+      if (gamesRes.ok) {
+        const gamesData = await gamesRes.json()
         setStats({
-          utcDay: pool.utc_day,
-          totalCredits: pool.total_credits,
-          uniquePlayers: pool.unique_players,
-          totalTurns: pool.total_turns,
-          status: pool.status,
+          utcDay: gamesData.utcDay,
+          totalCredits: gamesData.pool.totalCredits,
+          uniquePlayers: gamesData.pool.uniquePlayers,
+          totalTurns: gamesData.pool.totalTurns,
+          status: gamesData.pool.status,
         })
+      } else {
+        // Fallback to direct DB query
+        const { data: pool } = await supabase
+          .from('daily_pools')
+          .select('*')
+          .eq('utc_day', today)
+          .single() as { data: DailyPool | null }
+
+        if (pool) {
+          setStats({
+            utcDay: pool.utc_day,
+            totalCredits: pool.total_credits,
+            uniquePlayers: pool.unique_players,
+            totalTurns: pool.total_turns,
+            status: pool.status,
+          })
+        }
       }
 
       // Fetch recent settlements

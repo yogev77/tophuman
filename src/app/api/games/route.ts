@@ -73,13 +73,32 @@ export async function GET() {
       .from('game_types')
       .select('id, name, description, active, opens_at')
 
-    // Get today's stats for all games
-    const { data: todayStats } = await supabase
+    // Check for a completed settlement today (to know the cycle boundary)
+    const { data: todaySettlement } = await supabase
+      .from('settlements')
+      .select('completed_at')
+      .eq('utc_day', today)
+      .eq('status', 'completed')
+      .order('completed_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    // If there was a settlement today, only count turns after it
+    const cycleStartTime = todaySettlement?.completed_at || null
+
+    // Get today's stats for all games (only from current cycle)
+    let statsQuery = supabase
       .from('game_turns')
       .select('game_type_id, user_id, score')
       .eq('utc_day', today)
       .eq('status', 'completed')
       .eq('flagged', false)
+
+    if (cycleStartTime) {
+      statsQuery = statsQuery.gt('created_at', cycleStartTime)
+    }
+
+    const { data: todayStats } = await statsQuery
 
     // Get pool info
     const { data: pool } = await supabase
@@ -88,7 +107,7 @@ export async function GET() {
       .eq('utc_day', today)
       .single()
 
-    // Check if pool has been settled
+    // Pool is "empty" if settled/frozen OR if there was a settlement and pool hasn't been reset yet
     const isPoolSettled = pool?.status === 'settled' || pool?.status === 'frozen'
 
     // Calculate time until midnight UTC (settlement)
@@ -101,18 +120,28 @@ export async function GET() {
     const msUntilSettlement = midnight.getTime() - now.getTime()
 
     // Get ALL turns today (including incomplete) for pool calculation
-    // Only count if pool is not settled
+    // Only count turns from current cycle (after settlement if there was one)
     const gamePoolSize = new Map<string, number>()
+    const allCyclePlayers = new Set<string>()
+    let totalCycleTurns = 0
 
     if (!isPoolSettled) {
-      const { data: allTurns } = await supabase
+      let poolQuery = supabase
         .from('game_turns')
-        .select('game_type_id')
+        .select('game_type_id, user_id')
         .eq('utc_day', today)
+
+      if (cycleStartTime) {
+        poolQuery = poolQuery.gt('created_at', cycleStartTime)
+      }
+
+      const { data: allTurns } = await poolQuery
 
       // Calculate pool per game (each turn = 1 credit)
       for (const turn of allTurns || []) {
         gamePoolSize.set(turn.game_type_id, (gamePoolSize.get(turn.game_type_id) || 0) + 1)
+        allCyclePlayers.add(turn.user_id)
+        totalCycleTurns++
       }
     }
 
@@ -184,6 +213,7 @@ export async function GET() {
         opensAt: dbGame?.opens_at || null,
         poolSize: gamePoolSize.get(dbGameTypeId) ?? 0,
         todayStats: {
+          // Stats are already filtered to current cycle (post-settlement)
           playerCount: stats?.players.size ?? 0,
           topScore: stats?.topScore ?? 0,
           topPlayerName: topPlayerName || null,
@@ -192,12 +222,19 @@ export async function GET() {
       }
     })
 
+    // Calculate total pool from current cycle turns
+    let totalPoolCredits = 0
+    for (const size of gamePoolSize.values()) {
+      totalPoolCredits += size
+    }
+
     return NextResponse.json({
       games,
       pool: {
-        totalCredits: isPoolSettled ? 0 : (pool?.total_credits ?? 0),
-        uniquePlayers: isPoolSettled ? 0 : (pool?.unique_players ?? 0),
-        totalTurns: isPoolSettled ? 0 : (pool?.total_turns ?? 0),
+        // Use calculated values from current cycle, not the pool table (which may have old data)
+        totalCredits: totalPoolCredits,
+        uniquePlayers: allCyclePlayers.size,
+        totalTurns: totalCycleTurns,
         status: pool?.status ?? 'active',
       },
       msUntilSettlement,

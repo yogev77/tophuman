@@ -44,8 +44,8 @@ export async function GET() {
 
     const alreadyGranted = grantToday && grantToday.length > 0
 
-    // Check for pending claims (settlement winnings)
-    const { data: pendingClaims } = await supabase
+    // Check for pending claims (settlement winnings) - use service client to bypass RLS
+    const { data: pendingClaims } = await serviceClient
       .from('pending_claims')
       .select('id, claim_type, amount, utc_day, metadata')
       .eq('user_id', profile.user_id)

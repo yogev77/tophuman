@@ -118,7 +118,13 @@ export function useCredits() {
     }
   }
 
-  const claimWinnings = async (): Promise<{ success: boolean; totalClaimed: number; newBalance: number; primaryType: 'prize' | 'rebate' | 'referral' | 'daily' } | null> => {
+  const claimWinnings = async (): Promise<{
+    success: boolean
+    totalClaimed: number
+    newBalance: number
+    primaryType: 'prize' | 'rebate' | 'referral' | 'daily'
+    claimed: { type: string; amount: number }[]
+  } | null> => {
     try {
       const res = await fetch('/api/credits/claim-winnings', { method: 'POST' })
       if (!res.ok) {
@@ -137,6 +143,7 @@ export function useCredits() {
         totalClaimed: data.totalClaimed,
         newBalance: data.newBalance,
         primaryType: data.primaryType,
+        claimed: data.claimed || [],
       }
     } catch (err) {
       setState(s => ({

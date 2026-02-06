@@ -168,7 +168,9 @@ export function ReactionTimeGame({ onGameComplete }: ReactionTimeGameProps) {
     }, autoAdvanceMs)
   }
 
-  const handleTap = () => {
+  const handleTap = (e: React.MouseEvent | React.TouchEvent) => {
+    // Prevent touch from also firing mouse event
+    if (e.type === 'touchstart') e.preventDefault()
     if (phase === 'waiting') {
       // Tapped during wait - show brief error but continue
       setFeedbackText('Too early!')
@@ -328,9 +330,10 @@ export function ReactionTimeGame({ onGameComplete }: ReactionTimeGameProps) {
       {(phase === 'waiting' || phase === 'signal' || phase === 'feedback') && (
         <div className="text-center">
           <button
-            onClick={handleTap}
+            onMouseDown={handleTap}
+            onTouchStart={handleTap}
             disabled={phase === 'feedback'}
-            className="w-full h-48 sm:h-64 rounded-xl text-3xl sm:text-4xl font-bold transition-all transform active:scale-95 disabled:transform-none"
+            className="w-full h-48 sm:h-64 rounded-xl text-3xl sm:text-4xl font-bold transition-all transform active:scale-95 disabled:transform-none select-none"
             style={{ backgroundColor: currentColor }}
           >
             {phase === 'waiting' && (

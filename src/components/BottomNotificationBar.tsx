@@ -16,6 +16,7 @@ export function BottomNotificationBar() {
     dismissBottomBar,
   } = useCreditsNotification()
 
+  // Show footer banner for both daily grants and pending winnings
   const hasClaimable = dailyGrantAvailable || hasPendingClaims
 
   if (!user || loading || !hasClaimable || isBottomBarDismissed) {

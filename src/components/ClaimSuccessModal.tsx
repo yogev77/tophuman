@@ -1,7 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Gift, X, Sparkles } from 'lucide-react'
+import { Gift, X, Sparkles, Trophy, Users, Coins } from 'lucide-react'
+
+interface ClaimedItem {
+  type: string
+  amount: number
+}
 
 interface ClaimSuccessModalProps {
   isOpen: boolean
@@ -9,18 +14,19 @@ interface ClaimSuccessModalProps {
   amount: number
   newBalance: number
   reason: 'daily' | 'prize' | 'referral' | 'rebate'
+  claimedItems?: ClaimedItem[]
 }
 
-export function ClaimSuccessModal({ isOpen, onClose, amount, newBalance, reason }: ClaimSuccessModalProps) {
+export function ClaimSuccessModal({ isOpen, onClose, amount, newBalance, reason, claimedItems }: ClaimSuccessModalProps) {
   const [isAnimating, setIsAnimating] = useState(false)
 
   useEffect(() => {
     if (isOpen) {
       setIsAnimating(true)
-      // Auto-close after 5 seconds
+      // Auto-close after 8 seconds (longer to read breakdown)
       const timer = setTimeout(() => {
         onClose()
-      }, 5000)
+      }, 8000)
       return () => clearTimeout(timer)
     }
   }, [isOpen, onClose])
@@ -34,29 +40,42 @@ export function ClaimSuccessModal({ isOpen, onClose, amount, newBalance, reason 
           title: 'Daily Credits Claimed!',
           subtitle: 'Your daily reward is ready to play',
           icon: <Gift className="w-12 h-12 text-yellow-400" />,
-          message: 'Come back tomorrow for more free credits!',
         }
       case 'prize':
         return {
           title: 'You Won!',
           subtitle: 'Congratulations on your victory',
           icon: <Sparkles className="w-12 h-12 text-yellow-400" />,
-          message: 'You topped the leaderboard and earned prize credits!',
         }
       case 'referral':
         return {
           title: 'Referral Bonus!',
           subtitle: 'Thanks for spreading the word',
           icon: <Gift className="w-12 h-12 text-green-400" />,
-          message: 'Your friend joined and you earned bonus credits!',
         }
       case 'rebate':
         return {
-          title: 'Participation Reward!',
+          title: 'Rewards Claimed!',
           subtitle: 'Thanks for playing',
           icon: <Gift className="w-12 h-12 text-blue-400" />,
-          message: 'You earned credits for participating in yesterday\'s games!',
         }
+    }
+  }
+
+  const getItemLabel = (type: string) => {
+    switch (type) {
+      case 'prize_win':
+        return { label: '1st Place Prize', icon: <Trophy className="w-4 h-4 text-yellow-400" /> }
+      case 'rebate':
+        return { label: 'Participation Rebate', icon: <Coins className="w-4 h-4 text-blue-400" /> }
+      case 'daily_grant':
+        return { label: 'Daily Claim', icon: <Gift className="w-4 h-4 text-green-400" /> }
+      case 'referral_bonus':
+        return { label: 'Referral Bonus', icon: <Users className="w-4 h-4 text-purple-400" /> }
+      case 'admin_adjustment':
+        return { label: 'Admin Grant', icon: <Sparkles className="w-4 h-4 text-orange-400" /> }
+      default:
+        return { label: type.replace(/_/g, ' '), icon: <Coins className="w-4 h-4 text-slate-400" /> }
     }
   }
 
@@ -107,20 +126,38 @@ export function ClaimSuccessModal({ isOpen, onClose, amount, newBalance, reason 
           {content.subtitle}
         </p>
 
-        {/* Amount */}
+        {/* Claimed Items Breakdown */}
         <div className="bg-slate-700/50 rounded-xl p-4 mb-4">
-          <div className="text-4xl font-bold text-yellow-400 mb-1">
-            +{amount} $Credits
-          </div>
-          <div className="text-slate-400 text-sm">
+          {claimedItems && claimedItems.length > 0 ? (
+            <div className="space-y-2 mb-3">
+              {claimedItems.map((item, index) => {
+                const { label, icon } = getItemLabel(item.type)
+                return (
+                  <div key={index} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      {icon}
+                      <span className="text-slate-300">{label}</span>
+                    </div>
+                    <span className="text-green-400 font-semibold">+{item.amount}</span>
+                  </div>
+                )
+              })}
+              {claimedItems.length > 1 && (
+                <div className="border-t border-slate-600 pt-2 mt-2 flex items-center justify-between">
+                  <span className="text-slate-400 text-sm">Total</span>
+                  <span className="text-yellow-400 font-bold text-lg">+{amount} $Credits</span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-3xl font-bold text-yellow-400 mb-1">
+              +{amount} $Credits
+            </div>
+          )}
+          <div className="text-slate-400 text-sm text-center pt-2 border-t border-slate-600">
             New balance: <span className="text-white font-semibold">{newBalance} $Credits</span>
           </div>
         </div>
-
-        {/* Message */}
-        <p className="text-slate-300 text-sm mb-6">
-          {content.message}
-        </p>
 
         {/* CTA Button */}
         <button

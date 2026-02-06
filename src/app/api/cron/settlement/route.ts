@@ -92,8 +92,8 @@ async function settleDay(supabase: any, utcDay: string) {
 
   if (existingSettlement?.status === 'completed') {
     return {
-      success: true,
-      message: 'Already settled',
+      success: false,
+      message: `Already settled on ${existingSettlement.completed_at}. Winner: ${existingSettlement.winner_user_id}, Amount: ${existingSettlement.winner_amount}`,
       settlement: existingSettlement,
     }
   }
@@ -217,7 +217,7 @@ async function settleDay(supabase: any, utcDay: string) {
 
   // Create pending claims (users must claim their winnings)
   // Winner prize
-  await supabase.from('pending_claims').insert({
+  const { error: winnerClaimError } = await supabase.from('pending_claims').insert({
     user_id: winner.user_id,
     claim_type: 'prize_win',
     amount: winnerAmount,
@@ -226,10 +226,14 @@ async function settleDay(supabase: any, utcDay: string) {
     metadata: { rank: 1 },
   })
 
+  if (winnerClaimError) {
+    console.error('Failed to create winner claim:', winnerClaimError)
+  }
+
   // Rebates
   for (const r of rebates) {
     if (r.amount > 0) {
-      await supabase.from('pending_claims').insert({
+      const { error: rebateError } = await supabase.from('pending_claims').insert({
         user_id: r.userId,
         claim_type: 'rebate',
         amount: r.amount,
@@ -237,6 +241,9 @@ async function settleDay(supabase: any, utcDay: string) {
         utc_day: utcDay,
         metadata: { turns: r.weight },
       })
+      if (rebateError) {
+        console.error('Failed to create rebate claim:', rebateError)
+      }
     }
   }
 
@@ -261,6 +268,7 @@ async function settleDay(supabase: any, utcDay: string) {
 
   return {
     success: true,
+    message: `Settlement complete! Winner ${winner.user_id} gets ${winnerAmount} credits. Pending claim created.`,
     settlement: {
       id: settlement.id,
       utcDay,
