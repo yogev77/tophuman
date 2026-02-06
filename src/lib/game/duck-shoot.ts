@@ -219,22 +219,12 @@ export function validateDuckShootTurn(
   // Average accuracy per hit (how close to duck center)
   const avgHitAccuracy = hits > 0 ? totalAccuracy / hits : 0
 
-  // Score components:
-  // 1. Hits: 400 points per hit (up to 4000 for 10 hits)
-  const hitScore = hits * 400
+  const hitScore = hits * 600
+  const precisionBonus = Math.round(avgHitAccuracy * 4000)
+  const speed = Math.sqrt(maxTimeMs / Math.max(timeTakenMs, 2000))
+  const decoyPenalty = decoyHits * 400
 
-  // 2. Precision bonus: up to 3000 points (based on how close to center of ducks)
-  const precisionBonus = Math.round(avgHitAccuracy * 3000)
-
-  // 3. Speed bonus: up to 3000 points (faster = more points)
-  // Full bonus if done in under 5 seconds, scales down to 0 at 30 seconds
-  const speedRatio = Math.max(0, 1 - (timeTakenMs - 5000) / (maxTimeMs - 5000))
-  const speedBonus = timeTakenMs < 5000 ? 3000 : Math.round(speedRatio * 3000)
-
-  // 4. Decoy penalty: -200 per green target hit
-  const decoyPenalty = decoyHits * 200
-
-  const score = Math.max(0, hitScore + precisionBonus + speedBonus - decoyPenalty)
+  const score = Math.max(0, Math.round((hitScore + precisionBonus) * speed - decoyPenalty))
 
   return {
     valid: true,

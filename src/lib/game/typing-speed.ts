@@ -210,16 +210,7 @@ function calculateTypingScore(
   _completionTimeMs: number,
   _spec: TypingSpeedTurnSpec
 ): number {
-  // Score based on WPM and accuracy
-  // Max WPM contribution: 6500 (at 140 WPM) - reduced to prevent max score
-  // Max accuracy contribution: 2800 (at 100%) - reduced and curved
-  // Even 140 WPM with 100% accuracy won't hit 10K
-  const wpmScore = Math.min(wpm / 140, 1) * 6500
-
-  // Apply curve to accuracy - perfect accuracy is rare
-  // 100% accuracy gives ~2700, not 2800
-  const accuracyScore = Math.pow(accuracy, 1.1) * 2800
-
-  // Cap at 9800 to ensure max score is never achievable
-  return Math.min(9800, Math.round(wpmScore + accuracyScore))
+  const wpmScore = wpm * 70
+  const accuracyScore = Math.pow(accuracy, 1.1) * 4000
+  return Math.round(wpmScore + accuracyScore)
 }

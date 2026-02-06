@@ -226,31 +226,10 @@ export function validateFollowMeTurn(
   const maxGoodDistance = 15
   const accuracyRatio = Math.max(0, 1 - avgDistance / (maxGoodDistance * 2))
 
-  // Score components:
-  // 1. Accuracy: up to 4500 points (reduced from 5000, curved)
-  // Apply curve - perfect tracing is very difficult
-  const accuracyScore = Math.round(Math.pow(accuracyRatio, 1.15) * 4500)
-
-  // 2. Coverage: up to 2800 points (reduced from 3000)
-  const coverageScore = Math.round(coverage * 2800)
-
-  // 3. Speed bonus: up to 1800 points (reduced from 2000)
-  // Best time around 4-6 seconds, scales down after 15 seconds
-  // Minimum time requirement prevents instant max
-  const idealTime = 5000 // Increased from 4000
-  const maxTime = 15000
-  let speedBonus = 0
-  if (timeTakenMs >= 2000) { // Must take at least 2 seconds (increased from 1)
-    if (timeTakenMs <= idealTime) {
-      // Even at ideal time, don't give full bonus
-      speedBonus = 1600
-    } else if (timeTakenMs <= maxTime) {
-      speedBonus = Math.round(1600 * (1 - (timeTakenMs - idealTime) / (maxTime - idealTime)))
-    }
-  }
-
-  // Cap at 9800 to ensure max score is never achievable
-  const score = Math.min(9800, accuracyScore + coverageScore + speedBonus)
+  const accuracyScore = Math.pow(accuracyRatio, 1.15) * 4000
+  const coverageScore = coverage * 3000
+  const speed = Math.sqrt(spec.timeLimitMs / Math.max(timeTakenMs, 2000))
+  const score = Math.round((accuracyScore + coverageScore) * speed)
 
   return {
     valid: true,

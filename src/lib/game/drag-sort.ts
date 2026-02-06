@@ -296,17 +296,9 @@ export function validateDragSortTurn(
   const times = events.map(e => e.clientTimestampMs || 0).filter(t => t > 0)
   const timeTakenMs = times.length >= 2 ? times[times.length - 1] - times[0] : spec.timeLimitMs
 
-  // Base score from accuracy: up to 7500 points
-  const accuracyScore = accuracy * 7500
-
-  // Speed bonus: up to 2000 points (faster = more, but with minimum time floor)
-  const minTimeFloor = 3000 // 3 seconds minimum
-  const effectiveTime = Math.max(timeTakenMs, minTimeFloor)
-  const maxTime = spec.timeLimitMs
-  const speedBonus = Math.max(0, ((maxTime - effectiveTime) / maxTime) * 2000)
-
-  // Cap at 9800 to ensure max score is never achievable
-  const score = Math.min(9800, Math.round(accuracyScore + speedBonus))
+  const quality = (correctPositions / totalItems) * 7000
+  const speed = Math.sqrt(spec.timeLimitMs / Math.max(timeTakenMs, 3000))
+  const score = Math.round(quality * speed)
 
   return {
     valid: true,

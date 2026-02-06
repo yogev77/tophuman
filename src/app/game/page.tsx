@@ -252,15 +252,12 @@ function GamePageContent() {
         </div>
 
         <div>
-          <div className="bg-slate-800 rounded-xl p-4 mb-6">
-            <div className="text-lg font-bold text-yellow-400">
-              {poolSize !== null ? (
-                poolSize > 0 ? `${poolSize.toLocaleString()} $Credits Pool` : 'No Pool Yet'
-              ) : (
-                <span className="animate-pulse">Loading...</span>
-              )}
+          {poolSize !== null && poolSize > 0 && (
+            <div className="bg-slate-800 rounded-xl p-3 mb-6 text-center">
+              <div className="text-lg font-bold text-yellow-400">{poolSize.toLocaleString()}</div>
+              <div className="text-[10px] text-slate-500">$Credit Pool</div>
             </div>
-          </div>
+          )}
           <Leaderboard
             gameType={config.leaderboardType}
             gameTypeName={config.name}

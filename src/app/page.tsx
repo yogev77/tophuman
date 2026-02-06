@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
+import { useAuth } from '@/hooks/useAuth'
 import Link from 'next/link'
 import {
   Target,
@@ -55,6 +56,13 @@ const GAME_ICON_COLORS: Record<string, { bg: string; icon: string }> = {
   duck_shoot: { bg: 'bg-emerald-500/20', icon: 'text-emerald-400' },
 }
 
+
+interface TopPlayerEntry {
+  gameId: string
+  gameName: string
+  playerName: string
+  score: number
+}
 
 interface GameInfo {
   id: string
@@ -163,84 +171,44 @@ function TopPlayersTicker({ games }: { games: GameInfo[] }) {
   )
 }
 
-function GameTile({ game, msUntilSettlement }: { game: GameInfo; msUntilSettlement: number }) {
+function GameTile({ game }: { game: GameInfo }) {
   const Icon = GAME_ICONS[game.id] || Target
   const iconColors = GAME_ICON_COLORS[game.id] || GAME_ICON_COLORS.emoji_keypad
   const isPlayable = game.isPlayable
 
-  // Determine status badge
-  let statusBadge: React.ReactNode
-  if (isPlayable) {
-    statusBadge = (
-      <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded-full flex items-center gap-1">
-        <Clock className="w-3 h-3" />
-        {formatTimeLeft(msUntilSettlement)}
-      </span>
-    )
-  } else if (game.isActive && game.opensAt) {
-    // Scheduled to open
-    statusBadge = (
-      <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full flex items-center gap-1">
-        <Clock className="w-3 h-3" />
-        {formatOpensAt(game.opensAt)}
-      </span>
-    )
-  } else {
-    // Not active
-    statusBadge = (
-      <span className="text-xs bg-slate-600/50 text-slate-400 px-2 py-1 rounded-full flex items-center gap-1">
-        <Lock className="w-3 h-3" />
-        Not Active
-      </span>
-    )
-  }
-
   const content = (
-    <div className="flex flex-col h-full">
-      <div className="flex-1">
-        <div className="flex items-start justify-between mb-3">
-          <div className={`p-2 rounded-lg ${isPlayable ? iconColors.bg : 'bg-slate-600/30'}`}>
-            <Icon className={`w-8 h-8 ${isPlayable ? iconColors.icon : 'text-slate-500'}`} />
-          </div>
-          {statusBadge}
+    <div>
+      <div className="flex items-start gap-3 mb-3">
+        <div className={`p-4 rounded-lg shrink-0 ${isPlayable ? iconColors.bg : 'bg-slate-600/30'}`}>
+          <Icon className={`w-7 h-7 ${isPlayable ? iconColors.icon : 'text-slate-500'}`} />
         </div>
-
-        <h3 className={`text-lg font-bold mb-1 font-title ${isPlayable ? 'text-white' : 'text-slate-400'}`}>
-          {game.name}
-        </h3>
-        <p className="text-sm text-slate-400">{game.description}</p>
+        <div className="min-w-0">
+          <h3 className={`text-base font-bold font-title leading-tight ${isPlayable ? 'text-white' : 'text-slate-400'}`}>
+            {game.name}
+          </h3>
+          <p className="text-xs text-slate-400 leading-normal mt-0.5 line-clamp-2">{game.description}</p>
+        </div>
       </div>
 
-      <div className="mt-4">
-        <div className="grid grid-cols-3 gap-2 text-center">
-          <div className="bg-slate-900/50 rounded-lg py-2 px-1">
-            <div className={`text-lg font-bold ${isPlayable ? 'text-yellow-400' : 'text-slate-500'}`}>
-              {game.poolSize > 0 ? `${game.poolSize.toLocaleString()} $C` : '-'}
-            </div>
-            <div className="text-xs text-slate-500">$Credits pool</div>
+      <div className="grid grid-cols-3 text-center bg-slate-900/50 rounded-lg divide-x divide-slate-700/50">
+        <div className="py-2 px-1">
+          <div className={`text-sm font-bold ${isPlayable ? 'text-yellow-400' : 'text-slate-500'}`}>
+            {game.poolSize > 0 ? `${game.poolSize.toLocaleString()}` : '-'}
           </div>
-          <div className="bg-slate-900/50 rounded-lg py-2 px-1">
-            <div className={`text-lg font-bold ${isPlayable ? 'text-white' : 'text-slate-500'}`}>
-              {game.todayStats.playerCount}
-            </div>
-            <div className="text-xs text-slate-500">Players</div>
-          </div>
-          <div className="bg-slate-900/50 rounded-lg py-2 px-1">
-            <div className={`text-lg font-bold ${isPlayable ? 'text-green-400' : 'text-slate-500'}`}>
-              {game.todayStats.topScore > 0 ? game.todayStats.topScore.toLocaleString() : '-'}
-            </div>
-            <div className="text-xs text-slate-500">Top Score</div>
-          </div>
+          <div className="text-[10px] text-slate-500">$Credit Pool</div>
         </div>
-
-        {game.todayStats.topPlayerName && game.todayStats.topScore > 0 && (
-          <div className="mt-3 pt-3 border-t border-slate-700 flex items-center justify-center gap-2 text-sm">
-            <Crown className="w-4 h-4 text-yellow-400" />
-            <span className="text-slate-400">Top Player:</span>
-            <span className="text-white font-semibold">{game.todayStats.topPlayerName}</span>
-            <span className="text-green-400 font-bold">{game.todayStats.topScore.toLocaleString()}</span>
+        <div className="py-2 px-1">
+          <div className={`text-sm font-bold ${isPlayable ? 'text-white' : 'text-slate-500'}`}>
+            {game.todayStats.playerCount}
           </div>
-        )}
+          <div className="text-[10px] text-slate-500">Players</div>
+        </div>
+        <div className="py-2 px-1">
+          <div className={`text-sm font-bold ${isPlayable ? 'text-green-400' : 'text-slate-500'}`}>
+            {game.todayStats.topScore > 0 ? game.todayStats.topScore.toLocaleString() : '-'}
+          </div>
+          <div className="text-[10px] text-slate-500">Top Score</div>
+        </div>
       </div>
     </div>
   )
@@ -249,7 +217,7 @@ function GameTile({ game, msUntilSettlement }: { game: GameInfo; msUntilSettleme
     return (
       <Link
         href={`/game?type=${game.id}`}
-        className="block h-full bg-slate-800 rounded-xl p-6 pb-4 transition hover:scale-[1.02] cursor-pointer"
+        className="block bg-slate-800 rounded-xl p-4 transition hover:scale-[1.02] cursor-pointer"
       >
         {content}
       </Link>
@@ -257,18 +225,22 @@ function GameTile({ game, msUntilSettlement }: { game: GameInfo; msUntilSettleme
   }
 
   return (
-    <div className="h-full bg-slate-800/50 rounded-xl p-6 pb-4 opacity-70">
+    <div className="bg-slate-800/50 rounded-xl p-4 opacity-70">
       {content}
     </div>
   )
 }
 
 export default function HomePage() {
+  const { user } = useAuth()
   const [data, setData] = useState<GamesData | null>(null)
   const [loading, setLoading] = useState(true)
   const [timeLeft, setTimeLeft] = useState(0)
   const [showSharePopup, setShowSharePopup] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [topPlayersAllTime, setTopPlayersAllTime] = useState<TopPlayerEntry[]>([])
+  const [topPlayersToday, setTopPlayersToday] = useState<TopPlayerEntry[]>([])
+  const [topPlayersTab, setTopPlayersTab] = useState<'allTime' | 'today'>('allTime')
   const sharePopupRef = useRef<HTMLDivElement>(null)
 
   const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/auth/signup` : ''
@@ -327,6 +299,15 @@ export default function HomePage() {
     }
     fetchGames()
 
+    // Fetch top players (all-time + today)
+    fetch('/api/top-players')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data?.allTime) setTopPlayersAllTime(data.allTime)
+        if (data?.today) setTopPlayersToday(data.today)
+      })
+      .catch(() => {})
+
     // Refresh every minute to update "opens at" times
     const refreshInterval = setInterval(fetchGames, 60000)
     return () => clearInterval(refreshInterval)
@@ -343,9 +324,30 @@ export default function HomePage() {
     return () => clearInterval(interval)
   }, [timeLeft])
 
-  const playableGames = data?.games.filter(g => g.isPlayable) || []
-  const scheduledGames = data?.games.filter(g => !g.isPlayable && g.isActive && g.opensAt) || []
-  const inactiveGames = data?.games.filter(g => !g.isActive) || []
+  const playableGames = useMemo(() => {
+    const arr = data?.games.filter(g => g.isPlayable) || []
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]]
+    }
+    return arr
+  }, [data])
+  const scheduledGames = useMemo(() => {
+    const arr = data?.games.filter(g => !g.isPlayable && g.isActive && g.opensAt) || []
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]]
+    }
+    return arr
+  }, [data])
+  const inactiveGames = useMemo(() => {
+    const arr = data?.games.filter(g => !g.isActive) || []
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]]
+    }
+    return arr
+  }, [data])
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
@@ -361,7 +363,7 @@ export default function HomePage() {
 
       {/* Pool Info Bar */}
       {data && (
-        <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 mb-4">
+        <div className="bg-slate-800 rounded-xl p-4 mb-4">
           <div className="flex flex-wrap items-center justify-center gap-6 text-center">
             <div>
               <div className="text-2xl font-bold text-yellow-400">
@@ -392,7 +394,7 @@ export default function HomePage() {
 
       {/* Games Grid */}
       {loading ? (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3, 4, 5, 6].map(i => (
             <div key={i} className="bg-slate-800 rounded-xl p-6 animate-pulse">
               <div className="h-12 w-12 bg-slate-700 rounded-lg mb-3"></div>
@@ -412,12 +414,12 @@ export default function HomePage() {
           {playableGames.length > 0 && (
             <>
               <h2 className="text-2xl font-bold text-white mb-6 font-title">Play Now</h2>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
                 {playableGames.map(game => (
                   <GameTile
                     key={game.id}
                     game={game}
-                    msUntilSettlement={timeLeft}
+
                   />
                 ))}
               </div>
@@ -428,12 +430,12 @@ export default function HomePage() {
           {scheduledGames.length > 0 && (
             <>
               <h2 className="text-xl font-bold text-slate-400 mb-4">Coming Soon</h2>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
                 {scheduledGames.map(game => (
                   <GameTile
                     key={game.id}
                     game={game}
-                    msUntilSettlement={timeLeft}
+
                   />
                 ))}
               </div>
@@ -444,12 +446,12 @@ export default function HomePage() {
           {inactiveGames.length > 0 && (
             <>
               <h2 className="text-xl font-bold text-slate-500 mb-4">Not Available</h2>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {inactiveGames.map(game => (
                   <GameTile
                     key={game.id}
                     game={game}
-                    msUntilSettlement={timeLeft}
+
                   />
                 ))}
               </div>
@@ -495,23 +497,118 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* Top Players */}
+      {(topPlayersAllTime.length > 0 || topPlayersToday.length > 0) && (() => {
+        const renderTable = (entries: TopPlayerEntry[], emptyLabel: string) => {
+          if (entries.length === 0) {
+            return (
+              <div className="text-center text-slate-500 py-8">
+                No scores yet{emptyLabel}.
+              </div>
+            )
+          }
+          return (
+            <div className="bg-slate-800 rounded-xl overflow-hidden">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-slate-700">
+                    <th className="text-left text-sm text-slate-400 font-medium px-4 py-3">Game</th>
+                    <th className="text-left text-sm text-slate-400 font-medium px-4 py-3">Player</th>
+                    <th className="text-right text-sm text-slate-400 font-medium px-4 py-3">Score</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {entries.map((entry, i) => {
+                    const Icon = GAME_ICONS[entry.gameId] || Target
+                    const colors = GAME_ICON_COLORS[entry.gameId] || GAME_ICON_COLORS.emoji_keypad
+                    return (
+                      <tr key={entry.gameId} className={i < entries.length - 1 ? 'border-b border-slate-700/50' : ''}>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className={`p-1.5 rounded-lg ${colors.bg}`}>
+                              <Icon className={`w-4 h-4 ${colors.icon}`} />
+                            </div>
+                            <span className="text-white text-sm font-medium">{entry.gameName}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            {i === 0 && <Crown className="w-4 h-4 text-yellow-400" />}
+                            <span className="text-slate-700 dark:text-slate-200 text-sm">{entry.playerName}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <span className="text-green-400 font-bold text-sm">{entry.score.toLocaleString()}</span>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )
+        }
+
+        return (
+          <div className="mt-16">
+            <h2 className="text-2xl font-bold text-white text-center mb-6 font-title">Top Players</h2>
+
+            {/* Desktop: side by side */}
+            <div className="hidden lg:grid lg:grid-cols-2 lg:gap-6">
+              <div>
+                <h3 className="text-sm font-medium text-slate-400 mb-3 text-center uppercase tracking-wider">All Time</h3>
+                {renderTable(topPlayersAllTime, '')}
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-slate-400 mb-3 text-center uppercase tracking-wider">Today</h3>
+                {renderTable(topPlayersToday, ' today')}
+              </div>
+            </div>
+
+            {/* Mobile: tabs */}
+            <div className="lg:hidden">
+              <div className="flex justify-center gap-2 mb-4">
+                <button
+                  onClick={() => setTopPlayersTab('allTime')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                    topPlayersTab === 'allTime'
+                      ? 'bg-yellow-500 text-slate-900'
+                      : 'bg-slate-800 text-slate-400 hover:text-white'
+                  }`}
+                >
+                  All Time
+                </button>
+                <button
+                  onClick={() => setTopPlayersTab('today')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                    topPlayersTab === 'today'
+                      ? 'bg-yellow-500 text-slate-900'
+                      : 'bg-slate-800 text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Today
+                </button>
+              </div>
+              {renderTable(
+                topPlayersTab === 'allTime' ? topPlayersAllTime : topPlayersToday,
+                topPlayersTab === 'today' ? ' today' : ''
+              )}
+            </div>
+          </div>
+        )
+      })()}
+
       {/* CTA for non-logged in users */}
-      <div className="mt-12 text-center">
-        <div className="inline-flex gap-4">
+      {!user && (
+        <div className="mt-12 text-center">
           <Link
             href="/auth/signup"
             className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg transition"
           >
             Get Started
           </Link>
-          <Link
-            href="/auth/login"
-            className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 px-8 rounded-lg transition"
-          >
-            Login
-          </Link>
         </div>
-      </div>
+      )}
 
       {/* Play With Friends Footer */}
       <div className="mt-16 mb-8 text-center relative">

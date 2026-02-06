@@ -118,24 +118,24 @@ export function Leaderboard({ gameType, gameTypeName }: LeaderboardProps) {
       </div>
 
       {period === 'today' && pool && (
-        <div className="grid grid-cols-3 gap-3 mb-4 p-3 bg-slate-700/50 rounded-lg">
-          <div className="text-center">
-            <div className="text-xl font-bold text-yellow-400">
+        <div className="grid grid-cols-3 text-center bg-slate-900/50 rounded-lg divide-x divide-slate-700/50 mb-4">
+          <div className="py-2.5 px-1">
+            <div className="text-lg font-bold text-yellow-400">
               {formatCredits(pool.totalCredits)}
             </div>
-            <div className="text-xs text-slate-400">$Credits Pool</div>
+            <div className="text-[10px] text-slate-500">$Credit Pool</div>
           </div>
-          <div className="text-center">
-            <div className="text-xl font-bold text-blue-400">
+          <div className="py-2.5 px-1">
+            <div className="text-lg font-bold text-blue-400">
               {pool.uniquePlayers}
             </div>
-            <div className="text-xs text-slate-400">Players</div>
+            <div className="text-[10px] text-slate-500">Players</div>
           </div>
-          <div className="text-center">
-            <div className="text-xl font-bold text-green-400">
+          <div className="py-2.5 px-1">
+            <div className="text-lg font-bold text-green-400">
               {pool.totalTurns}
             </div>
-            <div className="text-xs text-slate-400">Turns</div>
+            <div className="text-[10px] text-slate-500">Turns</div>
           </div>
         </div>
       )}

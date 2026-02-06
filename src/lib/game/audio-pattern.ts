@@ -157,16 +157,10 @@ export function validateAudioPatternTurn(
     return { valid: false, reason: 'no_levels_completed', correct: 0, total: highestLevel }
   }
 
-  // Score: base points for levels + speed bonus
-  // Each level = 950 points (reduced from 1000), speed bonus up to 4500 (reduced from 5000)
-  // Minimum time floor ensures even instant completion doesn't max out
-  const levelPoints = levelsCompleted * 950
-  const minTimeFloor = 2000 // 2 seconds minimum
-  const effectiveTime = Math.max(totalTimeMs, minTimeFloor)
-  const speedBonus = Math.max(0, 4500 - Math.floor(effectiveTime / 10)) // Faster = more points
-
-  // Cap at 9800 to ensure max score is never achievable
-  const score = Math.min(9800, levelPoints + speedBonus)
+  const maxTimeMs = spec.timeLimitMs
+  const levelScore = levelsCompleted * 2000
+  const speed = Math.sqrt(maxTimeMs / Math.max(totalTimeMs, 2000))
+  const score = Math.round(levelScore * speed)
 
   return {
     valid: true,

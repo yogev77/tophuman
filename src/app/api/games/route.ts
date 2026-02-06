@@ -180,11 +180,11 @@ export async function GET() {
     if (topPlayerIds.length > 0) {
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('user_id, display_name')
+        .select('user_id, display_name, username')
         .in('user_id', topPlayerIds)
 
       for (const profile of profiles || []) {
-        topPlayerNames.set(profile.user_id, profile.display_name || 'Anonymous')
+        topPlayerNames.set(profile.user_id, profile.display_name || profile.username || 'Anonymous')
       }
     }
 

@@ -192,7 +192,7 @@ export function validateWhackAMoleTurn(
   const hits = validHits.length
   const misses = missEvents.length
   const bombHits = bombHitEvents.length
-  const score = calculateWhackAMoleScore(hits, misses, bombHits, spec)
+  const score = calculateWhackAMoleScore(hits, misses, bombHits, spec, events)
 
   return {
     valid: true,
@@ -203,19 +203,22 @@ export function validateWhackAMoleTurn(
   }
 }
 
-function calculateWhackAMoleScore(hits: number, misses: number, bombHits: number, spec: WhackAMoleTurnSpec): number {
-  // Score based on accuracy and hits
-  // Reduced max values to prevent 10K scores
+function calculateWhackAMoleScore(hits: number, misses: number, bombHits: number, spec: WhackAMoleTurnSpec, events: WhackEvent[]): number {
   const maxHits = spec.numMoles
-  const hitScore = (hits / maxHits) * 6500 // Reduced from 7000
-
-  // Accuracy bonus capped and curved - hitting every mole perfectly is very hard
+  const hitScore = (hits / maxHits) * 6500
   const accuracyRatio = hits > 0 ? hits / (hits + misses + bombHits) : 0
-  const accuracyBonus = Math.pow(accuracyRatio, 1.15) * 1800 // Reduced from 2000, curved
+  const accuracyBonus = Math.pow(accuracyRatio, 1.15) * 2500
+  const penalties = misses * 60 + bombHits * 500
 
-  const missPenalty = misses * 35 // Slightly increased
-  const bombPenalty = bombHits * 350 // Increased penalty for bombs
+  // effectiveTime = timestamp of last hit event (rewards finishing hits early)
+  const hitEvents = events.filter(e => e.eventType === 'hit')
+  const hitTimes = hitEvents.map(e => e.clientTimestampMs || 0).filter(t => t > 0)
+  const allTimes = events.map(e => e.clientTimestampMs || 0).filter(t => t > 0)
+  const startTime = allTimes.length > 0 ? Math.min(...allTimes) : 0
+  const lastHitTime = hitTimes.length > 0 ? Math.max(...hitTimes) : startTime
+  const effectiveTimeMs = lastHitTime - startTime
 
-  // Cap at 9800 to ensure max score is never achievable
-  return Math.min(9800, Math.max(0, Math.round(hitScore + accuracyBonus - missPenalty - bombPenalty)))
+  const maxTimeMs = spec.timeLimitMs
+  const speed = Math.sqrt(maxTimeMs / Math.max(effectiveTimeMs, 3000))
+  return Math.max(0, Math.round((hitScore + accuracyBonus) * speed - penalties))
 }

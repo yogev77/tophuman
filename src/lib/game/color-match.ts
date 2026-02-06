@@ -146,10 +146,15 @@ export function validateColorMatchTurn(
     return { valid: false, reason: 'low_accuracy', roundScores, averageAccuracy }
   }
 
-  // Apply a curve to accuracy - perfect color matching is nearly impossible
-  // Even 100% accuracy gives ~9600 due to the curve
-  const curvedAccuracy = Math.pow(averageAccuracy, 1.05)
-  const score = Math.min(9800, Math.round(curvedAccuracy * 9800))
+  // Calculate time taken
+  const allTimes = events.map(e => e.clientTimestampMs || 0).filter(t => t > 0)
+  const totalTimeMs = allTimes.length >= 2
+    ? allTimes[allTimes.length - 1] - allTimes[0]
+    : spec.timeLimitMs
+
+  const accuracyScore = Math.pow(averageAccuracy, 1.05) * 7000
+  const speed = Math.sqrt(spec.timeLimitMs / Math.max(totalTimeMs, 3000))
+  const score = Math.round(accuracyScore * speed)
 
   return {
     valid: true,

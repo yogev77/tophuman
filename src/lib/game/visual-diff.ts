@@ -227,26 +227,15 @@ export function validateVisualDiffTurn(
     ? distances.reduce((a, b) => a + b, 0) / distances.length
     : clickRadius
 
-  // Score components:
-  // 1. Found ratio: up to 4800 points (slightly reduced to prevent max score)
-  const foundScore = (found / total) * 4800
+  const foundScore = (found / total) * 5500
 
-  // 2. Speed bonus: up to 2800 points (faster = more points)
-  // Minimum time of 3 seconds for any bonus, scales down from there
-  // Even instant completion won't give full bonus due to minimum time floor
-  const minTimeForBonus = 3000 // 3 seconds minimum
-  const effectiveTime = Math.max(timeTakenMs, minTimeForBonus)
-  const speedBonus = Math.max(0, 2800 - Math.floor(effectiveTime / 18))
+  // Click accuracy ratio (closer clicks = better)
+  const maxAccuracyDistance = clickRadius + 15
+  const clickAccuracyRatio = Math.max(0, 1 - avgDistance / maxAccuracyDistance)
+  const accuracyBonus = Math.pow(clickAccuracyRatio, 1.2) * 2500
 
-  // 3. Accuracy bonus: up to 1800 points (closer clicks = more points)
-  // Perfect accuracy is nearly impossible - require very close clicks
-  const maxAccuracyDistance = clickRadius + 15 // Tighter accuracy requirement
-  const accuracyRatio = Math.max(0, 1 - avgDistance / maxAccuracyDistance)
-  // Apply a curve so perfect accuracy is harder to achieve
-  const accuracyBonus = Math.round(Math.pow(accuracyRatio, 1.2) * 1800)
-
-  // Cap at 9800 to ensure max score is never achievable
-  const score = Math.min(9800, Math.round(foundScore + speedBonus + accuracyBonus))
+  const speed = Math.sqrt(spec.timeLimitMs / Math.max(timeTakenMs, 3000))
+  const score = Math.round((foundScore + accuracyBonus) * speed)
 
   return {
     valid: true,

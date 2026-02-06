@@ -234,7 +234,7 @@ export function validateReactionTimeTurn(
     ? Math.round(reactionTimes.reduce((a, b) => a + b, 0) / reactionTimes.length)
     : 0
 
-  const score = calculateReactionTimeScore(averageReactionMs, correctTaps, correctSkips, wrongTaps, missedTaps, spec)
+  const score = calculateReactionTimeScore(averageReactionMs, correctTaps, correctSkips, wrongTaps, missedTaps, spec, reactionTimes)
 
   return {
     valid: true,
@@ -249,42 +249,23 @@ export function validateReactionTimeTurn(
 }
 
 function calculateReactionTimeScore(
-  avgReactionMs: number,
+  _avgReactionMs: number,
   correctTaps: number,
   correctSkips: number,
   wrongTaps: number,
   missedTaps: number,
-  spec: ReactionTimeTurnSpec
+  spec: ReactionTimeTurnSpec,
+  reactionTimes: number[]
 ): number {
-  const maxScore = 9800
-  const tapRounds = spec.rounds.filter(r => r.shouldTap).length
-  const skipRounds = spec.numRounds - tapRounds
-
-  // Base score from reaction time (for correct taps only)
-  let reactionScore = 0
-  if (correctTaps > 0 && avgReactionMs > 0) {
-    const perfectTime = 150
-    const maxTime = spec.maxReactionMs
-
-    if (avgReactionMs <= perfectTime) {
-      reactionScore = maxScore * 0.6
-    } else {
-      const range = maxTime - perfectTime
-      const position = avgReactionMs - perfectTime
-      reactionScore = maxScore * 0.6 * (1 - position / range)
-    }
+  // Per valid tap round: faster reaction = more points
+  const roundScores: number[] = []
+  for (const reactionMs of reactionTimes) {
+    const roundScore = Math.round(4000 / Math.max(reactionMs / 100, 1))
+    roundScores.push(roundScore)
   }
 
-  // Accuracy bonus (40% of max score)
   const totalRounds = spec.numRounds
-  const correctActions = correctTaps + correctSkips
-  const accuracyRatio = correctActions / totalRounds
-  const accuracyScore = maxScore * 0.4 * accuracyRatio
-
-  // Penalties
-  const wrongTapPenalty = wrongTaps * 500 // Heavy penalty for wrong taps
-  const missedTapPenalty = missedTaps * 300 // Moderate penalty for missed taps
-
-  const finalScore = Math.round(Math.max(0, reactionScore + accuracyScore - wrongTapPenalty - missedTapPenalty))
-  return Math.min(maxScore, finalScore)
+  const accuracyRatio = (correctTaps + correctSkips) / totalRounds
+  const baseScore = roundScores.reduce((a, b) => a + b, 0) * accuracyRatio
+  return Math.max(0, Math.round(baseScore) - wrongTaps * 1000 - missedTaps * 600)
 }
