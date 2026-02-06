@@ -247,6 +247,31 @@ async function settleDay(supabase: any, utcDay: string) {
     }
   }
 
+  // Treasury sink: credit sink amount to configured treasury user
+  if (sinkAmount > 0) {
+    const { data: treasurySetting } = await supabase
+      .from('site_settings')
+      .select('value')
+      .eq('key', 'treasury_user_id')
+      .single()
+
+    if (treasurySetting?.value) {
+      const { error: sinkError } = await supabase.from('pending_claims').insert({
+        user_id: treasurySetting.value,
+        claim_type: 'sink',
+        amount: sinkAmount,
+        settlement_id: settlement.id,
+        utc_day: utcDay,
+        metadata: { source: 'treasury_sink' },
+      })
+      if (sinkError) {
+        console.error('Failed to create treasury sink claim:', sinkError)
+      }
+    } else {
+      console.warn(`No treasury_user_id configured — ${sinkAmount} credits from sink are unclaimed`)
+    }
+  }
+
   // Mark settlement complete
   await supabase
     .from('settlements')

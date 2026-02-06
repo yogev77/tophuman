@@ -152,12 +152,15 @@ export async function GET(request: NextRequest) {
       }))
     }
 
-    // Get pool info (only for today)
-    const { data: pool } = await supabase
-      .from('daily_pools')
-      .select('*')
+    // Calculate pool info from game_turns (same approach as /api/games)
+    const { data: poolTurns } = await supabase
+      .from('game_turns')
+      .select('user_id')
+      .eq('game_type_id', gameType)
       .eq('utc_day', day)
-      .single()
+
+    const poolPlayers = new Set((poolTurns || []).map(t => t.user_id))
+    const poolTotal = poolTurns?.length ?? 0
 
     // Calculate time until midnight UTC
     const now = new Date()
@@ -172,10 +175,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       entries,
       pool: {
-        totalCredits: pool?.total_credits ?? 0,
-        uniquePlayers: pool?.unique_players ?? 0,
-        totalTurns: pool?.total_turns ?? 0,
-        status: pool?.status ?? 'active',
+        totalCredits: poolTotal,
+        uniquePlayers: poolPlayers.size,
+        totalTurns: poolTotal,
+        status: 'active',
       },
       utcDay: day,
       gameType,

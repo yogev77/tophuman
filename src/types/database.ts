@@ -11,6 +11,7 @@ export type LedgerEventType =
   | 'turn_spend'
   | 'prize_win'
   | 'rebate'
+  | 'sink'
   | 'expiration'
   | 'admin_adjustment'
 
@@ -325,6 +326,23 @@ export interface Database {
           created_at?: string
           completed_at?: string | null
           idempotency_key?: string
+        }
+      }
+      site_settings: {
+        Row: {
+          key: string
+          value: string
+          updated_at: string
+        }
+        Insert: {
+          key: string
+          value: string
+          updated_at?: string
+        }
+        Update: {
+          key?: string
+          value?: string
+          updated_at?: string
         }
       }
       audit_logs: {

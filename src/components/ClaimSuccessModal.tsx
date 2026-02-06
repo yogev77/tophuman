@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Gift, X, Sparkles, Trophy, Users, Coins } from 'lucide-react'
+import { Gift, X, Sparkles, Trophy, Users, Coins, Vault } from 'lucide-react'
 
 interface ClaimedItem {
   type: string
@@ -72,6 +72,8 @@ export function ClaimSuccessModal({ isOpen, onClose, amount, newBalance, reason,
         return { label: 'Daily Claim', icon: <Gift className="w-4 h-4 text-green-400" /> }
       case 'referral_bonus':
         return { label: 'Referral Bonus', icon: <Users className="w-4 h-4 text-purple-400" /> }
+      case 'sink':
+        return { label: 'Treasury Deposit', icon: <Vault className="w-4 h-4 text-yellow-400" /> }
       case 'admin_adjustment':
         return { label: 'Admin Grant', icon: <Sparkles className="w-4 h-4 text-orange-400" /> }
       default:

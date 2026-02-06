@@ -76,6 +76,10 @@ html.light .border-slate-700 {
   border-color: #94a3b8;
 }
 
+html.light .border-slate-700\/50 {
+  border-color: rgb(226 232 240 / 0.8);
+}
+
 html.light .border-slate-600 {
   border-color: #64748b;
 }

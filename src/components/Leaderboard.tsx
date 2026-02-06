@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { Crown } from 'lucide-react'
 import { formatCountdown, formatCredits, formatTime } from '@/lib/utils'
 
 interface LeaderboardEntry {
@@ -118,7 +119,7 @@ export function Leaderboard({ gameType, gameTypeName }: LeaderboardProps) {
       </div>
 
       {period === 'today' && pool && (
-        <div className="grid grid-cols-3 text-center bg-slate-900/50 rounded-lg divide-x divide-slate-700/50 mb-4">
+        <div className="grid grid-cols-3 text-center bg-slate-900/50 rounded-lg mb-4">
           <div className="py-2.5 px-1">
             <div className="text-lg font-bold text-yellow-400">
               {formatCredits(pool.totalCredits)}
@@ -182,7 +183,12 @@ export function Leaderboard({ gameType, gameTypeName }: LeaderboardProps) {
                   {entry.rank}
                 </span>
                 <div>
-                  <div className="font-medium text-white text-sm">{entry.displayName}</div>
+                  <div className="font-medium text-white text-sm flex items-center gap-1.5">
+                    {entry.displayName}
+                    {entry.rank === 1 && <Crown className="w-3.5 h-3.5 text-yellow-400" />}
+                    {entry.rank === 2 && <Crown className="w-3.5 h-3.5 text-slate-400" />}
+                    {entry.rank === 3 && <Crown className="w-3.5 h-3.5 text-orange-400" />}
+                  </div>
                   <div className="text-xs text-slate-400">
                     {entry.turnsPlayed} turn{entry.turnsPlayed !== 1 ? 's' : ''}
                   </div>

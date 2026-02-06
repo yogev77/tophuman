@@ -51,9 +51,21 @@ export async function GET() {
       return NextResponse.json({ allTime: [], today: [] })
     }
 
-    // Best score per game (all-time) and today
+    // Best score per game (all-time) and today, plus today's pool size
     const allTimeBest = new Map<string, { userId: string; score: number }>()
     const todayBest = new Map<string, { userId: string; score: number }>()
+    const todayPoolSize = new Map<string, number>()
+
+    // Count today's turns per game for pool size (all turns today, not just completed)
+    const { data: todayTurns } = await supabase
+      .from('game_turns')
+      .select('game_type_id')
+      .eq('utc_day', today)
+
+    for (const t of todayTurns || []) {
+      const gameId = toUiGameId(t.game_type_id)
+      todayPoolSize.set(gameId, (todayPoolSize.get(gameId) || 0) + 1)
+    }
 
     for (const t of turns) {
       const gameId = toUiGameId(t.game_type_id)
@@ -89,7 +101,7 @@ export async function GET() {
       nameMap.set(p.user_id, p.display_name || p.username || 'Anonymous')
     }
 
-    // Build responses
+    // Sort by today's pool size (most active games first), both tables use same order
     const buildList = (map: Map<string, { userId: string; score: number }>): TopPlayerEntry[] => {
       const list: TopPlayerEntry[] = []
       for (const [gameId, { userId, score }] of map) {
@@ -100,7 +112,7 @@ export async function GET() {
           score,
         })
       }
-      list.sort((a, b) => b.score - a.score)
+      list.sort((a, b) => (todayPoolSize.get(b.gameId) || 0) - (todayPoolSize.get(a.gameId) || 0))
       return list
     }
 

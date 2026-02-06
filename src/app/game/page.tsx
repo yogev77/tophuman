@@ -4,7 +4,7 @@ import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/hooks/useAuth'
-import { useCredits } from '@/hooks/useCredits'
+import { useCreditsNotification } from '@/components/CreditsNotificationProvider'
 import { EmojiKeypadGame } from '@/components/EmojiKeypadGame'
 import { ImageRotateGame } from '@/components/ImageRotateGame'
 import { ReactionTimeGame } from '@/components/ReactionTimeGame'
@@ -18,7 +18,6 @@ import { DragSortGame } from '@/components/DragSortGame'
 import { FollowMeGame } from '@/components/FollowMeGame'
 import { DuckShootGame } from '@/components/DuckShootGame'
 import { Leaderboard } from '@/components/Leaderboard'
-import { ReferralBanner } from '@/components/ReferralBanner'
 import Link from 'next/link'
 import {
   Target,
@@ -35,6 +34,10 @@ import {
   Crosshair,
   ArrowLeft,
   LucideIcon,
+  CalendarCheck,
+  Share2,
+  Copy,
+  Check,
 } from 'lucide-react'
 
 const GAME_ICON_COLORS: Record<string, { bg: string; icon: string }> = {
@@ -132,11 +135,95 @@ const GAME_CONFIG: Record<string, {
   },
 }
 
+function OutOfCreditsView({ referralCode }: { referralCode: string | null }) {
+  const [copied, setCopied] = useState(false)
+
+  const referralUrl = typeof window !== 'undefined' && referralCode
+    ? `${window.location.origin}/auth/signup?ref=${referralCode}`
+    : ''
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(referralUrl)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (err) {
+      console.error('Failed to copy:', err)
+    }
+  }
+
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Join Podium Arena!',
+          text: 'Play skill games and win $Credits! Join using my link:',
+          url: referralUrl,
+        })
+      } catch {
+        handleCopy()
+      }
+    } else {
+      handleCopy()
+    }
+  }
+
+  return (
+    <div className="bg-slate-800 rounded-xl p-6">
+      <h3 className="text-xl font-bold text-white mb-3">You&apos;re out of $Credits</h3>
+      <div className="space-y-4">
+        <div className="flex items-start gap-3">
+          <div className="p-2 bg-yellow-500/20 rounded-lg shrink-0 mt-0.5">
+            <CalendarCheck className="w-5 h-5 text-yellow-400" />
+          </div>
+          <div>
+            <p className="text-slate-300 text-sm">
+              Come back tomorrow to claim your <span className="text-yellow-400 font-semibold">free daily $Credits</span>.
+              Daily credits are only available when you visit &mdash; unclaimed days are lost, so don&apos;t miss out!
+            </p>
+          </div>
+        </div>
+
+        {referralCode && (
+          <div className="border-t border-slate-700 pt-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-purple-500/20 rounded-lg shrink-0 mt-0.5">
+                <Share2 className="w-5 h-5 text-purple-400" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-slate-300 text-sm mb-3">
+                  Invite friends and earn <span className="text-yellow-400 font-semibold">100 $Credits</span> when they join!
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleCopy}
+                    className="flex items-center gap-2 border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 px-4 py-2 rounded-lg transition text-sm"
+                  >
+                    {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                    {copied ? 'Copied!' : 'Copy Link'}
+                  </button>
+                  <button
+                    onClick={handleShare}
+                    className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-slate-900 px-4 py-2 rounded-lg transition text-sm"
+                  >
+                    <Share2 className="w-4 h-4" />
+                    Share
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function GamePageContent() {
   const searchParams = useSearchParams()
   const gameTypeParam = searchParams.get('type')
   const { user, loading: authLoading } = useAuth()
-  const { balance, dailyGrantAvailable, refreshBalance, referralCode, loading: creditsLoading } = useCredits()
+  const { balance, dailyGrantAvailable, refreshBalance, referralCode, loading: creditsLoading } = useCreditsNotification()
 
   // Use URL param or default to emoji_keypad
   const gameType = gameTypeParam && GAME_CONFIG[gameTypeParam] ? gameTypeParam : 'emoji_keypad'
@@ -242,13 +329,11 @@ function GamePageContent() {
 
       <div className="grid md:grid-cols-3 gap-8">
         <div className="md:col-span-2">
-          {!creditsLoading && balance < 1 && !dailyGrantAvailable && referralCode && (
-            <ReferralBanner referralCode={referralCode} />
-          )}
-
-          {(balance >= 1 || dailyGrantAvailable) && (
+          {!creditsLoading && balance < 1 && !dailyGrantAvailable ? (
+            <OutOfCreditsView referralCode={referralCode} />
+          ) : (balance >= 1 || dailyGrantAvailable) ? (
             <GameComponent onGameComplete={handleGameComplete} />
-          )}
+          ) : null}
         </div>
 
         <div>

@@ -147,20 +147,40 @@ export function validateAudioPatternTurn(
   const levelsCompleted = levelCompleteEvents.length
   const highestLevel = 3 + levelsCompleted
 
+  // Count correct sequential taps (across all level segments)
+  // Each level replays from the start of the sequence, so position resets on level_complete
+  let correctTaps = 0
+  let positionInLevel = 0
+  for (const event of events) {
+    if (event.eventType === 'tap') {
+      if (event.buttonIndex === spec.sequence[positionInLevel]) {
+        correctTaps++
+      }
+      positionInLevel++
+    } else if (event.eventType === 'level_complete') {
+      positionInLevel = 0
+    }
+  }
+
   // Calculate total time taken
   const startTime = events.find(e => e.eventType === 'tap')?.clientTimestampMs || 0
   const endTime = events[events.length - 1]?.clientTimestampMs || startTime
   const totalTimeMs = endTime - startTime
 
-  // Must complete at least level 3 (first round)
-  if (levelsCompleted < 1) {
-    return { valid: false, reason: 'no_levels_completed', correct: 0, total: highestLevel }
+  // Must have at least 1 correct tap
+  if (correctTaps === 0) {
+    return { valid: false, reason: 'no_correct_input', correct: 0, total: highestLevel }
   }
 
+  // Score: completed levels * 2000 + partial taps in unfinished level * 400
+  // Taps in completed levels = sum(k+2, k=1..L) = L*(L+5)/2
+  const tapsInCompletedLevels = levelsCompleted * (levelsCompleted + 5) / 2
+  const partialTaps = Math.max(0, correctTaps - tapsInCompletedLevels)
+  const baseScore = levelsCompleted * 2000 + partialTaps * 400
+
   const maxTimeMs = spec.timeLimitMs
-  const levelScore = levelsCompleted * 2000
   const speed = Math.sqrt(maxTimeMs / Math.max(totalTimeMs, 2000))
-  const score = Math.round(levelScore * speed)
+  const score = Math.round(baseScore * speed)
 
   return {
     valid: true,

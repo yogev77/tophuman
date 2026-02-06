@@ -19,7 +19,9 @@ import {
   Calendar,
   Check,
   X,
+  Vault,
   LucideIcon,
+  LayoutDashboard,
 } from 'lucide-react'
 
 interface DailyStats {
@@ -60,6 +62,17 @@ interface GameOption {
   desc: string
 }
 
+interface LedgerEntry {
+  id: number
+  event_type: string
+  amount: number
+  utc_day: string
+  reference_id: string | null
+  reference_type: string | null
+  metadata: Record<string, unknown> | null
+  created_at: string
+}
+
 const GAME_OPTIONS: GameOption[] = [
   { id: 'emoji_keypad', icon: Target, name: 'Emoji Keypad', desc: 'Memorize & tap sequence' },
   { id: 'image_rotate', icon: RotateCw, name: 'Image Rotate', desc: 'Rotate tiles to restore' },
@@ -75,7 +88,20 @@ const GAME_OPTIONS: GameOption[] = [
   { id: 'duck_shoot', icon: Crosshair, name: 'Target Shoot', desc: 'Hit the moving targets' },
 ]
 
+type Tab = 'dashboard' | 'treasury'
+
+const EVENT_TYPE_STYLES: Record<string, { label: string; color: string }> = {
+  daily_grant: { label: 'Daily Grant', color: 'bg-green-500/20 text-green-400' },
+  turn_spend: { label: 'Game Played', color: 'bg-red-500/20 text-red-400' },
+  prize_win: { label: 'Prize Win', color: 'bg-yellow-500/20 text-yellow-400' },
+  rebate: { label: 'Rebate', color: 'bg-blue-500/20 text-blue-400' },
+  admin_adjustment: { label: 'Admin', color: 'bg-purple-500/20 text-purple-400' },
+  referral_bonus: { label: 'Referral', color: 'bg-cyan-500/20 text-cyan-400' },
+  expiration: { label: 'Expired', color: 'bg-slate-500/20 text-slate-400' },
+}
+
 export default function AdminPage() {
+  const [activeTab, setActiveTab] = useState<Tab>('dashboard')
   const [stats, setStats] = useState<DailyStats | null>(null)
   const [settlements, setSettlements] = useState<Settlement[]>([])
   const [loading, setLoading] = useState(true)
@@ -89,6 +115,16 @@ export default function AdminPage() {
   const [grantResult, setGrantResult] = useState<{ success: boolean; message: string } | null>(null)
   const [gameSettings, setGameSettings] = useState<Record<string, GameSetting>>({})
   const [updatingGame, setUpdatingGame] = useState<string | null>(null)
+  const [treasuryUserId, setTreasuryUserId] = useState('')
+  const [treasuryInput, setTreasuryInput] = useState('')
+  const [savingTreasury, setSavingTreasury] = useState(false)
+  const [treasuryResult, setTreasuryResult] = useState<{ success: boolean; message: string } | null>(null)
+
+  // Treasury ledger state
+  const [treasuryBalance, setTreasuryBalance] = useState<number | null>(null)
+  const [treasuryEntries, setTreasuryEntries] = useState<LedgerEntry[]>([])
+  const [treasuryTotal, setTreasuryTotal] = useState(0)
+  const [treasuryLoading, setTreasuryLoading] = useState(false)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -155,10 +191,87 @@ export default function AdminPage() {
     }
   }
 
+  const fetchTreasuryUser = async () => {
+    try {
+      const res = await fetch('/api/admin/site-settings?key=treasury_user_id')
+      if (res.ok) {
+        const data = await res.json()
+        if (data.setting?.value) {
+          setTreasuryUserId(data.setting.value)
+          setTreasuryInput(data.setting.value)
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch treasury user:', err)
+    }
+  }
+
+  const fetchTreasuryHistory = useCallback(async (userId: string, offset = 0, append = false) => {
+    if (!userId) return
+    setTreasuryLoading(true)
+    try {
+      const res = await fetch(`/api/admin/treasury-history?user_id=${encodeURIComponent(userId)}&limit=50&offset=${offset}`)
+      if (res.ok) {
+        const data = await res.json()
+        setTreasuryBalance(data.balance)
+        setTreasuryTotal(data.total)
+        if (append) {
+          setTreasuryEntries(prev => [...prev, ...data.entries])
+        } else {
+          setTreasuryEntries(data.entries)
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch treasury history:', err)
+    } finally {
+      setTreasuryLoading(false)
+    }
+  }, [])
+
+  const saveTreasuryUser = async () => {
+    if (!treasuryInput.trim()) return
+
+    setSavingTreasury(true)
+    setTreasuryResult(null)
+
+    try {
+      const res = await fetch('/api/admin/site-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: 'treasury_user_id', value: treasuryInput.trim() }),
+      })
+
+      const data = await res.json()
+      if (data.error) {
+        setTreasuryResult({ success: false, message: data.error })
+      } else {
+        const newId = treasuryInput.trim()
+        setTreasuryUserId(newId)
+        setTreasuryResult({ success: true, message: 'Treasury user saved' })
+        // Refresh history for new user
+        setTreasuryEntries([])
+        setTreasuryBalance(null)
+        fetchTreasuryHistory(newId)
+      }
+    } catch (err) {
+      setTreasuryResult({ success: false, message: err instanceof Error ? err.message : 'Unknown error' })
+    } finally {
+      setSavingTreasury(false)
+    }
+  }
+
   useEffect(() => {
     fetchData()
     fetchGameSettings()
+    fetchTreasuryUser()
   }, [fetchData])
+
+  // Fetch treasury history when switching to treasury tab (if user is set)
+  useEffect(() => {
+    if (activeTab === 'treasury' && treasuryUserId && treasuryEntries.length === 0 && treasuryBalance === null) {
+      fetchTreasuryHistory(treasuryUserId)
+    }
+  }, [activeTab, treasuryUserId, treasuryEntries.length, treasuryBalance, fetchTreasuryHistory])
 
   const updateGameSetting = async (gameId: string, isActive: boolean, opensAt: string | null) => {
     setUpdatingGame(gameId)
@@ -292,250 +405,412 @@ export default function AdminPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold text-white mb-8">Game Ops Admin</h1>
+      <h1 className="text-3xl font-bold text-white mb-6">Game Ops Admin</h1>
 
-      {/* Today's Stats */}
-      <div className="bg-slate-800 rounded-xl p-6 mb-8">
-        <h2 className="text-xl font-bold text-white mb-4">Today&apos;s Stats</h2>
-        {stats ? (
-          <div className="grid grid-cols-4 gap-4">
-            <div className="bg-slate-700 rounded-lg p-4 text-center">
-              <div className="text-3xl font-bold text-yellow-400">{stats.totalCredits}</div>
-              <div className="text-sm text-slate-400">Pool Size</div>
-            </div>
-            <div className="bg-slate-700 rounded-lg p-4 text-center">
-              <div className="text-3xl font-bold text-blue-400">{stats.uniquePlayers}</div>
-              <div className="text-sm text-slate-400">Players</div>
-            </div>
-            <div className="bg-slate-700 rounded-lg p-4 text-center">
-              <div className="text-3xl font-bold text-green-400">{stats.totalTurns}</div>
-              <div className="text-sm text-slate-400">Turns</div>
-            </div>
-            <div className="bg-slate-700 rounded-lg p-4 text-center">
-              <div className={`text-xl font-bold ${stats.status === 'active' ? 'text-green-400' : 'text-orange-400'}`}>
-                {stats.status.toUpperCase()}
-              </div>
-              <div className="text-sm text-slate-400">Status</div>
-            </div>
-          </div>
-        ) : (
-          <p className="text-slate-400">No games played today yet.</p>
-        )}
+      {/* Tab Navigation */}
+      <div className="flex gap-1 mb-8 bg-slate-800 rounded-xl p-1 w-fit">
+        <button
+          onClick={() => setActiveTab('dashboard')}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition ${
+            activeTab === 'dashboard'
+              ? 'bg-slate-700 text-white'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <LayoutDashboard className="w-4 h-4" />
+          Dashboard
+        </button>
+        <button
+          onClick={() => setActiveTab('treasury')}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition ${
+            activeTab === 'treasury'
+              ? 'bg-slate-700 text-white'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <Vault className="w-4 h-4" />
+          Treasury
+        </button>
       </div>
 
-      {/* Game Management */}
-      <div className="bg-slate-800 rounded-xl p-6 mb-8">
-        <h2 className="text-xl font-bold text-white mb-4">Game Management</h2>
-        <p className="text-slate-400 text-sm mb-6">Toggle games on/off and schedule when they become available.</p>
-
-        <div className="space-y-3">
-          {GAME_OPTIONS.map((game) => {
-            const Icon = game.icon
-            const setting = gameSettings[game.id] || { isActive: false, opensAt: null }
-            const isUpdating = updatingGame === game.id
-
-            return (
-              <div
-                key={game.id}
-                className={`p-4 rounded-lg border transition ${
-                  setting.isActive
-                    ? 'border-green-500/30 bg-green-500/5'
-                    : 'border-slate-700 bg-slate-700/30'
-                }`}
-              >
-                <div className="flex items-center gap-4">
-                  {/* Icon and Info */}
-                  <div className="p-2 bg-slate-600/50 rounded-lg">
-                    <Icon className={`w-5 h-5 ${setting.isActive ? 'text-green-400' : 'text-slate-400'}`} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-bold text-white">{game.name}</div>
-                    <div className="text-xs text-slate-400">{game.desc}</div>
-                  </div>
-
-                  {/* Opens At Picker */}
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-slate-400" />
-                    <input
-                      type="datetime-local"
-                      value={setting.opensAt ? new Date(setting.opensAt).toISOString().slice(0, 16) : ''}
-                      onChange={(e) => setGameOpensAt(game.id, e.target.value ? new Date(e.target.value).toISOString() : null)}
-                      disabled={isUpdating}
-                      className="bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-white w-44"
-                    />
-                    {setting.opensAt && (
-                      <button
-                        onClick={() => setGameOpensAt(game.id, null)}
-                        disabled={isUpdating}
-                        className="text-slate-400 hover:text-white p-1"
-                        title="Clear scheduled time"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Toggle Button */}
-                  <button
-                    onClick={() => toggleGame(game.id)}
-                    disabled={isUpdating}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition ${
-                      setting.isActive
-                        ? 'bg-green-600 hover:bg-green-500 text-white'
-                        : 'bg-slate-600 hover:bg-slate-500 text-slate-300'
-                    } ${isUpdating ? 'opacity-50' : ''}`}
-                  >
-                    {isUpdating ? (
-                      <span className="animate-pulse">...</span>
-                    ) : setting.isActive ? (
-                      <>
-                        <Check className="w-4 h-4" />
-                        Active
-                      </>
-                    ) : (
-                      <>
-                        <Power className="w-4 h-4" />
-                        Inactive
-                      </>
-                    )}
-                  </button>
+      {activeTab === 'dashboard' && (
+        <>
+          {/* Today's Stats */}
+          <div className="bg-slate-800 rounded-xl p-6 mb-8">
+            <h2 className="text-xl font-bold text-white mb-4">Today&apos;s Stats</h2>
+            {stats ? (
+              <div className="grid grid-cols-4 gap-4">
+                <div className="bg-slate-700 rounded-lg p-4 text-center">
+                  <div className="text-3xl font-bold text-yellow-400">{stats.totalCredits}</div>
+                  <div className="text-sm text-slate-400">Pool Size</div>
                 </div>
+                <div className="bg-slate-700 rounded-lg p-4 text-center">
+                  <div className="text-3xl font-bold text-blue-400">{stats.uniquePlayers}</div>
+                  <div className="text-sm text-slate-400">Players</div>
+                </div>
+                <div className="bg-slate-700 rounded-lg p-4 text-center">
+                  <div className="text-3xl font-bold text-green-400">{stats.totalTurns}</div>
+                  <div className="text-sm text-slate-400">Turns</div>
+                </div>
+                <div className="bg-slate-700 rounded-lg p-4 text-center">
+                  <div className={`text-xl font-bold ${stats.status === 'active' ? 'text-green-400' : 'text-orange-400'}`}>
+                    {stats.status.toUpperCase()}
+                  </div>
+                  <div className="text-sm text-slate-400">Status</div>
+                </div>
+              </div>
+            ) : (
+              <p className="text-slate-400">No games played today yet.</p>
+            )}
+          </div>
 
-                {/* Status info */}
-                {setting.isActive && setting.opensAt && new Date(setting.opensAt) > new Date() && (
-                  <div className="mt-2 text-xs text-blue-400 pl-14">
-                    Scheduled to open: {new Date(setting.opensAt).toLocaleString()}
+          {/* Game Management */}
+          <div className="bg-slate-800 rounded-xl p-6 mb-8">
+            <h2 className="text-xl font-bold text-white mb-4">Game Management</h2>
+            <p className="text-slate-400 text-sm mb-6">Toggle games on/off and schedule when they become available.</p>
+
+            <div className="space-y-3">
+              {GAME_OPTIONS.map((game) => {
+                const Icon = game.icon
+                const setting = gameSettings[game.id] || { isActive: false, opensAt: null }
+                const isUpdating = updatingGame === game.id
+
+                return (
+                  <div
+                    key={game.id}
+                    className={`p-4 rounded-lg border transition ${
+                      setting.isActive
+                        ? 'border-green-500/30 bg-green-500/5'
+                        : 'border-slate-700 bg-slate-700/30'
+                    }`}
+                  >
+                    <div className="flex items-center gap-4">
+                      {/* Icon and Info */}
+                      <div className="p-2 bg-slate-600/50 rounded-lg">
+                        <Icon className={`w-5 h-5 ${setting.isActive ? 'text-green-400' : 'text-slate-400'}`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-bold text-white">{game.name}</div>
+                        <div className="text-xs text-slate-400">{game.desc}</div>
+                      </div>
+
+                      {/* Opens At Picker */}
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-slate-400" />
+                        <input
+                          type="datetime-local"
+                          value={setting.opensAt ? new Date(setting.opensAt).toISOString().slice(0, 16) : ''}
+                          onChange={(e) => setGameOpensAt(game.id, e.target.value ? new Date(e.target.value).toISOString() : null)}
+                          disabled={isUpdating}
+                          className="bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-white w-44"
+                        />
+                        {setting.opensAt && (
+                          <button
+                            onClick={() => setGameOpensAt(game.id, null)}
+                            disabled={isUpdating}
+                            className="text-slate-400 hover:text-white p-1"
+                            title="Clear scheduled time"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Toggle Button */}
+                      <button
+                        onClick={() => toggleGame(game.id)}
+                        disabled={isUpdating}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition ${
+                          setting.isActive
+                            ? 'bg-green-600 hover:bg-green-500 text-white'
+                            : 'bg-slate-600 hover:bg-slate-500 text-slate-300'
+                        } ${isUpdating ? 'opacity-50' : ''}`}
+                      >
+                        {isUpdating ? (
+                          <span className="animate-pulse">...</span>
+                        ) : setting.isActive ? (
+                          <>
+                            <Check className="w-4 h-4" />
+                            Active
+                          </>
+                        ) : (
+                          <>
+                            <Power className="w-4 h-4" />
+                            Inactive
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Status info */}
+                    {setting.isActive && setting.opensAt && new Date(setting.opensAt) > new Date() && (
+                      <div className="mt-2 text-xs text-blue-400 pl-14">
+                        Scheduled to open: {new Date(setting.opensAt).toLocaleString()}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Grant Credits */}
+          <div className="bg-slate-800 rounded-xl p-6 mb-8">
+            <h2 className="text-xl font-bold text-white mb-4">Grant Credits to User</h2>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+              <div>
+                <label className="block text-sm text-slate-300 mb-2">User ID</label>
+                <input
+                  type="text"
+                  value={grantUserId}
+                  onChange={(e) => setGrantUserId(e.target.value)}
+                  placeholder="usr_abc123..."
+                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-slate-300 mb-2">Amount</label>
+                <input
+                  type="number"
+                  value={grantAmount}
+                  onChange={(e) => setGrantAmount(e.target.value)}
+                  placeholder="10"
+                  min="1"
+                  max="1000"
+                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-slate-300 mb-2">Reason (optional)</label>
+                <input
+                  type="text"
+                  value={grantReason}
+                  onChange={(e) => setGrantReason(e.target.value)}
+                  placeholder="Bonus for..."
+                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-white"
+                />
+              </div>
+              <button
+                onClick={grantCredits}
+                disabled={granting || !grantUserId || !grantAmount}
+                className="bg-green-600 hover:bg-green-500 disabled:bg-slate-600 text-white font-bold py-2 px-6 rounded-lg transition"
+              >
+                {granting ? 'Granting...' : 'Grant Credits'}
+              </button>
+            </div>
+            {grantResult && (
+              <div className={`mt-4 p-3 rounded-lg text-sm ${
+                grantResult.success
+                  ? 'bg-green-500/20 border border-green-500/30 text-green-400'
+                  : 'bg-red-500/20 border border-red-500/30 text-red-400'
+              }`}>
+                {grantResult.message}
+              </div>
+            )}
+          </div>
+
+          {/* Manual Settlement */}
+          <div className="bg-slate-800 rounded-xl p-6 mb-8">
+            <h2 className="text-xl font-bold text-white mb-4">Manual Settlement</h2>
+            <div className="flex gap-4 items-end">
+              <div>
+                <label className="block text-sm text-slate-300 mb-2">UTC Day (YYYY-MM-DD)</label>
+                <input
+                  type="date"
+                  value={settleDay}
+                  onChange={(e) => setSettleDay(e.target.value)}
+                  className="bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-white"
+                />
+              </div>
+              <button
+                onClick={triggerSettlement}
+                disabled={settling || !settleDay}
+                className="bg-orange-600 hover:bg-orange-500 disabled:bg-slate-600 text-white font-bold py-2 px-6 rounded-lg transition"
+              >
+                {settling ? 'Settling...' : 'Trigger Settlement'}
+              </button>
+            </div>
+            <p className="text-slate-400 text-sm mt-2">
+              Note: Settlement runs automatically at midnight UTC via Vercel Cron.
+            </p>
+          </div>
+
+          {/* Recent Settlements */}
+          <div className="bg-slate-800 rounded-xl p-6">
+            <h2 className="text-xl font-bold text-white mb-4">Recent Settlements</h2>
+            {settlements.length === 0 ? (
+              <p className="text-slate-400">No settlements yet.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="text-left text-slate-400 text-sm">
+                      <th className="pb-3">Date</th>
+                      <th className="pb-3">Status</th>
+                      <th className="pb-3">Pool</th>
+                      <th className="pb-3">Winner</th>
+                      <th className="pb-3">Prize</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {settlements.map((s) => (
+                      <tr key={s.id} className="border-t border-slate-700">
+                        <td className="py-3 text-white">{s.utc_day}</td>
+                        <td className="py-3">
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            s.status === 'completed' ? 'bg-green-500/20 text-green-400' :
+                            s.status === 'processing' ? 'bg-yellow-500/20 text-yellow-400' :
+                            'bg-slate-500/20 text-slate-400'
+                          }`}>
+                            {s.status}
+                          </span>
+                        </td>
+                        <td className="py-3 text-yellow-400">{s.pool_total}</td>
+                        <td className="py-3 text-slate-300 font-mono text-sm">
+                          {s.winner_user_id ? s.winner_user_id.slice(0, 12) + '...' : '-'}
+                        </td>
+                        <td className="py-3 text-green-400">{s.winner_amount ?? '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {activeTab === 'treasury' && (
+        <>
+          {/* Treasury User Setting */}
+          <div className="bg-slate-800 rounded-xl p-6 mb-8">
+            <div className="flex items-center gap-3 mb-4">
+              <Vault className="w-6 h-6 text-yellow-400" />
+              <h2 className="text-xl font-bold text-white">Treasury User</h2>
+            </div>
+            <p className="text-slate-400 text-sm mb-4">
+              The 20% sink from each settlement will be credited to this user as a pending claim.
+            </p>
+            {treasuryUserId && (
+              <div className="bg-slate-700/50 rounded-lg px-4 py-2 mb-4 text-sm">
+                <span className="text-slate-400">Current: </span>
+                <span className="text-white font-mono">{treasuryUserId}</span>
+              </div>
+            )}
+            <div className="flex gap-4 items-end">
+              <div className="flex-1">
+                <label className="block text-sm text-slate-300 mb-2">User ID</label>
+                <input
+                  type="text"
+                  value={treasuryInput}
+                  onChange={(e) => setTreasuryInput(e.target.value)}
+                  placeholder="User ID for treasury deposits..."
+                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-white"
+                />
+              </div>
+              <button
+                onClick={saveTreasuryUser}
+                disabled={savingTreasury || !treasuryInput.trim()}
+                className="bg-yellow-500 hover:bg-yellow-400 disabled:bg-slate-600 text-slate-900 font-bold py-2 px-6 rounded-lg transition"
+              >
+                {savingTreasury ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+            {treasuryResult && (
+              <div className={`mt-4 p-3 rounded-lg text-sm ${
+                treasuryResult.success
+                  ? 'bg-green-500/20 border border-green-500/30 text-green-400'
+                  : 'bg-red-500/20 border border-red-500/30 text-red-400'
+              }`}>
+                {treasuryResult.message}
+              </div>
+            )}
+          </div>
+
+          {/* Treasury Balance & Ledger */}
+          {treasuryUserId ? (
+            <div className="bg-slate-800 rounded-xl p-6">
+              {/* Balance */}
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-white">Credit History</h2>
+                {treasuryBalance !== null && (
+                  <div className="text-right">
+                    <div className="text-sm text-slate-400">Current Balance</div>
+                    <div className="text-2xl font-bold text-yellow-400">{treasuryBalance.toLocaleString()}</div>
                   </div>
                 )}
               </div>
-            )
-          })}
-        </div>
-      </div>
 
-      {/* Grant Credits */}
-      <div className="bg-slate-800 rounded-xl p-6 mb-8">
-        <h2 className="text-xl font-bold text-white mb-4">Grant Credits to User</h2>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-          <div>
-            <label className="block text-sm text-slate-300 mb-2">User ID</label>
-            <input
-              type="text"
-              value={grantUserId}
-              onChange={(e) => setGrantUserId(e.target.value)}
-              placeholder="usr_abc123..."
-              className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-white"
-            />
-          </div>
-          <div>
-            <label className="block text-sm text-slate-300 mb-2">Amount</label>
-            <input
-              type="number"
-              value={grantAmount}
-              onChange={(e) => setGrantAmount(e.target.value)}
-              placeholder="10"
-              min="1"
-              max="1000"
-              className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-white"
-            />
-          </div>
-          <div>
-            <label className="block text-sm text-slate-300 mb-2">Reason (optional)</label>
-            <input
-              type="text"
-              value={grantReason}
-              onChange={(e) => setGrantReason(e.target.value)}
-              placeholder="Bonus for..."
-              className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-white"
-            />
-          </div>
-          <button
-            onClick={grantCredits}
-            disabled={granting || !grantUserId || !grantAmount}
-            className="bg-green-600 hover:bg-green-500 disabled:bg-slate-600 text-white font-bold py-2 px-6 rounded-lg transition"
-          >
-            {granting ? 'Granting...' : 'Grant Credits'}
-          </button>
-        </div>
-        {grantResult && (
-          <div className={`mt-4 p-3 rounded-lg text-sm ${
-            grantResult.success
-              ? 'bg-green-500/20 border border-green-500/30 text-green-400'
-              : 'bg-red-500/20 border border-red-500/30 text-red-400'
-          }`}>
-            {grantResult.message}
-          </div>
-        )}
-      </div>
+              {/* Ledger Table */}
+              {treasuryLoading && treasuryEntries.length === 0 ? (
+                <div className="animate-pulse space-y-3">
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="h-10 bg-slate-700 rounded"></div>
+                  ))}
+                </div>
+              ) : treasuryEntries.length === 0 ? (
+                <p className="text-slate-400">No credit history for this user.</p>
+              ) : (
+                <>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="text-left text-slate-400 text-sm">
+                          <th className="pb-3">Date</th>
+                          <th className="pb-3">Type</th>
+                          <th className="pb-3 text-right">Amount</th>
+                          <th className="pb-3">Reference</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {treasuryEntries.map((entry) => {
+                          const style = EVENT_TYPE_STYLES[entry.event_type] || { label: entry.event_type, color: 'bg-slate-500/20 text-slate-400' }
+                          return (
+                            <tr key={entry.id} className="border-t border-slate-700">
+                              <td className="py-3 text-white text-sm">
+                                {new Date(entry.created_at).toLocaleDateString()}{' '}
+                                <span className="text-slate-500">{new Date(entry.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                              </td>
+                              <td className="py-3">
+                                <span className={`px-2 py-1 rounded text-xs ${style.color}`}>
+                                  {style.label}
+                                </span>
+                              </td>
+                              <td className={`py-3 text-right font-mono text-sm ${entry.amount >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                {entry.amount >= 0 ? '+' : ''}{entry.amount}
+                              </td>
+                              <td className="py-3 text-slate-400 text-sm font-mono">
+                                {entry.reference_id ? `${entry.reference_type || ''}:${entry.reference_id.slice(0, 8)}...` : '-'}
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
 
-      {/* Manual Settlement */}
-      <div className="bg-slate-800 rounded-xl p-6 mb-8">
-        <h2 className="text-xl font-bold text-white mb-4">Manual Settlement</h2>
-        <div className="flex gap-4 items-end">
-          <div>
-            <label className="block text-sm text-slate-300 mb-2">UTC Day (YYYY-MM-DD)</label>
-            <input
-              type="date"
-              value={settleDay}
-              onChange={(e) => setSettleDay(e.target.value)}
-              className="bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-white"
-            />
-          </div>
-          <button
-            onClick={triggerSettlement}
-            disabled={settling || !settleDay}
-            className="bg-orange-600 hover:bg-orange-500 disabled:bg-slate-600 text-white font-bold py-2 px-6 rounded-lg transition"
-          >
-            {settling ? 'Settling...' : 'Trigger Settlement'}
-          </button>
-        </div>
-        <p className="text-slate-400 text-sm mt-2">
-          Note: Settlement runs automatically at midnight UTC via Vercel Cron.
-        </p>
-      </div>
-
-      {/* Recent Settlements */}
-      <div className="bg-slate-800 rounded-xl p-6">
-        <h2 className="text-xl font-bold text-white mb-4">Recent Settlements</h2>
-        {settlements.length === 0 ? (
-          <p className="text-slate-400">No settlements yet.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="text-left text-slate-400 text-sm">
-                  <th className="pb-3">Date</th>
-                  <th className="pb-3">Status</th>
-                  <th className="pb-3">Pool</th>
-                  <th className="pb-3">Winner</th>
-                  <th className="pb-3">Prize</th>
-                </tr>
-              </thead>
-              <tbody>
-                {settlements.map((s) => (
-                  <tr key={s.id} className="border-t border-slate-700">
-                    <td className="py-3 text-white">{s.utc_day}</td>
-                    <td className="py-3">
-                      <span className={`px-2 py-1 rounded text-xs ${
-                        s.status === 'completed' ? 'bg-green-500/20 text-green-400' :
-                        s.status === 'processing' ? 'bg-yellow-500/20 text-yellow-400' :
-                        'bg-slate-500/20 text-slate-400'
-                      }`}>
-                        {s.status}
-                      </span>
-                    </td>
-                    <td className="py-3 text-yellow-400">{s.pool_total}</td>
-                    <td className="py-3 text-slate-300 font-mono text-sm">
-                      {s.winner_user_id ? s.winner_user_id.slice(0, 12) + '...' : '-'}
-                    </td>
-                    <td className="py-3 text-green-400">{s.winner_amount ?? '-'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                  {/* Load More */}
+                  {treasuryEntries.length < treasuryTotal && (
+                    <div className="mt-4 text-center">
+                      <button
+                        onClick={() => fetchTreasuryHistory(treasuryUserId, treasuryEntries.length, true)}
+                        disabled={treasuryLoading}
+                        className="bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white px-6 py-2 rounded-lg text-sm transition"
+                      >
+                        {treasuryLoading ? 'Loading...' : `Load more (${treasuryEntries.length} of ${treasuryTotal})`}
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          ) : (
+            <div className="bg-slate-800 rounded-xl p-6 text-center">
+              <p className="text-slate-400">Set a treasury user above to view their credit history.</p>
+            </div>
+          )}
+        </>
+      )}
     </div>
   )
 }

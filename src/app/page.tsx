@@ -196,7 +196,7 @@ function GameTile({ game, msUntilSettlement }: { game: GameInfo; msUntilSettleme
         </div>
       </div>
 
-      <div className="grid grid-cols-3 text-center bg-slate-900/50 rounded-lg divide-x divide-slate-700/50">
+      <div className="grid grid-cols-3 text-center bg-slate-900/50 rounded-t-lg">
         <div className="py-2 px-1">
           <div className={`text-sm font-bold ${isPlayable ? 'text-yellow-400' : 'text-slate-500'}`}>
             {game.poolSize > 0 ? `${game.poolSize.toLocaleString()}` : '-'}
@@ -215,6 +215,20 @@ function GameTile({ game, msUntilSettlement }: { game: GameInfo; msUntilSettleme
           </div>
           <div className="text-[10px] text-slate-500">Top Score</div>
         </div>
+      </div>
+      <div className="flex items-center justify-center gap-1.5 py-2 bg-slate-900/50 rounded-b-lg border-t border-slate-700/50">
+        {game.todayStats.topPlayerName && game.todayStats.topScore > 0 ? (
+          <>
+            <Crown className="w-3.5 h-3.5 text-yellow-400" />
+            <span className="text-xs text-white font-medium truncate max-w-[120px]">{game.todayStats.topPlayerName}</span>
+            <span className="text-xs text-green-400 font-bold">{game.todayStats.topScore.toLocaleString()}</span>
+          </>
+        ) : (
+          <>
+            <span className="text-xs text-slate-400">Take the Crown</span>
+            <Crown className="w-3.5 h-3.5 text-slate-500" />
+          </>
+        )}
       </div>
     </div>
   )
@@ -538,10 +552,7 @@ export default function HomePage() {
                           </div>
                         </td>
                         <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            {i === 0 && <Crown className="w-4 h-4 text-yellow-400" />}
-                            <span className="text-slate-700 dark:text-slate-200 text-sm">{entry.playerName}</span>
-                          </div>
+                          <span className="text-slate-500 text-sm">{entry.playerName}</span>
                         </td>
                         <td className="px-4 py-3 text-right">
                           <span className="text-green-400 font-bold text-sm">{entry.score.toLocaleString()}</span>

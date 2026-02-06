@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Music } from 'lucide-react'
 import { ShareScore } from './ShareScore'
 
-type GamePhase = 'idle' | 'loading' | 'listen' | 'play' | 'checking' | 'completed' | 'failed'
+type GamePhase = 'idle' | 'loading' | 'countdown' | 'listen' | 'play' | 'checking' | 'completed' | 'failed'
 
 interface TurnSpec {
   sequence: number[]
@@ -42,6 +42,7 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
   const [playingIndex, setPlayingIndex] = useState(-1)
   const [currentLevel, setCurrentLevel] = useState(3) // Start with 3 notes
   const [timeLeft, setTimeLeft] = useState(30000)
+  const [countdownNum, setCountdownNum] = useState(3)
 
   const audioContextRef = useRef<AudioContext | null>(null)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
@@ -67,6 +68,14 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
 
     oscillator.start(ctx.currentTime)
     oscillator.stop(ctx.currentTime + duration / 1000)
+  }, [])
+
+  const runCountdown = useCallback(async () => {
+    setPhase('countdown')
+    for (let i = 3; i >= 1; i--) {
+      setCountdownNum(i)
+      await new Promise(resolve => setTimeout(resolve, 700))
+    }
   }, [])
 
   const startGame = useCallback(async () => {
@@ -106,6 +115,9 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
       if (!startRes.ok) {
         throw new Error('Failed to start turn')
       }
+
+      // Countdown before starting
+      await runCountdown()
 
       gameStartTimeRef.current = Date.now()
 
@@ -196,7 +208,8 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
         setCurrentLevel(nextLevel)
         setUserInput([])
 
-        // Play the new longer sequence
+        // Countdown then play the new longer sequence
+        await runCountdown()
         setPhase('listen')
         await playSequence(spec, nextLevel)
         setPhase('play')
@@ -281,41 +294,50 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
         </div>
       )}
 
-      {phase === 'listen' && spec && (
+      {(phase === 'countdown' || phase === 'listen' || phase === 'play') && spec && (
         <div className="text-center py-8">
-          <p className="text-xl text-yellow-400 mb-6 animate-pulse">Listen carefully!</p>
-          <p className="text-slate-400 mb-4">
-            Playing tone {playingIndex + 1} of {currentLevel}
+          {/* Permanent caption area */}
+          <p className="text-xl mb-6 h-7">
+            {phase === 'countdown' && (
+              <span className="text-white font-bold text-3xl animate-pulse">{countdownNum}</span>
+            )}
+            {phase === 'listen' && (
+              <span className="text-slate-400">Listen...</span>
+            )}
+            {phase === 'play' && (
+              <span className="text-green-400">Your turn! Repeat the {currentLevel} tones</span>
+            )}
           </p>
-          <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto">
-            {Array.from({ length: spec.numButtons }).map((_, i) => (
-              <div
-                key={i}
-                className={`w-24 h-24 rounded-xl transition-all ${
-                  activeButton === i ? BUTTON_ACTIVE_COLORS[i] : BUTTON_COLORS[i]
-                } ${activeButton === i ? 'scale-110' : ''}`}
-              />
-            ))}
-          </div>
-        </div>
-      )}
 
-      {phase === 'play' && spec && (
-        <div className="text-center py-8">
-          <p className="text-xl text-green-400 mb-6">Your turn! Repeat the {currentLevel} tones</p>
-          <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto">
-            {Array.from({ length: spec.numButtons }).map((_, i) => (
-              <button
-                key={i}
-                onClick={() => handleButtonClick(i)}
-                className={`w-24 h-24 rounded-xl transition-all transform hover:scale-105 active:scale-95 ${
-                  activeButton === i ? BUTTON_ACTIVE_COLORS[i] : BUTTON_COLORS[i]
-                }`}
-              />
-            ))}
+          <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto px-4">
+            {Array.from({ length: spec.numButtons }).map((_, i) => {
+              const isActive = activeButton === i
+              const baseColor = isActive ? BUTTON_ACTIVE_COLORS[i] : BUTTON_COLORS[i]
+              const countdownPulse = phase === 'countdown' ? (countdownNum % 2 === 0 ? 'opacity-40' : 'opacity-100') : ''
+              const listenScale = phase === 'listen' && isActive ? 'scale-110' : ''
+              const playInteractive = phase === 'play' ? 'hover:scale-105 active:scale-95' : ''
+
+              if (phase === 'play') {
+                return (
+                  <button
+                    key={i}
+                    onClick={() => handleButtonClick(i)}
+                    className={`aspect-square rounded-xl transition-all transform ${baseColor} ${playInteractive}`}
+                  />
+                )
+              }
+              return (
+                <div
+                  key={i}
+                  className={`aspect-square rounded-xl transition-all ${baseColor} ${countdownPulse} ${listenScale}`}
+                />
+              )
+            })}
           </div>
-          <div className="flex justify-center gap-2 mt-6">
-            {Array.from({ length: currentLevel }).map((_, i) => (
+
+          {/* Progress dots - always reserve space */}
+          <div className="flex justify-center gap-2 mt-6 h-4">
+            {phase === 'play' && Array.from({ length: currentLevel }).map((_, i) => (
               <div
                 key={i}
                 className={`w-4 h-4 rounded-full ${
@@ -343,7 +365,9 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-indigo-500/20 flex items-center justify-center">
             <Music className="w-10 h-10 text-indigo-400" />
           </div>
-          <h3 className="text-2xl font-bold text-green-400 mb-4">Perfect Pattern!</h3>
+          <h3 className={`text-2xl font-bold mb-4 ${result.correct && result.correct >= (result.total || 0) ? 'text-green-400' : 'text-yellow-400'}`}>
+            {result.correct && result.correct >= (result.total || 0) ? 'Perfect Pattern!' : `Level ${(result.correct || 0) + 1} reached!`}
+          </h3>
           <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto mb-6">
             <div className="bg-slate-700 rounded-lg p-4">
               <div className="text-3xl font-bold text-white">{result.score?.toLocaleString()}</div>
@@ -353,10 +377,12 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
               <div className="text-3xl font-bold text-white">#{result.rank}</div>
               <div className="text-sm text-slate-400">Rank</div>
             </div>
-            <div className="bg-slate-700 rounded-lg p-4 col-span-2">
-              <div className="text-xl font-bold text-green-400">{result.correct} levels</div>
-              <div className="text-sm text-slate-400">Completed</div>
-            </div>
+            {(result.correct ?? 0) > 0 && (
+              <div className="bg-slate-700 rounded-lg p-4 col-span-2">
+                <div className="text-xl font-bold text-green-400">{result.correct} {result.correct === 1 ? 'level' : 'levels'}</div>
+                <div className="text-sm text-slate-400">Completed</div>
+              </div>
+            )}
           </div>
           <div className="flex gap-4 justify-center">
             <button
@@ -378,13 +404,9 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-indigo-500/20 flex items-center justify-center">
             <Music className="w-10 h-10 text-indigo-400" />
           </div>
-          <h3 className="text-2xl font-bold text-red-400 mb-4">Wrong Pattern!</h3>
+          <h3 className="text-2xl font-bold text-red-400 mb-4">No Score</h3>
           <p className="text-slate-300 mb-6">
-            {result?.reason === 'no_levels_completed'
-              ? 'Failed on level 1. Keep trying!'
-              : result?.correct
-              ? `Made it to level ${result.correct}!`
-              : 'Better luck next time!'}
+            Complete at least a few correct taps to earn points. Listen carefully and try again!
           </p>
           <div className="flex gap-4 justify-center">
             <button
