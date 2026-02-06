@@ -224,6 +224,7 @@ Key tables:
 - `game_turns` - Individual play sessions
 - `turn_events` - Event log for each turn (for validation)
 - `settlements` - End-of-day prize distribution records
+- `pending_claims` - Unclaimed winnings from settlements (users must claim via UI)
 
 ## Games (12 Total)
 
@@ -322,5 +323,70 @@ Key mechanics:
 - Customize confirmation email template in Authentication → Email Templates (HTML template with Podium Arena branding was provided)
 - Optional: Set up custom SMTP (e.g., Resend) to change sender name from "Supabase Auth" to "Podium Arena"
 
+### Feb 6, 2026
+
+**Major feature: Pending Claims System**
+
+Settlement no longer credits users directly. Instead, it creates entries in `pending_claims` table that users must claim via the UI. This creates engagement touchpoints and prevents users from missing their winnings.
+
+**New database table:**
+```sql
+CREATE TABLE pending_claims (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id TEXT NOT NULL,
+    claim_type TEXT NOT NULL,  -- 'prize_win', 'rebate', 'referral_bonus'
+    amount INTEGER NOT NULL,
+    settlement_id UUID REFERENCES settlements(id),
+    utc_day DATE NOT NULL,
+    metadata JSONB,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    claimed_at TIMESTAMPTZ,
+    ledger_entry_id BIGINT
+);
+```
+
+**Settlement cycle awareness:**
+- Games API (`/api/games`) checks for completed settlements for the current day
+- Only counts turns created AFTER the settlement's `completed_at` timestamp
+- This means after settlement, leaderboards and pools reset to fresh state
+- When new games are played, they start a new cycle
+- Pool size, ticker, and stats all respect cycle boundaries
+
+**Files modified:**
+- `src/app/api/cron/settlement/route.ts` — Creates `pending_claims` instead of direct ledger entries
+- `src/app/api/credits/claim-winnings/route.ts` — NEW: Claims all pending winnings, creates ledger entries
+- `src/app/api/credits/balance/route.ts` — Returns `pendingClaims` array and `pendingTotal`
+- `src/app/api/games/route.ts` — Cycle-aware filtering based on settlement timestamp
+- `src/app/admin/page.tsx` — Uses games API for cycle-aware stats display
+
+**UI claim flow:**
+- `BottomNotificationBar` shows when user has claimable credits (daily OR pending winnings)
+- Auto-resets dismissed state when NEW claims arrive (tracks previous state via ref)
+- `Header` shows red pulsing dot on credits button when `hasUnseenNotification`
+- Red dot clears when user opens credits popup (`markNotificationSeen`)
+- `ClaimSuccessModal` shows itemized breakdown of claimed items:
+  - 1st Place Prize, Participation Rebate, Daily Claim, Referral Bonus, Admin Grant
+  - Shows total if multiple items, new balance at bottom
+- Page auto-refreshes after claim modal closes to update pool/ticker
+
+**Files modified:**
+- `src/components/CreditsNotificationProvider.tsx` — Manages claim state, notification tracking, modal
+- `src/components/BottomNotificationBar.tsx` — Shows claim banner
+- `src/components/Header.tsx` — Red notification dot logic
+- `src/components/ClaimSuccessModal.tsx` — Itemized breakdown display
+- `src/hooks/useCredits.ts` — Added `claimWinnings()` returning claimed items array
+
+**Testing settlements:**
+- Idempotency key is `settlement_{utcDay}` — only one settlement per day
+- To re-test same day: delete from `pending_claims` then `settlements` (FK constraint)
+- `spend_credit` SQL function resets pool status to 'active' when new games played after settlement
+
+**SQL function update needed:**
+The `spend_credit` function should reset pool status when inserting into a settled pool:
+```sql
+-- In the INSERT ... ON CONFLICT for daily_pools:
+-- Set status = 'active' to allow new cycle after settlement
+```
+
 ---
-*Last updated: Feb 5, 2026*
+*Last updated: Feb 6, 2026*
