@@ -361,15 +361,14 @@ function GamePageContent() {
           ) : (balance >= 1 || dailyGrantAvailable) ? (
             <GameComponent onGameComplete={handleGameComplete} />
           ) : null}
+          {poolSize !== null && poolSize > 0 && (
+            <p className="text-center text-sm text-slate-400 mt-3">
+              Today&apos;s Pool: <span className="text-yellow-400 font-bold">${poolSize.toLocaleString()} Credits</span>
+            </p>
+          )}
         </div>
 
         <div>
-          {poolSize !== null && poolSize > 0 && (
-            <div className="bg-slate-800 rounded-xl p-3 mb-6 text-center">
-              <div className="text-lg font-bold text-yellow-400">{poolSize.toLocaleString()}</div>
-              <div className="text-[10px] text-slate-500">$Credit Pool</div>
-            </div>
-          )}
           <Leaderboard
             gameType={config.leaderboardType}
             gameTypeName={config.name}
