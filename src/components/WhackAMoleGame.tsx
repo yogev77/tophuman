@@ -46,11 +46,13 @@ export function WhackAMoleGame({ onGameComplete }: WhackAMoleGameProps) {
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const spawnTimersRef = useRef<NodeJS.Timeout[]>([])
   const gameStartTimeRef = useRef<number>(0)
+  const hitsRef = useRef(0)
 
   const startGame = useCallback(async () => {
     setPhase('loading')
     setError(null)
     setHits(0)
+    hitsRef.current = 0
     setMisses(0)
     setBombHits(0)
     setActiveEntities(new Map())
@@ -157,8 +159,8 @@ export function WhackAMoleGame({ onGameComplete }: WhackAMoleGameProps) {
 
       if (hitEntityType === 0) {
         // Hit a mole - good!
-        const newHits = hits + 1
-        setHits(newHits)
+        hitsRef.current += 1
+        setHits(hitsRef.current)
 
         fetch('/api/game/turn/event', {
           method: 'POST',
@@ -173,7 +175,7 @@ export function WhackAMoleGame({ onGameComplete }: WhackAMoleGameProps) {
         })
 
         // Check if all moles have been hit
-        if (spec && newHits >= spec.numMoles) {
+        if (spec && hitsRef.current >= spec.numMoles) {
           completeGame(turnToken)
         }
       } else {

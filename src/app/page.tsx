@@ -16,6 +16,9 @@ import {
   GripVertical,
   Pencil,
   Crosshair,
+  LayoutGrid,
+  Hash,
+  ParkingSquare,
   Clock,
   Lock,
   Crown,
@@ -39,6 +42,9 @@ const GAME_ICONS: Record<string, LucideIcon> = {
   drag_sort: GripVertical,
   follow_me: Pencil,
   duck_shoot: Crosshair,
+  memory_cards: LayoutGrid,
+  number_chain: Hash,
+  gridlock: ParkingSquare,
 }
 
 const GAME_ICON_COLORS: Record<string, { bg: string; icon: string }> = {
@@ -54,6 +60,9 @@ const GAME_ICON_COLORS: Record<string, { bg: string; icon: string }> = {
   drag_sort: { bg: 'bg-lime-500/20', icon: 'text-lime-400' },
   follow_me: { bg: 'bg-cyan-500/20', icon: 'text-cyan-400' },
   duck_shoot: { bg: 'bg-emerald-500/20', icon: 'text-emerald-400' },
+  memory_cards: { bg: 'bg-fuchsia-500/20', icon: 'text-fuchsia-400' },
+  number_chain: { bg: 'bg-red-500/20', icon: 'text-red-400' },
+  gridlock: { bg: 'bg-blue-500/20', icon: 'text-blue-400' },
 }
 
 

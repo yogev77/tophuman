@@ -37,11 +37,21 @@ export async function GET() {
     const supabase = createServiceClient()
     const today = new Date().toISOString().split('T')[0]
 
+    // Check for a completed settlement today (cycle boundary)
+    const { data: todaySettlements } = await supabase
+      .from('settlements')
+      .select('completed_at')
+      .eq('utc_day', today)
+      .eq('status', 'completed')
+      .order('completed_at', { ascending: false })
+
+    const cycleStartTime = todaySettlements?.[0]?.completed_at || null
+
     // Fetch all completed non-flagged turns, ordered by score desc
     // We'll process both all-time and today in one pass
     const { data: turns, error } = await supabase
       .from('game_turns')
-      .select('user_id, game_type_id, score, utc_day')
+      .select('user_id, game_type_id, score, utc_day, created_at')
       .eq('status', 'completed')
       .eq('flagged', false)
       .gt('score', 0)
@@ -51,16 +61,22 @@ export async function GET() {
       return NextResponse.json({ allTime: [], today: [] })
     }
 
-    // Best score per game (all-time) and today, plus today's pool size
+    // Best score per game (all-time) and today (current cycle only), plus today's pool size
     const allTimeBest = new Map<string, { userId: string; score: number }>()
     const todayBest = new Map<string, { userId: string; score: number }>()
     const todayPoolSize = new Map<string, number>()
 
-    // Count today's turns per game for pool size (all turns today, not just completed)
-    const { data: todayTurns } = await supabase
+    // Count today's turns per game for pool size (current cycle only)
+    let poolQuery = supabase
       .from('game_turns')
       .select('game_type_id')
       .eq('utc_day', today)
+
+    if (cycleStartTime) {
+      poolQuery = poolQuery.gt('created_at', cycleStartTime)
+    }
+
+    const { data: todayTurns } = await poolQuery
 
     for (const t of todayTurns || []) {
       const gameId = toUiGameId(t.game_type_id)
@@ -75,9 +91,11 @@ export async function GET() {
         allTimeBest.set(gameId, { userId: t.user_id, score: t.score })
       }
 
-      // Today
+      // Today: only current cycle (after last settlement)
       if (t.utc_day === today && !todayBest.has(gameId)) {
-        todayBest.set(gameId, { userId: t.user_id, score: t.score })
+        if (!cycleStartTime || t.created_at > cycleStartTime) {
+          todayBest.set(gameId, { userId: t.user_id, score: t.score })
+        }
       }
     }
 

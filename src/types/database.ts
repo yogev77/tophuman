@@ -14,6 +14,7 @@ export type LedgerEventType =
   | 'sink'
   | 'expiration'
   | 'admin_adjustment'
+  | 'referral_bonus'
 
 export interface Database {
   public: {

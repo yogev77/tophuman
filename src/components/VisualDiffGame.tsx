@@ -209,20 +209,19 @@ export function VisualDiffGame({ onGameComplete }: VisualDiffGameProps) {
   }
 
   return (
-    <div className="bg-slate-800 rounded-xl p-4 sm:p-6">
-      <div className="flex items-center justify-between mb-4 sm:mb-6">
-        <h2 className="text-xl font-bold text-white">Spot the Difference</h2>
-        {phase === 'play' && spec && (
-          <div className="flex items-center gap-4">
-            <span className="text-slate-400">
-              Clicks: {clicks.length}
-            </span>
-            <span className={`text-2xl font-mono ${timeLeft < 10000 ? 'text-red-400' : 'text-green-400'}`}>
+    <div className="bg-slate-800 rounded-xl p-3 sm:p-4">
+      {phase === 'play' && spec && (
+        <div className="mb-2">
+          <div className="flex items-center justify-between">
+            <span className={`text-2xl font-mono font-bold ${timeLeft < 10000 ? 'text-red-400' : 'text-green-400'}`}>
               {formatTime(timeLeft)}
             </span>
           </div>
-        )}
-      </div>
+          <div className="text-slate-400 text-sm">
+            Spot the differences. Clicks: {clicks.length}
+          </div>
+        </div>
+      )}
 
       {phase === 'idle' && (
         <div className="text-center py-12">
@@ -247,48 +246,37 @@ export function VisualDiffGame({ onGameComplete }: VisualDiffGameProps) {
 
       {phase === 'play' && spec && (
         <div>
-          <p className="text-slate-400 text-sm text-center mb-4">
-            Find {spec.numDifferences} differences - click on them in either image
-          </p>
-          <div className="grid grid-cols-2 gap-2 sm:gap-4">
-            <div>
-              <p className="text-slate-400 text-xs text-center mb-1">Original</p>
-              <svg
-                viewBox={`0 0 ${spec.gridSize} ${spec.gridSize}`}
-                className="w-full bg-slate-900 rounded-lg cursor-crosshair"
-                onClick={(e) => handleClick(e, 'left')}
-              >
-                {spec.baseShapes.map((shape, i) => renderShape(shape, i))}
-                {/* Click markers for left side */}
-                {clicks.filter(c => c.side === 'left').map((click, i) => (
-                  <g key={`marker-left-${i}`}>
-                    <circle cx={click.x} cy={click.y} r={12} fill="none" stroke="#22c55e" strokeWidth={3} />
-                    <circle cx={click.x} cy={click.y} r={4} fill="#22c55e" />
-                  </g>
-                ))}
-              </svg>
-            </div>
-            <div>
-              <p className="text-slate-400 text-xs text-center mb-1">Modified</p>
-              <svg
-                viewBox={`0 0 ${spec.gridSize} ${spec.gridSize}`}
-                className="w-full bg-slate-900 rounded-lg cursor-crosshair"
-                onClick={(e) => handleClick(e, 'right')}
-              >
-                {spec.modifiedShapes.map((shape, i) => renderShape(shape, i))}
-                {/* Click markers for right side */}
-                {clicks.filter(c => c.side === 'right').map((click, i) => (
-                  <g key={`marker-right-${i}`}>
-                    <circle cx={click.x} cy={click.y} r={12} fill="none" stroke="#22c55e" strokeWidth={3} />
-                    <circle cx={click.x} cy={click.y} r={4} fill="#22c55e" />
-                  </g>
-                ))}
-              </svg>
-            </div>
+          <div className="grid grid-cols-2 gap-2">
+            <svg
+              viewBox={`0 0 ${spec.gridSize} ${spec.gridSize}`}
+              className="w-full bg-slate-900 rounded-lg cursor-crosshair"
+              onClick={(e) => handleClick(e, 'left')}
+            >
+              {spec.baseShapes.map((shape, i) => renderShape(shape, i))}
+              {clicks.filter(c => c.side === 'left').map((click, i) => (
+                <g key={`marker-left-${i}`}>
+                  <circle cx={click.x} cy={click.y} r={12} fill="none" stroke="#ffffff" strokeWidth={3} />
+                  <circle cx={click.x} cy={click.y} r={4} fill="#ffffff" />
+                </g>
+              ))}
+            </svg>
+            <svg
+              viewBox={`0 0 ${spec.gridSize} ${spec.gridSize}`}
+              className="w-full bg-slate-900 rounded-lg cursor-crosshair"
+              onClick={(e) => handleClick(e, 'right')}
+            >
+              {spec.modifiedShapes.map((shape, i) => renderShape(shape, i))}
+              {clicks.filter(c => c.side === 'right').map((click, i) => (
+                <g key={`marker-right-${i}`}>
+                  <circle cx={click.x} cy={click.y} r={12} fill="none" stroke="#ffffff" strokeWidth={3} />
+                  <circle cx={click.x} cy={click.y} r={4} fill="#ffffff" />
+                </g>
+              ))}
+            </svg>
           </div>
           <button
             onClick={() => completeGame()}
-            className="w-full mt-4 bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-6 rounded-lg transition"
+            className="w-full mt-3 bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-6 rounded-lg transition"
           >
             Done - Submit
           </button>

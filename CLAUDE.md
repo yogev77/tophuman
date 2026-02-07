@@ -226,22 +226,217 @@ Key tables:
 - `settlements` - End-of-day prize distribution records
 - `pending_claims` - Unclaimed winnings from settlements (users must claim via UI)
 
-## Games (12 Total)
+## Game Details (12 Active + 2 Unreleased)
 
-| ID | Name | Status |
-|----|------|--------|
-| `emoji_keypad` | Emoji Keypad | Working |
-| `image_rotate` | Image Rotate | Working |
-| `reaction_time` | Reaction Time | Working |
-| `whack_a_mole` | Whack-a-Mole | **Has bugs** |
-| `typing_speed` | Typing Speed | Working |
-| `mental_math` | Mental Math | Working |
-| `color_match` | Color Match | Working |
-| `visual_diff` | Visual Diff | Working |
-| `audio_pattern` | Audio Pattern | Working |
-| `drag_sort` | Drag Sort | Working |
-| `follow_me` | Follow Me | Working |
-| `duck_shoot` | Target Shoot | Working |
+Each game follows the same architecture pattern:
+- **Server logic**: `src/lib/game/<game-id>.ts` — generates spec, strips secrets for client, validates events, computes score
+- **UI component**: `src/components/<GameName>Game.tsx` — renders game, sends events via `/api/game/turn/event`
+- **API flow**: `turn/create` → `turn/start` → N x `turn/event` → `turn/complete`
+- **Anti-cheat**: Every game checks timing intervals (avg interval, stdDev) for bot detection; flags suspicious plays
+- **Scoring**: All games use unbounded sqrt-based speed multiplier: `baseScore * sqrt(maxTime / actualTime)`
+
+---
+
+### 1. Emoji Keypad (`emoji_keypad` / DB: `emoji_keypad_sequence`)
+**Files**: `src/lib/game/emoji-keypad.ts`, `src/components/EmojiKeypadGame.tsx`
+
+**Gameplay**: Memorize a sequence of 5 emojis, then reproduce it on a 12-emoji keypad (5 correct + 7 decoys). Shown briefly then hidden.
+
+**Config**: `sequence_length: 5`, `keypad_size: 12`, `time_limit: 30s`, `penalty: 2000ms/mistake`, `max_mistakes: 1`
+
+**Client receives**: Full sequence (shown during memorization), keypad layout, time limit. Sequence IS sent (needed for display phase).
+
+**Validation**: Expects exactly `sequence_length` taps matching the keypad indices. Uses SERVER timestamps for timing (not client). Checks inter-tap timing: avg < 50ms or min < 30ms or stdDev < 5ms = flagged.
+
+**Scoring**: `quality = max(0, 7000 - mistakes * 2000)`, `speed = sqrt(maxTime / time)`, `score = quality * speed`
+
+---
+
+### 2. Image Rotate (`image_rotate`)
+**Files**: `src/lib/game/image-rotate.ts`, `src/components/ImageRotateGame.tsx`
+
+**Gameplay**: 3x3 grid of image tiles, each randomly rotated (0/90/180/270). Tap tiles to rotate 90 degrees clockwise until all are at 0.
+
+**Config**: `grid_size: 3` (9 tiles), `time_limit: 60s`, `rotation_penalty: 1000ms/extra rotation`
+
+**Client receives**: Unsplash image URL, grid size, initial rotations, time limit. Pool of 45 images (cats, puppies, cities, abstract, fun).
+
+**Validation**: Simulates all rotate events server-side to verify final state is all-zeros. Calculates minimum rotations needed vs actual. Extra rotations add time penalty. Checks avg interval < 100ms or min < 50ms = flagged.
+
+**Scoring**: `quality = max(0, 7000 - extraRotations * 600)`, `speed = sqrt(maxTime / max(time, 4000))`, `score = quality * speed`
+
+---
+
+### 3. Reaction Time (`reaction_time`)
+**Files**: `src/lib/game/reaction-time.ts`, `src/components/ReactionTimeGame.tsx`
+
+**Gameplay**: 8 rounds — colored circles appear after random delays (800-2500ms). ~70% are "Tap!" rounds, ~30% are "Don't Tap!" traps. Player must tap quickly on tap rounds and resist on trap rounds.
+
+**Config**: `num_rounds: 8`, `min_delay: 800ms`, `max_delay: 2500ms`, `max_reaction: 1000ms`, `time_limit: 60s`, `trap_ratio: 0.3`
+
+**Client receives**: Full round specs (delays, shouldTap, colors), max reaction time, time limit. Uses `signal_shown` and `round_complete` events with server timestamps.
+
+**Validation**: Groups events by round. Checks reaction < 100ms = impossible speed. Checks stdDev of reaction times < 10ms = suspicious. Tracks correctTaps, correctSkips, wrongTaps, missedTaps.
+
+**Scoring**: Per-round: `4000 / max(reactionMs / 100, 1)`. Total: `sum(roundScores) * accuracyRatio - wrongTaps * 1000 - missedTaps * 600`. Receives `reactionTimes` array param.
+
+---
+
+### 4. Whack-a-Mole (`whack_a_mole`)
+**Files**: `src/lib/game/whack-a-mole.ts`, `src/components/WhackAMoleGame.tsx`
+
+**Gameplay**: 3x3 grid, 35 moles + 10 bombs spawn sequentially at ~450ms intervals. Tap moles, avoid bombs. Entities visible for 1200ms each.
+
+**Config**: `grid_size: 3`, `num_moles: 35`, `num_bombs: 10`, `mole_duration: 1200ms`, `time_limit: 30s`, `spawn_interval: 450ms`
+
+**Client receives**: Grid size, spawn sequence `[timeOffset, cellIndex, type][]` (type 0=mole, 1=bomb), mole duration.
+
+**Validation**: Validates each hit's cellIndex matches spawn entry and is type 0 (mole). Checks avg interval < 100ms or stdDev < 20ms (with 5+ intervals) = flagged. Events: `hit`, `miss`, `bomb_hit`.
+
+**Scoring**: `hitScore = (hits/maxHits) * 6500`, `accuracyBonus = pow(accuracyRatio, 1.15) * 2500`, `penalties = misses*60 + bombHits*500`. Uses `effectiveTime` (last hit timestamp, not game end). `speed = sqrt(maxTime / max(effectiveTime, 3000))`. `score = (hitScore + accuracyBonus) * speed - penalties`
+
+**Known bugs**: UI component has state issues — `activeEntities` vs `activeMoles` mismatch, bombs not visually distinguished, `bombHits` not updated on click.
+
+---
+
+### 5. Typing Speed (`typing_speed`)
+**Files**: `src/lib/game/typing-speed.ts`, `src/components/TypingSpeedGame.tsx`
+
+**Gameplay**: Type a displayed pangram/phrase as fast and accurately as possible. 20 phrases pool (pangrams like "The quick brown fox...").
+
+**Config**: `time_limit: 60s`, `min_phrase_length: 30`, `max_phrase_length: 60`
+
+**Client receives**: The phrase, time limit.
+
+**Validation**: Character-by-character accuracy comparison. Must have >= 80% accuracy. Checks keystroke timing: stdDev < 5ms (10+ keystrokes) or avg < 20ms = flagged. WPM > 250 = flagged (world record ~200). Uses SERVER timestamps.
+
+**Scoring**: `wpmScore = wpm * 70`, `accuracyScore = pow(accuracy, 1.1) * 4000`, `score = wpmScore + accuracyScore`. No sqrt speed multiplier — WPM IS the speed metric.
+
+---
+
+### 6. Mental Math (`mental_math`)
+**Files**: `src/lib/game/mental-math.ts`, `src/components/MentalMathGame.tsx`
+
+**Gameplay**: Solve 10 arithmetic problems (+, -, *). Addition/subtraction use numbers 2-50. Multiplication uses 2-13. Subtraction ensures non-negative results.
+
+**Config**: `num_problems: 10`, `time_limit: 60s`, `min_number: 2`, `max_number: 50`, `operations: [+, -, *]`
+
+**Client receives**: Problems (a, b, operation) WITHOUT answers. Time limit.
+
+**Validation**: Compares user answers to server-computed answers. Must get >= 50% correct. Checks timing: stdDev < 50ms (5+ intervals) or avg < 500ms (5+ correct) = flagged.
+
+**Scoring**: `correctScore = correct * 1000`, `speed = sqrt(10000 / max(avgTimeMs, 1500))`, `score = correctScore * speed`
+
+---
+
+### 7. Color Match (`color_match`)
+**Files**: `src/lib/game/color-match.ts`, `src/components/ColorMatchGame.tsx`
+
+**Gameplay**: 5 rounds — shown a target color, must match it using RGB sliders (or similar UI). Colors range RGB 30-230 to avoid extremes.
+
+**Config**: `num_rounds: 5`, `time_limit: 90s`, `tolerance: 30`
+
+**Client receives**: Target colors array, time limit. Events: `submit_color` with r, g, b values.
+
+**Validation**: Calculates Euclidean distance in RGB space, converts to 0-1 accuracy. Must complete all 5 rounds. Must average >= 50% accuracy. Checks timing stdDev < 100ms (3+ intervals) = flagged.
+
+**Scoring**: `accuracyScore = pow(avgAccuracy, 1.05) * 7000`, `speed = sqrt(maxTime / max(time, 3000))`, `score = accuracyScore * speed`
+
+---
+
+### 8. Follow Me (`follow_me`)
+**Files**: `src/lib/game/follow-me.ts`, `src/components/FollowMeGame.tsx`
+
+**Gameplay**: Trace a curved path on a 300x300 canvas. Path generated via Catmull-Rom spline interpolation through 6-8 control points (~50 path points).
+
+**Config**: `num_points: 50`, `canvas_size: 300`, `time_limit: 30s`, `path_complexity: 3`
+
+**Client receives**: Canvas size, full path points, time limit. Events: `draw_start`, `draw_complete` with user's drawn points array.
+
+**Validation**: Calculates accuracy (avg distance from user points to nearest target point) and coverage (% of target path within 20px of a user point). Must have >= 50% coverage. Checks draw time < 500ms with 20+ points = flagged.
+
+**Scoring**: `accuracyScore = pow(accuracyRatio, 1.15) * 4000`, `coverageScore = coverage * 3000`. Uses `timeLimitMs` (not idealTimeMs) for speed. `speed = sqrt(maxTime / max(time, 2000))`. `score = (accuracyScore + coverageScore) * speed`
+
+---
+
+### 9. Audio Pattern (`audio_pattern`)
+**Files**: `src/lib/game/audio-pattern.ts`, `src/components/AudioPatternGame.tsx`
+
+**Gameplay**: Progressive Simon-Says. 4 tone buttons (C4, E4, G4, C5). Starts at level 3 (remember 3 tones), grows each level. Max sequence length 15. Listen, then reproduce.
+
+**Config**: `num_tones: 15`, `num_buttons: 4`, `time_limit: 30s`, `tone_duration: 300ms`
+
+**Client receives**: Full sequence (needed to play tones), button count, frequencies, time limit. Events: `tap` with buttonIndex, `level_complete`.
+
+**Validation**: Tracks position in sequence, resets on `level_complete`. Counts levels completed. Checks stdDev < 30ms (4+ intervals) or avg < 50ms = flagged.
+
+**Scoring**: `baseScore = levelsCompleted * 2000 + partialTaps * 400`. `speed = sqrt(maxTime / max(time, 2000))`. `score = baseScore * speed`
+
+---
+
+### 10. Visual Diff (`visual_diff`)
+**Files**: `src/lib/game/visual-diff.ts`, `src/components/VisualDiffGame.tsx`
+
+**Gameplay**: Spot-the-difference with 15 randomly placed shapes (circles/squares/triangles) on a 300px canvas. 5 differences (color, size, or type changes). Click near differences to find them.
+
+**Config**: `grid_size: 300`, `num_differences: 5`, `time_limit: 60s`, `num_shapes: 15`
+
+**Client receives**: Base shapes, modified shapes (with differences applied), number of differences, time limit. Differences NOT sent directly (client gets both images).
+
+**Validation**: Click within `clickRadius(30px) + shape.size` of a different shape = found. Must find >= 60%. Checks avg click interval < 200ms = flagged. Tracks click accuracy (distance to shape center).
+
+**Scoring**: `foundScore = (found/total) * 5500`, `accuracyBonus = pow(clickAccuracyRatio, 1.2) * 2500`. `speed = sqrt(maxTime / max(time, 3000))`. `score = (foundScore + accuracyBonus) * speed`
+
+---
+
+### 11. Drag Sort (`drag_sort`)
+**Files**: `src/lib/game/drag-sort.ts`, `src/components/DragSortGame.tsx`
+
+**Gameplay**: Sort 5 items by dragging. Mixed mode (default): 2 rounds — small numbers (1-100) then large numbers (100-1000). Also supports alphabet and dates modes. Initial order is always shuffled (never already sorted).
+
+**Config**: `num_items: 5`, `time_limit: 60s`, `sort_type: 'mixed'`
+
+**Client receives**: Items array, sort type, time limit, rounds (for mixed mode). Events: `swap` (tracking individual drags), `submit_round` (per round), `submit` with `finalOrder` array.
+
+**Validation**: Reconstructs submitted order from indices, compares to sorted order. Mixed mode validates each round separately. Must get >= 80% in correct positions. Checks swap avg interval < 100ms = flagged.
+
+**Scoring**: `quality = (correctPositions / total) * 7000`, `speed = sqrt(maxTime / max(time, 3000))`, `score = quality * speed`
+
+---
+
+### 12. Target Shoot (`duck_shoot` — DB ID preserved from legacy)
+**Files**: `src/lib/game/duck-shoot.ts`, `src/components/DuckShootGame.tsx`
+
+**Gameplay**: Olympic-style target shooting on canvas (400x300). Targets are concentric circles moving across screen. ~75% are red (shoot), ~25% are green decoys (avoid). Speed increases 8% per target. UI says "Target Shoot", all code/DB says `duck_shoot`.
+
+**Config**: `canvas: 400x300`, `time_limit: 30s`, `initial_speed: 100px/s`, `speed_increase: 1.08x`, `target_size: 50`
+
+**Client receives**: Canvas dimensions, target size, full spawn sequence (timing, direction, y-position, speed, isDecoy), time limit. Events: `shoot` with x, y, duckIndex, hitAccuracy.
+
+**Validation**: Validates duckIndex is in range, checks spawn type for decoy hits. Checks avg interval < 100ms or stdDev < 20ms (8+ intervals) = flagged. Must hit >= 2 targets.
+
+**Scoring**: `hitScore = hits * 600`, `precisionBonus = avgHitAccuracy * 4000`, `speed = sqrt(30000 / max(time, 2000))`, `decoyPenalty = decoyHits * 400`. `score = max(0, (hitScore + precisionBonus) * speed - decoyPenalty)`
+
+---
+
+### 13. Number Chain (`number_chain`)
+**Files**: `src/lib/game/number-chain.ts`, `src/components/NumberChainGame.tsx`
+
+**Gameplay**: 4x4 grid filled with 16 consecutive 2-digit numbers (e.g., 42-57) in shuffled positions. Player must chain 10 of them in order — either counting up or down from a given start number. The 6 extra numbers on the grid create visual confusion.
+
+**Config**: `gridSize: 16`, `chainLength: 10`, `time_limit: 30s`
+
+**Client receives**: Grid (16 numbers in shuffled cell order), chainStart, chainLength, direction. Sequence NOT sent — client computes it from chainStart + direction + chainLength for UI purposes, but server validates independently.
+
+**Validation**: Expects 10 taps matching server sequence. Checks avg interval < 100ms or stdDev < 20ms (5+ taps) = flagged. Counts wrong_tap events as mistakes.
+
+**Scoring**: `accuracyFactor = chainLength / (chainLength + mistakes)`, `basePoints = 5000 * accuracyFactor`, `speed = sqrt(maxTime / max(time, 1000))`, `score = basePoints * speed`
+
+---
+
+### Unreleased Games
+- **Gridlock** (`src/lib/game/gridlock.ts`) — Sliding puzzle / rush-hour style. Not wired up.
+- **Memory Cards** (`src/lib/game/memory-cards.ts`) — Card matching pairs. Not wired up.
 
 ## Known Issues
 
@@ -389,4 +584,4 @@ The `spend_credit` function should reset pool status when inserting into a settl
 ```
 
 ---
-*Last updated: Feb 6, 2026*
+*Last updated: Feb 7, 2026*

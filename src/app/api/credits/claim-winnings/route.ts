@@ -1,6 +1,15 @@
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
+// Map claim_type to valid ledger event_type
+const EVENT_TYPE_MAP: Record<string, string> = {
+  'prize_win': 'prize_win',
+  'rebate': 'rebate',
+  'sink': 'sink',
+  'referral_bonus': 'referral_bonus',
+  'daily_grant': 'daily_grant',
+}
+
 export async function POST() {
   try {
     // Use regular client for auth
@@ -48,16 +57,19 @@ export async function POST() {
 
     // Process each claim
     const claimedItems: { type: string; amount: number }[] = []
+    const failedClaims: { type: string; amount: number; error: string }[] = []
     let totalClaimed = 0
     const today = new Date().toISOString().split('T')[0]
 
     for (const claim of pendingClaims) {
+      const eventType = EVENT_TYPE_MAP[claim.claim_type] || claim.claim_type
+
       // Insert ledger entry
       const { data: ledgerEntry, error: ledgerError } = await supabase
         .from('credit_ledger')
         .insert({
           user_id: profile.user_id,
-          event_type: claim.claim_type,
+          event_type: eventType,
           amount: claim.amount,
           utc_day: today,
           reference_id: claim.settlement_id,
@@ -67,7 +79,8 @@ export async function POST() {
         .single()
 
       if (ledgerError) {
-        console.error('Ledger insert error:', ledgerError)
+        console.error(`Ledger insert error for claim_type="${claim.claim_type}" (event_type="${eventType}"):`, ledgerError)
+        failedClaims.push({ type: claim.claim_type, amount: claim.amount, error: ledgerError.message })
         continue
       }
 
@@ -112,6 +125,7 @@ export async function POST() {
       totalClaimed,
       newBalance: balance ?? 0,
       primaryType,
+      ...(failedClaims.length > 0 && { failedClaims }),
     })
   } catch (err) {
     console.error('Claim winnings error:', err)

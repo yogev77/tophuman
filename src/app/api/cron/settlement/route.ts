@@ -75,51 +75,74 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(result)
   } catch (err) {
     console.error('Manual settlement error:', err)
-    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
+    const message = err instanceof Error ? err.message : String(err)
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function settleDay(supabase: any, utcDay: string) {
-  const idempotencyKey = `settlement_${utcDay}`
-
-  // Check for existing settlement
-  const { data: existingSettlement } = await supabase
+  // Find all settlements for this day (any status) to avoid idempotency key collisions
+  const { data: allSettlements } = await supabase
     .from('settlements')
-    .select('*')
-    .eq('idempotency_key', idempotencyKey)
-    .single()
+    .select('id, status, completed_at')
+    .eq('utc_day', utcDay)
+    .order('created_at', { ascending: false })
 
-  if (existingSettlement?.status === 'completed') {
-    return {
-      success: false,
-      message: `Already settled on ${existingSettlement.completed_at}. Winner: ${existingSettlement.winner_user_id}, Amount: ${existingSettlement.winner_amount}`,
-      settlement: existingSettlement,
-    }
+  // Clean up stale 'processing' settlements from failed attempts
+  const staleProcessing = (allSettlements || []).filter((s: { status: string }) => s.status === 'processing')
+  for (const stale of staleProcessing) {
+    await supabase.from('settlements').delete().eq('id', stale.id)
   }
 
-  // Get pool for the day
-  const { data: pool } = await supabase
-    .from('daily_pools')
-    .select('*')
-    .eq('utc_day', utcDay)
-    .single()
+  // Use completed settlements for cycle boundary
+  const completedSettlements = (allSettlements || []).filter((s: { status: string }) => s.status === 'completed')
+  const lastSettlement = completedSettlements[0] || null
+  const cycleStart = lastSettlement?.completed_at || null
+  const cycleNum = completedSettlements.length + 1
+  const idempotencyKey = `settlement_${utcDay}_c${cycleNum}`
 
-  if (!pool || pool.total_credits === 0) {
+  // Count turns in current cycle (after last settlement, or all if none)
+  let turnsQuery = supabase
+    .from('game_turns')
+    .select('user_id, score, game_type_id')
+    .eq('utc_day', utcDay)
+    .eq('status', 'completed')
+
+  if (cycleStart) {
+    turnsQuery = turnsQuery.gt('created_at', cycleStart)
+  }
+
+  const { data: cycleTurns } = await turnsQuery
+
+  if (!cycleTurns || cycleTurns.length === 0) {
     return {
       success: true,
-      message: 'No pool to settle',
+      message: cycleStart
+        ? `No new turns since last settlement at ${cycleStart}`
+        : 'No pool to settle',
     }
   }
 
-  // Freeze the pool
+  // Pool = number of turns in this cycle (each turn costs 1 credit)
+  const total = cycleTurns.length
+
+  if (total === 0) {
+    return {
+      success: true,
+      message: 'No pool to settle (zero credits)',
+    }
+  }
+
+  // Freeze all active pools for the day
   await supabase
     .from('daily_pools')
     .update({ status: 'frozen', frozen_at: new Date().toISOString() })
     .eq('utc_day', utcDay)
+    .eq('status', 'active')
 
-  // Get winner (highest score)
-  const { data: winners } = await supabase
+  // Get winner (highest score in this cycle, unflagged only)
+  let winnersQuery = supabase
     .from('game_turns')
     .select('user_id, score, completed_at')
     .eq('utc_day', utcDay)
@@ -127,6 +150,12 @@ async function settleDay(supabase: any, utcDay: string) {
     .eq('flagged', false)
     .order('score', { ascending: false })
     .limit(1)
+
+  if (cycleStart) {
+    winnersQuery = winnersQuery.gt('created_at', cycleStart)
+  }
+
+  const { data: winners } = await winnersQuery
 
   if (!winners || winners.length === 0) {
     return {
@@ -137,8 +166,8 @@ async function settleDay(supabase: any, utcDay: string) {
 
   const winner = winners[0]
 
-  // Get all participants except winner
-  const { data: participants } = await supabase
+  // Get all participants except winner (this cycle only)
+  let participantsQuery = supabase
     .from('game_turns')
     .select('user_id')
     .eq('utc_day', utcDay)
@@ -147,14 +176,19 @@ async function settleDay(supabase: any, utcDay: string) {
     .order('score', { ascending: false })
     .limit(1000)
 
+  if (cycleStart) {
+    participantsQuery = participantsQuery.gt('created_at', cycleStart)
+  }
+
+  const { data: participants } = await participantsQuery
+
   // Count turns per participant
   const turnCounts: Record<string, number> = {}
   for (const p of participants || []) {
     turnCounts[p.user_id] = (turnCounts[p.user_id] || 0) + 1
   }
 
-  // Calculate distribution
-  const total = pool.total_credits
+  // Calculate distribution (total = number of turns in this cycle)
   const winnerAmount = Math.floor(total * 0.5)
   const rebatePool = Math.floor(total * 0.3)
   let sinkAmount = total - winnerAmount - rebatePool
@@ -212,7 +246,7 @@ async function settleDay(supabase: any, utcDay: string) {
 
   if (settlementError) {
     console.error('Settlement creation error:', settlementError)
-    throw new Error('Failed to create settlement')
+    throw new Error(`Failed to create settlement: ${settlementError.message}`)
   }
 
   // Create pending claims (users must claim their winnings)
@@ -247,7 +281,7 @@ async function settleDay(supabase: any, utcDay: string) {
     }
   }
 
-  // Treasury sink: credit sink amount to configured treasury user
+  // Treasury sink: auto-claim sink amount directly to treasury user's ledger
   if (sinkAmount > 0) {
     const { data: treasurySetting } = await supabase
       .from('site_settings')
@@ -256,16 +290,28 @@ async function settleDay(supabase: any, utcDay: string) {
       .single()
 
     if (treasurySetting?.value) {
-      const { error: sinkError } = await supabase.from('pending_claims').insert({
-        user_id: treasurySetting.value,
-        claim_type: 'sink',
+      // Resolve the treasury user's actual user_id from profiles
+      // (site_settings may store a username like "podiumarena" instead of user_id)
+      const { data: treasuryProfiles } = await supabase
+        .from('profiles')
+        .select('user_id')
+        .or(`user_id.eq.${treasurySetting.value},username.eq.${treasurySetting.value}`)
+        .limit(1)
+
+      const treasuryUserId = treasuryProfiles?.[0]?.user_id || treasurySetting.value
+
+      // Auto-claim: insert directly into credit_ledger (no pending_claim needed for treasury)
+      const { error: sinkError } = await supabase.from('credit_ledger').insert({
+        user_id: treasuryUserId,
+        event_type: 'sink',
         amount: sinkAmount,
-        settlement_id: settlement.id,
         utc_day: utcDay,
-        metadata: { source: 'treasury_sink' },
+        reference_id: settlement.id,
+        reference_type: 'settlement',
+        metadata: { source: 'treasury_sink', auto_claimed: true },
       })
       if (sinkError) {
-        console.error('Failed to create treasury sink claim:', sinkError)
+        console.error('Failed to auto-claim treasury sink:', sinkError)
       }
     } else {
       console.warn(`No treasury_user_id configured — ${sinkAmount} credits from sink are unclaimed`)
@@ -281,7 +327,7 @@ async function settleDay(supabase: any, utcDay: string) {
     })
     .eq('id', settlement.id)
 
-  // Update pool status
+  // Update pool status (only active/frozen pools, not already-settled ones from prior cycles)
   await supabase
     .from('daily_pools')
     .update({
@@ -290,6 +336,7 @@ async function settleDay(supabase: any, utcDay: string) {
       settlement_id: settlement.id,
     })
     .eq('utc_day', utcDay)
+    .in('status', ['active', 'frozen'])
 
   return {
     success: true,

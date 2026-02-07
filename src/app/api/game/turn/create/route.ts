@@ -12,6 +12,9 @@ import { generateAudioPatternTurnSpec, getAudioPatternClientSpec, DEFAULT_AUDIO_
 import { generateDragSortTurnSpec, getDragSortClientSpec, DEFAULT_DRAG_SORT_CONFIG } from '@/lib/game/drag-sort'
 import { generateFollowMeTurnSpec, getFollowMeClientSpec, DEFAULT_FOLLOW_ME_CONFIG } from '@/lib/game/follow-me'
 import { generateDuckShootTurnSpec, getDuckShootClientSpec, DEFAULT_DUCK_SHOOT_CONFIG } from '@/lib/game/duck-shoot'
+import { generateMemoryCardsTurnSpec, getMemoryCardsClientSpec, DEFAULT_MEMORY_CARDS_CONFIG } from '@/lib/game/memory-cards'
+import { generateNumberChainTurnSpec, getNumberChainClientSpec, DEFAULT_NUMBER_CHAIN_CONFIG } from '@/lib/game/number-chain'
+import { generateGridlockTurnSpec, getGridlockClientSpec, DEFAULT_GRIDLOCK_CONFIG } from '@/lib/game/gridlock'
 import crypto from 'crypto'
 
 export async function POST(request: Request) {
@@ -155,6 +158,27 @@ export async function POST(request: Request) {
           spec = dsSpec as unknown as Record<string, unknown>
           clientSpec = getDuckShootClientSpec(dsSpec) as unknown as Record<string, unknown>
           gameTypeId = 'duck_shoot'
+          break
+        }
+        case 'memory_cards': {
+          const mcSpec = generateMemoryCardsTurnSpec(profile.user_id, DEFAULT_MEMORY_CARDS_CONFIG)
+          spec = mcSpec as unknown as Record<string, unknown>
+          clientSpec = getMemoryCardsClientSpec(mcSpec) as unknown as Record<string, unknown>
+          gameTypeId = 'memory_cards'
+          break
+        }
+        case 'number_chain': {
+          const ncSpec = generateNumberChainTurnSpec(profile.user_id, DEFAULT_NUMBER_CHAIN_CONFIG)
+          spec = ncSpec as unknown as Record<string, unknown>
+          clientSpec = getNumberChainClientSpec(ncSpec) as unknown as Record<string, unknown>
+          gameTypeId = 'number_chain'
+          break
+        }
+        case 'gridlock': {
+          const glSpec = generateGridlockTurnSpec(profile.user_id, DEFAULT_GRIDLOCK_CONFIG)
+          spec = glSpec as unknown as Record<string, unknown>
+          clientSpec = getGridlockClientSpec(glSpec) as unknown as Record<string, unknown>
+          gameTypeId = 'gridlock'
           break
         }
         default: {

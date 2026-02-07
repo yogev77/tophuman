@@ -86,8 +86,18 @@ export async function GET(request: NextRequest) {
         ...entry,
       }))
     } else {
-      // Today's leaderboard - filter by day and game type
-      const { data: todayData, error: todayError } = await supabase
+      // Today's leaderboard - filter by day, game type, and current cycle
+      // Check for a completed settlement today (cycle boundary)
+      const { data: daySettlements } = await supabase
+        .from('settlements')
+        .select('completed_at')
+        .eq('utc_day', day)
+        .eq('status', 'completed')
+        .order('completed_at', { ascending: false })
+
+      const cycleStart = daySettlements?.[0]?.completed_at || null
+
+      let todayQuery = supabase
         .from('game_turns')
         .select(`
           user_id,
@@ -101,6 +111,12 @@ export async function GET(request: NextRequest) {
         .not('score', 'is', null)
         .order('score', { ascending: false })
         .limit(200)
+
+      if (cycleStart) {
+        todayQuery = todayQuery.gt('created_at', cycleStart)
+      }
+
+      const { data: todayData, error: todayError } = await todayQuery
 
       if (todayError) {
         console.error('Today leaderboard error:', todayError)
@@ -152,12 +168,32 @@ export async function GET(request: NextRequest) {
       }))
     }
 
-    // Calculate pool info from game_turns (same approach as /api/games)
-    const { data: poolTurns } = await supabase
+    // Calculate pool info from game_turns (current cycle only)
+    // Check for settlement if not already done (alltime path skips the check above)
+    let poolCycleStart: string | null = null
+    {
+      const { data: poolSettlements } = await supabase
+        .from('settlements')
+        .select('completed_at')
+        .eq('utc_day', day)
+        .eq('status', 'completed')
+        .order('completed_at', { ascending: false })
+        .limit(1)
+
+      poolCycleStart = poolSettlements?.[0]?.completed_at || null
+    }
+
+    let poolQuery = supabase
       .from('game_turns')
       .select('user_id')
       .eq('game_type_id', gameType)
       .eq('utc_day', day)
+
+    if (poolCycleStart) {
+      poolQuery = poolQuery.gt('created_at', poolCycleStart)
+    }
+
+    const { data: poolTurns } = await poolQuery
 
     const poolPlayers = new Set((poolTurns || []).map(t => t.user_id))
     const poolTotal = poolTurns?.length ?? 0

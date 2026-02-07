@@ -60,6 +60,18 @@ const GAME_INFO: Record<string, { name: string; description: string }> = {
     name: 'Target Shoot',
     description: 'Hit the moving targets with precision',
   },
+  memory_cards: {
+    name: 'Memory Cards',
+    description: 'Match pairs of cards',
+  },
+  number_chain: {
+    name: 'Number Chain',
+    description: 'Tap numbers in order',
+  },
+  gridlock: {
+    name: 'Gridlock',
+    description: 'Solve sliding puzzles',
+  },
 }
 
 export async function GET() {
@@ -100,16 +112,6 @@ export async function GET() {
 
     const { data: todayStats } = await statsQuery
 
-    // Get pool info
-    const { data: pool } = await supabase
-      .from('daily_pools')
-      .select('*')
-      .eq('utc_day', today)
-      .single()
-
-    // Pool is "empty" if settled/frozen OR if there was a settlement and pool hasn't been reset yet
-    const isPoolSettled = pool?.status === 'settled' || pool?.status === 'frozen'
-
     // Calculate time until midnight UTC (settlement)
     const midnight = new Date(Date.UTC(
       now.getUTCFullYear(),
@@ -125,7 +127,7 @@ export async function GET() {
     const allCyclePlayers = new Set<string>()
     let totalCycleTurns = 0
 
-    if (!isPoolSettled) {
+    {
       let poolQuery = supabase
         .from('game_turns')
         .select('game_type_id, user_id')
@@ -235,7 +237,7 @@ export async function GET() {
         totalCredits: totalPoolCredits,
         uniquePlayers: allCyclePlayers.size,
         totalTurns: totalCycleTurns,
-        status: pool?.status ?? 'active',
+        status: totalCycleTurns === 0 && cycleStartTime ? 'settled' : 'active',
       },
       msUntilSettlement,
       utcDay: today,

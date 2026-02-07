@@ -48,6 +48,10 @@ export function DragSortGame({ onGameComplete }: DragSortGameProps) {
   const [totalRounds, setTotalRounds] = useState(1)
 
   const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const listRef = useRef<HTMLDivElement>(null)
+  const touchStartY = useRef<number>(0)
+  const touchDragIndex = useRef<number | null>(null)
+  const itemRects = useRef<DOMRect[]>([])
 
   const startGame = useCallback(async () => {
     setPhase('loading')
@@ -209,6 +213,7 @@ export function DragSortGame({ onGameComplete }: DragSortGameProps) {
     }
   }
 
+  // Desktop drag handlers
   const handleDragStart = (index: number) => {
     setDraggingIndex(index)
   }
@@ -225,17 +230,54 @@ export function DragSortGame({ onGameComplete }: DragSortGameProps) {
     setDraggingIndex(null)
   }
 
-  // Mobile touch support
-  const handleMoveUp = (index: number) => {
-    if (index > 0) {
-      moveItem(index, index - 1)
+  // Touch drag handlers
+  const captureItemRects = () => {
+    if (!listRef.current) return
+    const children = listRef.current.children
+    const rects: DOMRect[] = []
+    for (let i = 0; i < children.length; i++) {
+      rects.push(children[i].getBoundingClientRect())
+    }
+    itemRects.current = rects
+  }
+
+  const handleTouchStart = (e: React.TouchEvent, index: number) => {
+    touchStartY.current = e.touches[0].clientY
+    touchDragIndex.current = index
+    setDraggingIndex(index)
+    captureItemRects()
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    e.preventDefault()
+    if (touchDragIndex.current === null) return
+
+    const touchY = e.touches[0].clientY
+    const rects = itemRects.current
+    const currentIdx = touchDragIndex.current
+
+    // Find which item the finger is over
+    for (let i = 0; i < rects.length; i++) {
+      if (i === currentIdx) continue
+      const rect = rects[i]
+      const midY = rect.top + rect.height / 2
+      if (
+        (currentIdx < i && touchY > midY) ||
+        (currentIdx > i && touchY < midY)
+      ) {
+        moveItem(currentIdx, i)
+        touchDragIndex.current = i
+        setDraggingIndex(i)
+        // Re-capture rects after move
+        requestAnimationFrame(captureItemRects)
+        break
+      }
     }
   }
 
-  const handleMoveDown = (index: number) => {
-    if (index < order.length - 1) {
-      moveItem(index, index + 1)
-    }
+  const handleTouchEnd = () => {
+    touchDragIndex.current = null
+    setDraggingIndex(null)
   }
 
   useEffect(() => {
@@ -320,7 +362,7 @@ export function DragSortGame({ onGameComplete }: DragSortGameProps) {
             {getSortHint()}
           </p>
 
-          <div className="space-y-2 max-w-md mx-auto">
+          <div ref={listRef} className="space-y-2 max-w-md mx-auto touch-none">
             {order.map((itemIndex, displayIndex) => (
               <div
                 key={itemIndex}
@@ -328,30 +370,24 @@ export function DragSortGame({ onGameComplete }: DragSortGameProps) {
                 onDragStart={() => handleDragStart(displayIndex)}
                 onDragOver={(e) => handleDragOver(e, displayIndex)}
                 onDragEnd={handleDragEnd}
-                className={`flex items-center gap-2 p-4 rounded-lg cursor-move transition-all ${
+                onTouchStart={(e) => handleTouchStart(e, displayIndex)}
+                onTouchMove={(e) => handleTouchMove(e)}
+                onTouchEnd={handleTouchEnd}
+                className={`flex items-center gap-2 p-4 rounded-lg cursor-grab active:cursor-grabbing transition-all select-none ${
                   draggingIndex === displayIndex
-                    ? 'bg-yellow-500 scale-105'
+                    ? 'bg-yellow-500 scale-105 shadow-lg shadow-yellow-500/20'
                     : 'bg-slate-700 hover:bg-slate-600'
                 }`}
               >
-                <span className="text-slate-500 text-sm w-6">{displayIndex + 1}.</span>
-                <span className="flex-1 text-white font-medium">{items[itemIndex]}</span>
-                <div className="flex gap-1">
-                  <button
-                    onClick={() => handleMoveUp(displayIndex)}
-                    disabled={displayIndex === 0}
-                    className="p-1 text-slate-400 hover:text-white disabled:opacity-30"
-                  >
-                    ▲
-                  </button>
-                  <button
-                    onClick={() => handleMoveDown(displayIndex)}
-                    disabled={displayIndex === order.length - 1}
-                    className="p-1 text-slate-400 hover:text-white disabled:opacity-30"
-                  >
-                    ▼
-                  </button>
-                </div>
+                <GripVertical className={`w-5 h-5 flex-shrink-0 ${
+                  draggingIndex === displayIndex ? 'text-slate-900' : 'text-slate-500'
+                }`} />
+                <span className={`text-sm w-6 ${
+                  draggingIndex === displayIndex ? 'text-slate-900/60' : 'text-slate-500'
+                }`}>{displayIndex + 1}.</span>
+                <span className={`flex-1 font-medium ${
+                  draggingIndex === displayIndex ? 'text-slate-900' : 'text-white'
+                }`}>{items[itemIndex]}</span>
               </div>
             ))}
           </div>

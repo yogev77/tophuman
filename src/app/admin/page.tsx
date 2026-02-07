@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
   Target,
@@ -22,6 +22,8 @@ import {
   Vault,
   LucideIcon,
   LayoutDashboard,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react'
 
 interface DailyStats {
@@ -62,6 +64,46 @@ interface GameOption {
   desc: string
 }
 
+interface SettlementClaim {
+  id: string
+  user_id: string
+  user_name: string
+  claim_type: string
+  amount: number
+  claimed: boolean
+  metadata: Record<string, unknown> | null
+}
+
+interface SettlementDetail {
+  id: string
+  utc_day: string
+  status: string
+  pool_total: number
+  participant_count: number
+  winner_user_id: string | null
+  winner_name: string | null
+  winner_amount: number | null
+  rebate_total: number | null
+  sink_amount: number | null
+  completed_at: string | null
+  created_at: string
+  claims: SettlementClaim[]
+}
+
+interface SettlementResult {
+  success: boolean
+  message: string
+  settlement?: {
+    id: string
+    utcDay: string
+    winner: string
+    winnerAmount: number
+    rebateTotal: number
+    sinkAmount: number
+    participantCount: number
+  }
+}
+
 interface LedgerEntry {
   id: number
   event_type: string
@@ -97,6 +139,7 @@ const EVENT_TYPE_STYLES: Record<string, { label: string; color: string }> = {
   rebate: { label: 'Rebate', color: 'bg-blue-500/20 text-blue-400' },
   admin_adjustment: { label: 'Admin', color: 'bg-purple-500/20 text-purple-400' },
   referral_bonus: { label: 'Referral', color: 'bg-cyan-500/20 text-cyan-400' },
+  sink: { label: 'Sink', color: 'bg-orange-500/20 text-orange-400' },
   expiration: { label: 'Expired', color: 'bg-slate-500/20 text-slate-400' },
 }
 
@@ -119,6 +162,15 @@ export default function AdminPage() {
   const [treasuryInput, setTreasuryInput] = useState('')
   const [savingTreasury, setSavingTreasury] = useState(false)
   const [treasuryResult, setTreasuryResult] = useState<{ success: boolean; message: string } | null>(null)
+
+  // Settlement result state (inline display instead of alert)
+  const [settleResult, setSettleResult] = useState<SettlementResult | null>(null)
+
+  // Settlement history state (Treasury tab)
+  const [settlementHistory, setSettlementHistory] = useState<SettlementDetail[]>([])
+  const [settlementHistoryTotal, setSettlementHistoryTotal] = useState(0)
+  const [settlementHistoryLoading, setSettlementHistoryLoading] = useState(false)
+  const [expandedSettlement, setExpandedSettlement] = useState<string | null>(null)
 
   // Treasury ledger state
   const [treasuryBalance, setTreasuryBalance] = useState<number | null>(null)
@@ -228,6 +280,26 @@ export default function AdminPage() {
     }
   }, [])
 
+  const fetchSettlementHistory = useCallback(async (offset = 0, append = false) => {
+    setSettlementHistoryLoading(true)
+    try {
+      const res = await fetch(`/api/admin/settlement-history?limit=20&offset=${offset}`)
+      if (res.ok) {
+        const data = await res.json()
+        setSettlementHistoryTotal(data.total)
+        if (append) {
+          setSettlementHistory(prev => [...prev, ...data.settlements])
+        } else {
+          setSettlementHistory(data.settlements)
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch settlement history:', err)
+    } finally {
+      setSettlementHistoryLoading(false)
+    }
+  }, [])
+
   const saveTreasuryUser = async () => {
     if (!treasuryInput.trim()) return
 
@@ -266,12 +338,17 @@ export default function AdminPage() {
     fetchTreasuryUser()
   }, [fetchData])
 
-  // Fetch treasury history when switching to treasury tab (if user is set)
+  // Fetch treasury history and settlement history when switching to treasury tab
   useEffect(() => {
-    if (activeTab === 'treasury' && treasuryUserId && treasuryEntries.length === 0 && treasuryBalance === null) {
-      fetchTreasuryHistory(treasuryUserId)
+    if (activeTab === 'treasury') {
+      if (treasuryUserId && treasuryEntries.length === 0 && treasuryBalance === null) {
+        fetchTreasuryHistory(treasuryUserId)
+      }
+      if (settlementHistory.length === 0 && !settlementHistoryLoading) {
+        fetchSettlementHistory()
+      }
     }
-  }, [activeTab, treasuryUserId, treasuryEntries.length, treasuryBalance, fetchTreasuryHistory])
+  }, [activeTab, treasuryUserId, treasuryEntries.length, treasuryBalance, fetchTreasuryHistory, settlementHistory.length, settlementHistoryLoading, fetchSettlementHistory])
 
   const updateGameSetting = async (gameId: string, isActive: boolean, opensAt: string | null) => {
     setUpdatingGame(gameId)
@@ -308,26 +385,32 @@ export default function AdminPage() {
     updateGameSetting(gameId, current.isActive, opensAt)
   }
 
-  const triggerSettlement = async () => {
-    if (!settleDay) return
+  const triggerSettlement = async (day?: string) => {
+    const targetDay = day || settleDay
+    if (!targetDay) return
 
     setSettling(true)
+    setSettleResult(null)
     try {
       const res = await fetch('/api/cron/settlement', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ utcDay: settleDay }),
+        body: JSON.stringify({ utcDay: targetDay }),
       })
 
       const data = await res.json()
       if (data.error) {
-        alert('Settlement failed: ' + data.error)
+        setSettleResult({ success: false, message: 'Settlement failed: ' + data.error })
       } else {
-        alert('Settlement completed!')
+        setSettleResult(data)
         fetchData()
+        // Refresh settlement history if on treasury tab
+        if (activeTab === 'treasury') {
+          fetchSettlementHistory()
+        }
       }
     } catch (err) {
-      alert('Settlement error: ' + (err instanceof Error ? err.message : 'Unknown'))
+      setSettleResult({ success: false, message: err instanceof Error ? err.message : 'Unknown error' })
     } finally {
       setSettling(false)
     }
@@ -612,9 +695,26 @@ export default function AdminPage() {
           {/* Manual Settlement */}
           <div className="bg-slate-800 rounded-xl p-6 mb-8">
             <h2 className="text-xl font-bold text-white mb-4">Manual Settlement</h2>
+
+            {/* Quick action: Settle Yesterday */}
+            <div className="mb-4">
+              <button
+                onClick={() => {
+                  const y = new Date()
+                  y.setUTCDate(y.getUTCDate() - 1)
+                  triggerSettlement(y.toISOString().split('T')[0])
+                }}
+                disabled={settling}
+                className="bg-yellow-500 hover:bg-yellow-400 disabled:bg-slate-600 text-slate-900 font-bold py-2 px-6 rounded-lg transition"
+              >
+                {settling ? 'Settling...' : 'Settle Yesterday'}
+              </button>
+              <span className="text-slate-400 text-sm ml-3">Most common action</span>
+            </div>
+
             <div className="flex gap-4 items-end">
               <div>
-                <label className="block text-sm text-slate-300 mb-2">UTC Day (YYYY-MM-DD)</label>
+                <label className="block text-sm text-slate-300 mb-2">Or pick a specific day</label>
                 <input
                   type="date"
                   value={settleDay}
@@ -623,7 +723,7 @@ export default function AdminPage() {
                 />
               </div>
               <button
-                onClick={triggerSettlement}
+                onClick={() => triggerSettlement()}
                 disabled={settling || !settleDay}
                 className="bg-orange-600 hover:bg-orange-500 disabled:bg-slate-600 text-white font-bold py-2 px-6 rounded-lg transition"
               >
@@ -631,8 +731,41 @@ export default function AdminPage() {
               </button>
             </div>
             <p className="text-slate-400 text-sm mt-2">
-              Note: Settlement runs automatically at midnight UTC via Vercel Cron.
+              Settlement runs automatically at midnight UTC via Vercel Cron.
             </p>
+
+            {/* Inline Settlement Result */}
+            {settleResult && (
+              <div className={`mt-4 p-4 rounded-lg text-sm ${
+                settleResult.success
+                  ? 'bg-green-500/20 border border-green-500/30'
+                  : 'bg-red-500/20 border border-red-500/30'
+              }`}>
+                <div className={settleResult.success ? 'text-green-400' : 'text-red-400'}>
+                  {settleResult.message}
+                </div>
+                {settleResult.settlement && (
+                  <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div>
+                      <div className="text-slate-400 text-xs">Winner Prize</div>
+                      <div className="text-yellow-400 font-bold">{settleResult.settlement.winnerAmount}</div>
+                    </div>
+                    <div>
+                      <div className="text-slate-400 text-xs">Rebates</div>
+                      <div className="text-blue-400 font-bold">{settleResult.settlement.rebateTotal}</div>
+                    </div>
+                    <div>
+                      <div className="text-slate-400 text-xs">Sink</div>
+                      <div className="text-orange-400 font-bold">{settleResult.settlement.sinkAmount}</div>
+                    </div>
+                    <div>
+                      <div className="text-slate-400 text-xs">Participants</div>
+                      <div className="text-white font-bold">{settleResult.settlement.participantCount}</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Recent Settlements */}
@@ -809,6 +942,137 @@ export default function AdminPage() {
               <p className="text-slate-400">Set a treasury user above to view their credit history.</p>
             </div>
           )}
+
+          {/* Settlement Allocation History */}
+          <div className="bg-slate-800 rounded-xl p-6 mt-8">
+            <h2 className="text-xl font-bold text-white mb-4">Settlement Allocation History</h2>
+            {settlementHistoryLoading && settlementHistory.length === 0 ? (
+              <div className="animate-pulse space-y-3">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="h-12 bg-slate-700 rounded"></div>
+                ))}
+              </div>
+            ) : settlementHistory.length === 0 ? (
+              <p className="text-slate-400">No settlements yet.</p>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="text-left text-slate-400 text-sm">
+                        <th className="pb-3 w-8"></th>
+                        <th className="pb-3 pr-4">Date</th>
+                        <th className="pb-3 px-3 text-right">Pool</th>
+                        <th className="pb-3 px-3">Winner</th>
+                        <th className="pb-3 px-3 text-right">Prize</th>
+                        <th className="pb-3 px-3 text-right">Rebates</th>
+                        <th className="pb-3 px-3 text-right">Sink</th>
+                        <th className="pb-3 pl-3">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {settlementHistory.map((s) => {
+                        const isExpanded = expandedSettlement === s.id
+                        return (
+                          <React.Fragment key={s.id}>
+                            <tr
+                              className="border-t border-slate-700 cursor-pointer hover:bg-slate-700/30 transition"
+                              onClick={() => setExpandedSettlement(isExpanded ? null : s.id)}
+                            >
+                              <td className="py-3 text-slate-400">
+                                {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                              </td>
+                              <td className="py-3 pr-4 text-white">{s.utc_day}</td>
+                              <td className="py-3 px-3 text-yellow-400 text-right font-mono">{s.pool_total}</td>
+                              <td className="py-3 px-3 text-slate-300 text-sm">
+                                {s.winner_name || (s.winner_user_id ? s.winner_user_id.slice(0, 12) + '...' : '-')}
+                              </td>
+                              <td className="py-3 px-3 text-green-400 text-right font-mono">{s.winner_amount ?? '-'}</td>
+                              <td className="py-3 px-3 text-blue-400 text-right font-mono">{s.rebate_total ?? '-'}</td>
+                              <td className="py-3 px-3 text-orange-400 text-right font-mono">{s.sink_amount ?? '-'}</td>
+                              <td className="py-3 pl-3">
+                                <span className={`px-2 py-1 rounded text-xs ${
+                                  s.status === 'completed' ? 'bg-green-500/20 text-green-400' :
+                                  s.status === 'processing' ? 'bg-yellow-500/20 text-yellow-400' :
+                                  'bg-slate-500/20 text-slate-400'
+                                }`}>
+                                  {s.status}
+                                </span>
+                              </td>
+                            </tr>
+                            {isExpanded && (
+                              <tr>
+                                <td colSpan={8} className="py-0">
+                                  <div className="bg-slate-700/30 rounded-lg p-4 mb-2">
+                                    <div className="text-sm text-slate-400 mb-2">
+                                      {s.participant_count} participants &middot; Settled {s.completed_at ? new Date(s.completed_at).toLocaleString() : 'pending'}
+                                    </div>
+                                    {s.claims.length === 0 ? (
+                                      <p className="text-slate-500 text-sm">No claims found for this settlement.</p>
+                                    ) : (
+                                      <table className="w-full text-sm">
+                                        <thead>
+                                          <tr className="text-slate-400">
+                                            <th className="text-left pb-2">User</th>
+                                            <th className="text-left pb-2">Type</th>
+                                            <th className="text-right pb-2">Amount</th>
+                                            <th className="text-right pb-2">Claimed</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {s.claims.map((c) => (
+                                            <tr key={c.id} className="border-t border-slate-600/50">
+                                              <td className="py-1.5 text-white">{c.user_name}</td>
+                                              <td className="py-1.5">
+                                                <span className={`px-2 py-0.5 rounded text-xs ${
+                                                  c.claim_type === 'prize_win' ? 'bg-yellow-500/20 text-yellow-400' :
+                                                  c.claim_type === 'rebate' ? 'bg-blue-500/20 text-blue-400' :
+                                                  c.claim_type === 'sink' ? 'bg-orange-500/20 text-orange-400' :
+                                                  'bg-slate-500/20 text-slate-400'
+                                                }`}>
+                                                  {c.claim_type === 'prize_win' ? 'Prize' :
+                                                   c.claim_type === 'rebate' ? 'Rebate' :
+                                                   c.claim_type === 'sink' ? 'Sink' : c.claim_type}
+                                                </span>
+                                              </td>
+                                              <td className="py-1.5 text-right font-mono text-green-400">{c.amount}</td>
+                                              <td className="py-1.5 text-right">
+                                                {c.claimed
+                                                  ? <Check className="w-4 h-4 text-green-400 inline" />
+                                                  : <X className="w-4 h-4 text-slate-500 inline" />
+                                                }
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Load More */}
+                {settlementHistory.length < settlementHistoryTotal && (
+                  <div className="mt-4 text-center">
+                    <button
+                      onClick={() => fetchSettlementHistory(settlementHistory.length, true)}
+                      disabled={settlementHistoryLoading}
+                      className="bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white px-6 py-2 rounded-lg text-sm transition"
+                    >
+                      {settlementHistoryLoading ? 'Loading...' : `Load more (${settlementHistory.length} of ${settlementHistoryTotal})`}
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </>
       )}
     </div>

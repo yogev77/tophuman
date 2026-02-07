@@ -17,6 +17,9 @@ import { AudioPatternGame } from '@/components/AudioPatternGame'
 import { DragSortGame } from '@/components/DragSortGame'
 import { FollowMeGame } from '@/components/FollowMeGame'
 import { DuckShootGame } from '@/components/DuckShootGame'
+import { MemoryCardsGame } from '@/components/MemoryCardsGame'
+import { NumberChainGame } from '@/components/NumberChainGame'
+import { GridlockGame } from '@/components/GridlockGame'
 import { Leaderboard } from '@/components/Leaderboard'
 import Link from 'next/link'
 import {
@@ -32,6 +35,9 @@ import {
   GripVertical,
   Pencil,
   Crosshair,
+  LayoutGrid,
+  Hash,
+  ParkingSquare,
   ArrowLeft,
   LucideIcon,
   CalendarCheck,
@@ -53,6 +59,9 @@ const GAME_ICON_COLORS: Record<string, { bg: string; icon: string }> = {
   drag_sort: { bg: 'bg-lime-500/20', icon: 'text-lime-400' },
   follow_me: { bg: 'bg-cyan-500/20', icon: 'text-cyan-400' },
   duck_shoot: { bg: 'bg-emerald-500/20', icon: 'text-emerald-400' },
+  memory_cards: { bg: 'bg-fuchsia-500/20', icon: 'text-fuchsia-400' },
+  number_chain: { bg: 'bg-red-500/20', icon: 'text-red-400' },
+  gridlock: { bg: 'bg-blue-500/20', icon: 'text-blue-400' },
 }
 
 const GAME_CONFIG: Record<string, {
@@ -132,6 +141,24 @@ const GAME_CONFIG: Record<string, {
     name: 'Target Shoot',
     leaderboardType: 'duck_shoot',
     icon: Crosshair,
+  },
+  memory_cards: {
+    component: MemoryCardsGame,
+    name: 'Memory Cards',
+    leaderboardType: 'memory_cards',
+    icon: LayoutGrid,
+  },
+  number_chain: {
+    component: NumberChainGame,
+    name: 'Number Chain',
+    leaderboardType: 'number_chain',
+    icon: Hash,
+  },
+  gridlock: {
+    component: GridlockGame,
+    name: 'Gridlock',
+    leaderboardType: 'gridlock',
+    icon: ParkingSquare,
   },
 }
 

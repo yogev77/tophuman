@@ -12,6 +12,9 @@ import { validateAudioPatternTurn, AudioPatternTurnSpec } from '@/lib/game/audio
 import { validateDragSortTurn, DragSortTurnSpec } from '@/lib/game/drag-sort'
 import { validateFollowMeTurn, FollowMeTurnSpec } from '@/lib/game/follow-me'
 import { validateDuckShootTurn, DuckShootTurnSpec } from '@/lib/game/duck-shoot'
+import { validateMemoryCardsTurn, MemoryCardsTurnSpec } from '@/lib/game/memory-cards'
+import { validateNumberChainTurn, NumberChainTurnSpec } from '@/lib/game/number-chain'
+import { validateGridlockTurn, GridlockTurnSpec } from '@/lib/game/gridlock'
 
 export async function POST(request: NextRequest) {
   try {
@@ -134,6 +137,21 @@ export async function POST(request: NextRequest) {
       case 'duck_shoot': {
         const spec = turn.spec as unknown as DuckShootTurnSpec
         result = validateDuckShootTurn(spec, baseEvents)
+        break
+      }
+      case 'memory_cards': {
+        const spec = turn.spec as unknown as MemoryCardsTurnSpec
+        result = validateMemoryCardsTurn(spec, baseEvents)
+        break
+      }
+      case 'number_chain': {
+        const spec = turn.spec as unknown as NumberChainTurnSpec
+        result = validateNumberChainTurn(spec, baseEvents)
+        break
+      }
+      case 'gridlock': {
+        const spec = turn.spec as unknown as GridlockTurnSpec
+        result = validateGridlockTurn(spec, baseEvents)
         break
       }
       default: {

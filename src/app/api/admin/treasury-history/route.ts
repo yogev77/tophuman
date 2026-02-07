@@ -33,17 +33,27 @@ export async function GET(request: NextRequest) {
 
     const serviceClient = createServiceClient()
 
+    // Resolve the identifier to an actual user_id (may be a username)
+    const { data: resolvedProfiles } = await serviceClient
+      .from('profiles')
+      .select('user_id, display_name, username')
+      .or(`user_id.eq.${userId},username.eq.${userId}`)
+      .limit(1)
+
+    const resolvedUserId = resolvedProfiles?.[0]?.user_id || userId
+    const displayName = resolvedProfiles?.[0]?.display_name || resolvedProfiles?.[0]?.username || userId
+
     // Fetch balance and entries in parallel
     const [balanceResult, countResult, entriesResult] = await Promise.all([
-      serviceClient.rpc('get_user_balance', { p_user_id: userId }),
+      serviceClient.rpc('get_user_balance', { p_user_id: resolvedUserId }),
       serviceClient
         .from('credit_ledger')
         .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId),
+        .eq('user_id', resolvedUserId),
       serviceClient
         .from('credit_ledger')
         .select('id, event_type, amount, utc_day, reference_id, reference_type, metadata, created_at')
-        .eq('user_id', userId)
+        .eq('user_id', resolvedUserId)
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1),
     ])
