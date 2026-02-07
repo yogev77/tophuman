@@ -1,14 +1,19 @@
 import crypto from 'crypto'
 
 export interface MemoryCardsConfig {
-  num_pairs: number
+  rounds: { num_pairs: number }[]
   time_limit_seconds: number
   flip_back_delay_ms: number
 }
 
+export interface MemoryCardsRound {
+  cards: string[]
+  numPairs: number
+}
+
 export interface MemoryCardsTurnSpec {
   seed: string
-  cards: string[]
+  rounds: MemoryCardsRound[]
   timeLimitMs: number
   flipBackDelayMs: number
 }
@@ -32,8 +37,11 @@ export interface MemoryCardsResult {
 }
 
 export const DEFAULT_MEMORY_CARDS_CONFIG: MemoryCardsConfig = {
-  num_pairs: 4,
-  time_limit_seconds: 60,
+  rounds: [
+    { num_pairs: 4 },
+    { num_pairs: 6 },
+  ],
+  time_limit_seconds: 90,
   flip_back_delay_ms: 800,
 }
 
@@ -74,28 +82,28 @@ export function generateMemoryCardsTurnSpec(
   const seed = crypto.createHash('sha256').update(seedInput).digest('hex')
   const random = seededRandom(seed)
 
-  // Pick random emojis
-  const shuffledPool = shuffle(EMOJI_POOL, random)
-  const chosen = shuffledPool.slice(0, config.num_pairs)
-
-  // Duplicate and shuffle
-  const cards = shuffle([...chosen, ...chosen], random)
+  const rounds: MemoryCardsRound[] = config.rounds.map(roundConfig => {
+    const shuffledPool = shuffle(EMOJI_POOL, random)
+    const chosen = shuffledPool.slice(0, roundConfig.num_pairs)
+    const cards = shuffle([...chosen, ...chosen], random)
+    return { cards, numPairs: roundConfig.num_pairs }
+  })
 
   return {
     seed,
-    cards,
+    rounds,
     timeLimitMs: config.time_limit_seconds * 1000,
     flipBackDelayMs: config.flip_back_delay_ms,
   }
 }
 
 export function getMemoryCardsClientSpec(spec: MemoryCardsTurnSpec): {
-  cards: string[]
+  rounds: MemoryCardsRound[]
   timeLimitMs: number
   flipBackDelayMs: number
 } {
   return {
-    cards: spec.cards,
+    rounds: spec.rounds,
     timeLimitMs: spec.timeLimitMs,
     flipBackDelayMs: spec.flipBackDelayMs,
   }
@@ -107,8 +115,11 @@ export function validateMemoryCardsTurn(
 ): MemoryCardsResult {
   const matchAttempts = events.filter(e => e.eventType === 'match_attempt')
   const successfulMatches = matchAttempts.filter(e => e.matched === true)
+  const roundCompletes = events.filter(e => e.eventType === 'round_complete')
 
-  if (successfulMatches.length < spec.cards.length / 2) {
+  const totalPairs = spec.rounds.reduce((sum, r) => sum + r.numPairs, 0)
+
+  if (roundCompletes.length === 0 && successfulMatches.length < spec.rounds[0].numPairs) {
     return { valid: false, reason: 'incomplete', matchAttempts: matchAttempts.length }
   }
 
@@ -136,10 +147,12 @@ export function validateMemoryCardsTurn(
     ? allTimes[allTimes.length - 1] - allTimes[0]
     : spec.timeLimitMs
 
-  // Scoring: basePoints degrades with mismatches, speed bonus via sqrt
-  const numPairs = spec.cards.length / 2
-  const basePoints = 4000 * (numPairs / matchAttempts.length)
-  const score = Math.round(basePoints * Math.sqrt(spec.timeLimitMs / Math.max(totalTimeMs, 1000)))
+  // Scoring: reward completing more rounds + efficiency
+  const roundsCompleted = roundCompletes.length + (successfulMatches.length >= totalPairs ? 1 : 0)
+  const pairsMatched = successfulMatches.length
+  const basePoints = 4000 * (pairsMatched / Math.max(matchAttempts.length, 1))
+  const roundBonus = roundsCompleted * 1000
+  const score = Math.round((basePoints + roundBonus) * Math.sqrt(spec.timeLimitMs / Math.max(totalTimeMs, 1000)))
 
   return {
     valid: true,

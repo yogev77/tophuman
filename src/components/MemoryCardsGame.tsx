@@ -6,10 +6,15 @@ import { LayoutGrid } from 'lucide-react'
 import { formatTime } from '@/lib/utils'
 import { ShareScore } from './ShareScore'
 
-type GamePhase = 'idle' | 'loading' | 'play' | 'checking' | 'completed' | 'failed'
+type GamePhase = 'idle' | 'loading' | 'play' | 'round_complete' | 'checking' | 'completed' | 'failed'
+
+interface RoundSpec {
+  cards: string[]
+  numPairs: number
+}
 
 interface TurnSpec {
-  cards: string[]
+  rounds: RoundSpec[]
   timeLimitMs: number
   flipBackDelayMs: number
 }
@@ -34,7 +39,9 @@ export function MemoryCardsGame({ onGameComplete }: MemoryCardsGameProps) {
   const [matched, setMatched] = useState<boolean[]>([])
   const [selected, setSelected] = useState<number[]>([])
   const [locked, setLocked] = useState(false)
+  const [currentRound, setCurrentRound] = useState(0)
   const [matchCount, setMatchCount] = useState(0)
+  const [totalMatches, setTotalMatches] = useState(0)
   const [attempts, setAttempts] = useState(0)
   const [timeLeft, setTimeLeft] = useState(0)
   const [result, setResult] = useState<GameResult | null>(null)
@@ -79,7 +86,9 @@ export function MemoryCardsGame({ onGameComplete }: MemoryCardsGameProps) {
     setPhase('loading')
     setError(null)
     setResult(null)
+    setCurrentRound(0)
     setMatchCount(0)
+    setTotalMatches(0)
     setAttempts(0)
     setSelected([])
     setLocked(false)
@@ -99,8 +108,9 @@ export function MemoryCardsGame({ onGameComplete }: MemoryCardsGameProps) {
 
       setTurnToken(turnData.turnToken)
       setSpec(turnData.spec)
-      setFlipped(new Array(turnData.spec.cards.length).fill(false))
-      setMatched(new Array(turnData.spec.cards.length).fill(false))
+      const firstRound = turnData.spec.rounds[0]
+      setFlipped(new Array(firstRound.cards.length).fill(false))
+      setMatched(new Array(firstRound.cards.length).fill(false))
       setTimeLeft(turnData.spec.timeLimitMs)
 
       // Start turn on server
@@ -137,6 +147,8 @@ export function MemoryCardsGame({ onGameComplete }: MemoryCardsGameProps) {
     if (!turnToken || !spec || locked || phase !== 'play') return
     if (flipped[index] || matched[index]) return
 
+    const round = spec.rounds[currentRound]
+
     // Send flip event
     fetch('/api/game/turn/event', {
       method: 'POST',
@@ -145,6 +157,7 @@ export function MemoryCardsGame({ onGameComplete }: MemoryCardsGameProps) {
         turnToken,
         eventType: 'flip',
         cardIndex: index,
+        round: currentRound,
         clientTimestampMs: Date.now(),
       }),
     })
@@ -159,11 +172,10 @@ export function MemoryCardsGame({ onGameComplete }: MemoryCardsGameProps) {
     if (newSelected.length === 2) {
       setLocked(true)
       const [first, second] = newSelected
-      const isMatch = spec.cards[first] === spec.cards[second]
+      const isMatch = round.cards[first] === round.cards[second]
       const newAttempts = attempts + 1
       setAttempts(newAttempts)
 
-      // Send match_attempt event (await on final match to ensure it's saved)
       const matchPromise = fetch('/api/game/turn/event', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -173,6 +185,7 @@ export function MemoryCardsGame({ onGameComplete }: MemoryCardsGameProps) {
           card1: first,
           card2: second,
           matched: isMatch,
+          round: currentRound,
           clientTimestampMs: Date.now(),
         }),
       })
@@ -184,13 +197,43 @@ export function MemoryCardsGame({ onGameComplete }: MemoryCardsGameProps) {
         setMatched(newMatched)
         const newMatchCount = matchCount + 1
         setMatchCount(newMatchCount)
+        setTotalMatches(prev => prev + 1)
         setSelected([])
         setLocked(false)
 
-        // Check if all pairs found — await event before completing
-        if (newMatchCount === spec.cards.length / 2) {
+        // Check if all pairs in this round are found
+        if (newMatchCount === round.numPairs) {
           await matchPromise
-          completeGame()
+
+          // Send round_complete event
+          fetch('/api/game/turn/event', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              turnToken,
+              eventType: 'round_complete',
+              round: currentRound,
+              clientTimestampMs: Date.now(),
+            }),
+          })
+
+          if (currentRound + 1 < spec.rounds.length) {
+            // Show round complete briefly then load next round
+            setPhase('round_complete')
+            setTimeout(() => {
+              const nextRound = currentRound + 1
+              const nextCards = spec.rounds[nextRound].cards
+              setCurrentRound(nextRound)
+              setMatchCount(0)
+              setFlipped(new Array(nextCards.length).fill(false))
+              setMatched(new Array(nextCards.length).fill(false))
+              setSelected([])
+              setLocked(false)
+              setPhase('play')
+            }, 1200)
+          } else {
+            completeGame()
+          }
         }
       } else {
         // Flip back after delay
@@ -204,7 +247,7 @@ export function MemoryCardsGame({ onGameComplete }: MemoryCardsGameProps) {
         }, spec.flipBackDelayMs)
       }
     }
-  }, [turnToken, spec, locked, phase, flipped, matched, selected, attempts, matchCount, completeGame])
+  }, [turnToken, spec, locked, phase, flipped, matched, selected, attempts, matchCount, currentRound, completeGame])
 
   useEffect(() => {
     return () => {
@@ -212,13 +255,14 @@ export function MemoryCardsGame({ onGameComplete }: MemoryCardsGameProps) {
     }
   }, [])
 
-  const numPairs = spec ? spec.cards.length / 2 : 4
+  const currentCards = spec ? spec.rounds[currentRound]?.cards : []
+  const numPairs = spec ? spec.rounds[currentRound]?.numPairs : 4
 
   return (
     <div className="bg-slate-800 rounded-xl p-4 sm:p-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold text-white">Memory Cards</h2>
-        {phase === 'play' && (
+        {(phase === 'play' || phase === 'round_complete') && (
           <div className="flex items-center gap-4">
             <span className="text-sm text-slate-400">{matchCount}/{numPairs} pairs</span>
             <span className={`text-2xl font-mono ${timeLeft < 10000 ? 'text-red-400' : 'text-green-400'}`}>
@@ -249,24 +293,59 @@ export function MemoryCardsGame({ onGameComplete }: MemoryCardsGameProps) {
         </div>
       )}
 
-      {phase === 'play' && spec && (
-        <div className="grid grid-cols-4 gap-3 max-w-xs mx-auto">
-          {spec.cards.map((emoji, i) => (
-            <button
-              key={i}
-              onClick={() => handleCardClick(i)}
-              disabled={locked || flipped[i] || matched[i]}
-              className={`aspect-square rounded-xl text-3xl flex items-center justify-center transition-all duration-200 ${
-                matched[i]
-                  ? 'bg-green-500/20 border-2 border-green-500 opacity-60'
-                  : flipped[i]
-                  ? 'bg-slate-600 border-2 border-yellow-500'
-                  : 'bg-slate-700 hover:bg-slate-600 border-2 border-slate-600 cursor-pointer'
-              }`}
+      {(phase === 'play' || phase === 'round_complete') && spec && (
+        <div>
+          {/* Round indicators */}
+          {spec.rounds.length > 1 && (
+            <div className="flex justify-center gap-2 mb-4">
+              {spec.rounds.map((_, i) => (
+                <div
+                  key={i}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                    i < currentRound
+                      ? 'bg-green-500 text-white'
+                      : i === currentRound
+                      ? 'bg-yellow-500 text-slate-900'
+                      : 'bg-slate-600 text-slate-400'
+                  }`}
+                >
+                  {i + 1}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {phase === 'round_complete' && (
+            <div className="text-center py-4 mb-4">
+              <p className="text-green-500 font-bold text-lg animate-pulse">
+                Level {currentRound + 1} Complete!
+              </p>
+            </div>
+          )}
+
+          {phase === 'play' && (
+            <div
+              className="grid gap-3 max-w-sm mx-auto"
+              style={{ gridTemplateColumns: `repeat(${currentCards.length <= 8 ? 4 : 4}, 1fr)` }}
             >
-              {(flipped[i] || matched[i]) ? emoji : '?'}
-            </button>
-          ))}
+              {currentCards.map((emoji, i) => (
+                <button
+                  key={i}
+                  onClick={() => handleCardClick(i)}
+                  disabled={locked || flipped[i] || matched[i]}
+                  className={`aspect-square rounded-xl text-3xl flex items-center justify-center transition-all duration-200 ${
+                    matched[i]
+                      ? 'bg-green-500/20 border-2 border-green-500 opacity-60'
+                      : flipped[i]
+                      ? 'bg-slate-600 border-2 border-yellow-500'
+                      : 'bg-slate-700 hover:bg-slate-600 border-2 border-slate-600 cursor-pointer'
+                  }`}
+                >
+                  {(flipped[i] || matched[i]) ? emoji : '?'}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
