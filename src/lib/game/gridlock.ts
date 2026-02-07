@@ -58,9 +58,9 @@ export const DEFAULT_GRIDLOCK_CONFIG: GridlockConfig = {
 }
 
 const PIECE_COLORS = [
-  '#f97316', '#22c55e', '#3b82f6', '#a855f7', '#ec4899',
-  '#14b8a6', '#f59e0b', '#6366f1', '#84cc16', '#06b6d4',
-  '#e11d48', '#8b5cf6',
+  '#f97316', '#3b82f6', '#a855f7', '#ec4899',
+  '#14b8a6', '#f59e0b', '#6366f1', '#06b6d4',
+  '#e11d48', '#8b5cf6', '#d946ef', '#0ea5e9',
 ]
 
 function seededRandom(seed: string): () => number {
@@ -259,7 +259,7 @@ function generatePuzzle(
       col: targetCol,
       length: 2,
       orientation: 'h',
-      color: '#ef4444',
+      color: '#22c55e',
       isTarget: true,
     }
     placePiece(grid, target)
@@ -400,7 +400,7 @@ function generatePuzzle(
 
   const target: Piece = {
     id: 'target', row: exitRow, col: 0, length: 2, orientation: 'h',
-    color: '#ef4444', isTarget: true,
+    color: '#22c55e', isTarget: true,
   }
   placePiece(grid, target)
   pieces.push(target)
