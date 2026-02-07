@@ -499,33 +499,6 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* How It Works */}
-      <div className="mt-16">
-        <h2 className="text-2xl font-bold text-white text-center mb-8 font-title">How It Works</h2>
-        <div className="grid md:grid-cols-4 gap-6">
-          <div className="bg-slate-800 rounded-xl p-6 text-center">
-            <div className="text-4xl font-bold text-blue-400 mb-4">1</div>
-            <h3 className="font-semibold text-white mb-2">Sign Up</h3>
-            <p className="text-slate-400 text-sm">Create account and verify email</p>
-          </div>
-          <div className="bg-slate-800 rounded-xl p-6 text-center">
-            <div className="text-4xl font-bold text-blue-400 mb-4">2</div>
-            <h3 className="font-semibold text-white mb-2">Claim $Credits</h3>
-            <p className="text-slate-400 text-sm">Get 5 free $Credits every day</p>
-          </div>
-          <div className="bg-slate-800 rounded-xl p-6 text-center">
-            <div className="text-4xl font-bold text-blue-400 mb-4">3</div>
-            <h3 className="font-semibold text-white mb-2">Play</h3>
-            <p className="text-slate-400 text-sm">Spend 1 $Credit per game turn</p>
-          </div>
-          <div className="bg-slate-800 rounded-xl p-6 text-center">
-            <div className="text-4xl font-bold text-blue-400 mb-4">4</div>
-            <h3 className="font-semibold text-white mb-2">Win</h3>
-            <p className="text-slate-400 text-sm">Top scorer wins the daily pool!</p>
-          </div>
-        </div>
-      </div>
-
       {/* Top Players */}
       {(topPlayersAllTime.length > 0 || topPlayersToday.length > 0) && (() => {
         const renderTable = (entries: TopPlayerEntry[], emptyLabel: string) => {
@@ -623,6 +596,33 @@ export default function HomePage() {
           </div>
         )
       })()}
+
+      {/* How It Works */}
+      <div className="mt-16">
+        <h2 className="text-2xl font-bold text-white text-center mb-8 font-title">How It Works</h2>
+        <div className="grid md:grid-cols-4 gap-6">
+          <div className="bg-slate-800 rounded-xl p-6 text-center">
+            <div className="text-4xl font-bold text-blue-400 mb-4">1</div>
+            <h3 className="font-semibold text-white mb-2">Sign Up</h3>
+            <p className="text-slate-400 text-sm">Create account and verify email</p>
+          </div>
+          <div className="bg-slate-800 rounded-xl p-6 text-center">
+            <div className="text-4xl font-bold text-blue-400 mb-4">2</div>
+            <h3 className="font-semibold text-white mb-2">Claim $Credits</h3>
+            <p className="text-slate-400 text-sm">Get 5 free $Credits every day</p>
+          </div>
+          <div className="bg-slate-800 rounded-xl p-6 text-center">
+            <div className="text-4xl font-bold text-blue-400 mb-4">3</div>
+            <h3 className="font-semibold text-white mb-2">Play</h3>
+            <p className="text-slate-400 text-sm">Spend 1 $Credit per game turn</p>
+          </div>
+          <div className="bg-slate-800 rounded-xl p-6 text-center">
+            <div className="text-4xl font-bold text-blue-400 mb-4">4</div>
+            <h3 className="font-semibold text-white mb-2">Win</h3>
+            <p className="text-slate-400 text-sm">Top scorer wins the daily pool!</p>
+          </div>
+        </div>
+      </div>
 
       {/* CTA for non-logged in users */}
       {!user && (
