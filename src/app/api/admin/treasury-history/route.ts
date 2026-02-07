@@ -67,6 +67,7 @@ export async function GET(request: NextRequest) {
       entries: entriesResult.data || [],
       total: countResult.count ?? 0,
       balance: balanceResult.data ?? 0,
+      displayName,
     })
   } catch (err) {
     console.error('Treasury history error:', err)

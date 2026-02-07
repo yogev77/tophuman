@@ -174,6 +174,7 @@ export default function AdminPage() {
 
   // Treasury ledger state
   const [treasuryBalance, setTreasuryBalance] = useState<number | null>(null)
+  const [treasuryDisplayName, setTreasuryDisplayName] = useState<string | null>(null)
   const [treasuryEntries, setTreasuryEntries] = useState<LedgerEntry[]>([])
   const [treasuryTotal, setTreasuryTotal] = useState(0)
   const [treasuryLoading, setTreasuryLoading] = useState(false)
@@ -262,11 +263,12 @@ export default function AdminPage() {
     if (!userId) return
     setTreasuryLoading(true)
     try {
-      const res = await fetch(`/api/admin/treasury-history?user_id=${encodeURIComponent(userId)}&limit=50&offset=${offset}`)
+      const res = await fetch(`/api/admin/treasury-history?user_id=${encodeURIComponent(userId)}&limit=10&offset=${offset}`)
       if (res.ok) {
         const data = await res.json()
         setTreasuryBalance(data.balance)
         setTreasuryTotal(data.total)
+        if (data.displayName) setTreasuryDisplayName(data.displayName)
         if (append) {
           setTreasuryEntries(prev => [...prev, ...data.entries])
         } else {
@@ -865,12 +867,14 @@ export default function AdminPage() {
             <div className="bg-slate-800 rounded-xl p-6">
               {/* Balance */}
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-white">Credit History</h2>
+                <div>
+                  <h2 className="text-xl font-bold text-white">Treasury Credit Balance</h2>
+                  {treasuryDisplayName && (
+                    <p className="text-sm text-slate-400 mt-1">Held by user <span className="text-white font-medium">{treasuryDisplayName}</span></p>
+                  )}
+                </div>
                 {treasuryBalance !== null && (
-                  <div className="text-right">
-                    <div className="text-sm text-slate-400">Current Balance</div>
-                    <div className="text-2xl font-bold text-yellow-400">{treasuryBalance.toLocaleString()}</div>
-                  </div>
+                  <div className="text-3xl font-bold text-yellow-400">{treasuryBalance.toLocaleString()}</div>
                 )}
               </div>
 
@@ -922,7 +926,7 @@ export default function AdminPage() {
                     </table>
                   </div>
 
-                  {/* Load More */}
+                  {/* See More */}
                   {treasuryEntries.length < treasuryTotal && (
                     <div className="mt-4 text-center">
                       <button
@@ -930,7 +934,7 @@ export default function AdminPage() {
                         disabled={treasuryLoading}
                         className="bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white px-6 py-2 rounded-lg text-sm transition"
                       >
-                        {treasuryLoading ? 'Loading...' : `Load more (${treasuryEntries.length} of ${treasuryTotal})`}
+                        {treasuryLoading ? 'Loading...' : `See more (${treasuryTotal - treasuryEntries.length} remaining)`}
                       </button>
                     </div>
                   )}
