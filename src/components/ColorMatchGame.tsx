@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Palette } from 'lucide-react'
 import { formatTime } from '@/lib/utils'
 import { ShareScore } from './ShareScore'
+import { CC } from '@/lib/currency'
 
 type GamePhase = 'idle' | 'loading' | 'play' | 'checking' | 'completed' | 'failed'
 
@@ -353,7 +354,7 @@ export function ColorMatchGame({ onGameComplete }: ColorMatchGameProps) {
             onClick={startGame}
             className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg text-lg transition"
           >
-            Start Game (1 $Credit)
+            Start Game (1 <CC />Credit)
           </button>
         </div>
       )}
@@ -420,7 +421,7 @@ export function ColorMatchGame({ onGameComplete }: ColorMatchGameProps) {
               <div className="text-sm text-slate-400">Rank</div>
             </div>
             <div className="bg-slate-700 rounded-lg p-4 col-span-2">
-              <div className="text-xl font-bold text-green-400">
+              <div className="text-xl font-bold text-white">
                 {Math.round((result.averageAccuracy || 0) * 100)}%
               </div>
               <div className="text-sm text-slate-400">Average Accuracy</div>

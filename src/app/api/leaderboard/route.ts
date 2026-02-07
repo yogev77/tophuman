@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
       rank: number
       userId: string
       displayName: string
+      username: string | null
       bestScore: number
       bestTimeMs: number | null
       turnsPlayed: number
@@ -49,9 +50,10 @@ export async function GET(request: NextRequest) {
         .in('user_id', userIds)
 
       const profileMap = new Map((profiles || []).map(p => [p.user_id, p.display_name || p.username]))
+      const usernameMap = new Map((profiles || []).map(p => [p.user_id, p.username || null]))
 
       // Group by user, keeping best score
-      const userBest = new Map<string, { score: number; timeMs: number | null; displayName: string; count: number }>()
+      const userBest = new Map<string, { score: number; timeMs: number | null; displayName: string; username: string | null; count: number }>()
 
       for (const entry of allTimeData || []) {
         const existing = userBest.get(entry.user_id)
@@ -62,6 +64,7 @@ export async function GET(request: NextRequest) {
             score: entry.score,
             timeMs: entry.completion_time_ms,
             displayName: displayName || `Player ${entry.user_id.slice(-6)}`,
+            username: usernameMap.get(entry.user_id) || null,
             count: (existing?.count || 0) + 1,
           })
         } else {
@@ -76,6 +79,7 @@ export async function GET(request: NextRequest) {
           bestScore: data.score,
           bestTimeMs: data.timeMs,
           displayName: data.displayName,
+          username: data.username,
           turnsPlayed: data.count,
         }))
         .sort((a, b) => b.bestScore - a.bestScore)
@@ -131,9 +135,10 @@ export async function GET(request: NextRequest) {
         .in('user_id', userIds)
 
       const profileMap = new Map((profiles || []).map(p => [p.user_id, p.display_name || p.username]))
+      const usernameMap2 = new Map((profiles || []).map(p => [p.user_id, p.username || null]))
 
       // Group by user, keeping best score for today
-      const userBest = new Map<string, { score: number; timeMs: number | null; displayName: string; count: number }>()
+      const userBest = new Map<string, { score: number; timeMs: number | null; displayName: string; username: string | null; count: number }>()
 
       for (const entry of todayData || []) {
         const existing = userBest.get(entry.user_id)
@@ -144,6 +149,7 @@ export async function GET(request: NextRequest) {
             score: entry.score,
             timeMs: entry.completion_time_ms,
             displayName: displayName || `Player ${entry.user_id.slice(-6)}`,
+            username: usernameMap2.get(entry.user_id) || null,
             count: (existing?.count || 0) + 1,
           })
         } else {
@@ -157,6 +163,7 @@ export async function GET(request: NextRequest) {
           bestScore: data.score,
           bestTimeMs: data.timeMs,
           displayName: data.displayName,
+          username: data.username,
           turnsPlayed: data.count,
         }))
         .sort((a, b) => b.bestScore - a.bestScore)

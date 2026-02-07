@@ -583,5 +583,48 @@ The `spend_credit` function should reset pool status when inserting into a settl
 -- Set status = 'active' to allow new cycle after settlement
 ```
 
+### Feb 7, 2026
+
+**Feature: Treasury Balance Snapshots**
+
+Added daily snapshot table for treasury balance audit trail. Captures balance + holder at recording time, independent of relational ledger.
+
+**New database table** (run in Supabase Dashboard):
+```sql
+CREATE TABLE treasury_snapshots (
+  id BIGSERIAL PRIMARY KEY,
+  utc_day DATE NOT NULL,
+  balance INTEGER NOT NULL,
+  treasury_user_id TEXT NOT NULL,
+  treasury_username TEXT,
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX idx_treasury_snapshots_day ON treasury_snapshots(utc_day DESC);
+```
+
+**Files added/modified:**
+- `src/types/database.ts` — Added `treasury_snapshots` table type
+- `src/app/api/admin/treasury-snapshots/route.ts` — NEW: GET (paginated list) + POST (record snapshot now)
+- `src/app/api/cron/settlement/route.ts` — Auto-records treasury snapshot after each settlement (non-blocking)
+- `src/app/admin/page.tsx` — "Balance Snapshots" section in Treasury tab with table, manual button, pagination
+
+**Feature: Currency Symbol System**
+
+Centralized currency symbol definition in `src/lib/currency.tsx`:
+- `C` — plain string constant (`'⌀'`), used in template literals
+- `CC` — React component rendering the symbol at `1.4em` size, used in all JSX
+
+All 26 files that display the currency symbol import from this module. To change the symbol, edit `currency.tsx` only. The symbol has been through several iterations: `◆` → `🅦` → `ⓦ` → `⌀`.
+
+**Note:** File was renamed from `currency.ts` to `currency.tsx` to support the React component export.
+
+**UI: Profile Page Updates**
+- Dark/light mode toggle moved from Settings tab to top-right corner of profile header (next to display name), visible only on own profile
+- Tab controllers (Profile/Settings and Today/All Time) updated to yellow button style matching home page: `bg-yellow-500 text-slate-900` active, `bg-slate-800 text-slate-400` inactive
+
+**Files modified:**
+- `src/app/player/[username]/page.tsx` — ThemeToggle component in header, removed from SettingsTab, yellow tab styles
+
 ---
 *Last updated: Feb 7, 2026*

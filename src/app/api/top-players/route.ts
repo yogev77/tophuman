@@ -23,13 +23,18 @@ const GAME_NAMES: Record<string, string> = {
   drag_sort: 'Drag & Sort',
   follow_me: 'Follow Me',
   duck_shoot: 'Target Shoot',
+  number_chain: 'Number Chain',
+  memory_cards: 'Memory Cards',
+  gridlock: 'Gridlock',
 }
 
 export interface TopPlayerEntry {
   gameId: string
   gameName: string
   playerName: string
+  playerUsername: string | null
   score: number
+  poolSize?: number
 }
 
 export async function GET() {
@@ -115,19 +120,25 @@ export async function GET() {
       .in('user_id', [...userIds])
 
     const nameMap = new Map<string, string>()
+    const usernameMap = new Map<string, string>()
     for (const p of profiles || []) {
       nameMap.set(p.user_id, p.display_name || p.username || 'Anonymous')
+      if (p.username) {
+        usernameMap.set(p.user_id, p.username)
+      }
     }
 
     // Sort by today's pool size (most active games first), both tables use same order
-    const buildList = (map: Map<string, { userId: string; score: number }>): TopPlayerEntry[] => {
+    const buildList = (map: Map<string, { userId: string; score: number }>, includePool: boolean): TopPlayerEntry[] => {
       const list: TopPlayerEntry[] = []
       for (const [gameId, { userId, score }] of map) {
         list.push({
           gameId,
           gameName: GAME_NAMES[gameId] || gameId,
           playerName: nameMap.get(userId) || 'Anonymous',
+          playerUsername: usernameMap.get(userId) || null,
           score,
+          ...(includePool ? { poolSize: todayPoolSize.get(gameId) || 0 } : {}),
         })
       }
       list.sort((a, b) => (todayPoolSize.get(b.gameId) || 0) - (todayPoolSize.get(a.gameId) || 0))
@@ -135,8 +146,8 @@ export async function GET() {
     }
 
     return NextResponse.json({
-      allTime: buildList(allTimeBest),
-      today: buildList(todayBest),
+      allTime: buildList(allTimeBest, false),
+      today: buildList(todayBest, true),
     })
   } catch (err) {
     console.error('Top players error:', err)

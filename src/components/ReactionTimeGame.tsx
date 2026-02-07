@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { Zap } from 'lucide-react'
 import { ShareScore } from './ShareScore'
+import { CC } from '@/lib/currency'
 
 type GamePhase = 'idle' | 'loading' | 'waiting' | 'signal' | 'feedback' | 'checking' | 'completed' | 'failed'
 
@@ -315,7 +316,7 @@ export function ReactionTimeGame({ onGameComplete }: ReactionTimeGameProps) {
             onClick={startGame}
             className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg text-lg transition"
           >
-            Start Game (1 $Credit)
+            Start Game (1 <CC />Credit)
           </button>
         </div>
       )}

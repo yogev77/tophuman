@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { LayoutGrid } from 'lucide-react'
 import { formatTime } from '@/lib/utils'
 import { ShareScore } from './ShareScore'
+import { CC } from '@/lib/currency'
+import { useTheme } from '@/hooks/useTheme'
 
 type GamePhase = 'idle' | 'loading' | 'play' | 'round_complete' | 'checking' | 'completed' | 'failed'
 
@@ -32,6 +34,8 @@ interface MemoryCardsGameProps {
 }
 
 export function MemoryCardsGame({ onGameComplete }: MemoryCardsGameProps) {
+  const { theme } = useTheme()
+  const light = theme === 'light'
   const [phase, setPhase] = useState<GamePhase>('idle')
   const [turnToken, setTurnToken] = useState<string | null>(null)
   const [spec, setSpec] = useState<TurnSpec | null>(null)
@@ -259,12 +263,12 @@ export function MemoryCardsGame({ onGameComplete }: MemoryCardsGameProps) {
   const numPairs = spec ? spec.rounds[currentRound]?.numPairs : 4
 
   return (
-    <div className="bg-slate-800 rounded-xl p-4 sm:p-6">
+    <div className={`rounded-xl p-4 sm:p-6 ${light ? 'bg-white shadow-md' : 'bg-slate-800'}`}>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold text-white">Memory Cards</h2>
+        <h2 className={`text-xl font-bold ${light ? 'text-slate-900' : 'text-white'}`}>Memory Cards</h2>
         {(phase === 'play' || phase === 'round_complete') && (
           <div className="flex items-center gap-4">
-            <span className="text-sm text-slate-400">{matchCount}/{numPairs} pairs</span>
+            <span className={`text-sm ${light ? 'text-slate-500' : 'text-slate-400'}`}>{matchCount}/{numPairs} pairs</span>
             <span className={`text-2xl font-mono ${timeLeft < 10000 ? 'text-red-400' : 'text-green-400'}`}>
               {formatTime(timeLeft)}
             </span>
@@ -274,14 +278,14 @@ export function MemoryCardsGame({ onGameComplete }: MemoryCardsGameProps) {
 
       {phase === 'idle' && (
         <div className="text-center py-12">
-          <p className="text-slate-300 mb-6">
+          <p className={`mb-6 ${light ? 'text-slate-600' : 'text-slate-300'}`}>
             Flip cards to find matching pairs!
           </p>
           <button
             onClick={startGame}
             className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg text-lg transition"
           >
-            Start Game (1 $Credit)
+            Start Game (1 <CC />Credit)
           </button>
         </div>
       )}
@@ -306,6 +310,8 @@ export function MemoryCardsGame({ onGameComplete }: MemoryCardsGameProps) {
                       ? 'bg-green-500 text-white'
                       : i === currentRound
                       ? 'bg-yellow-500 text-slate-900'
+                      : light
+                      ? 'bg-slate-200 text-slate-500'
                       : 'bg-slate-600 text-slate-400'
                   }`}
                 >
@@ -337,7 +343,11 @@ export function MemoryCardsGame({ onGameComplete }: MemoryCardsGameProps) {
                     matched[i]
                       ? 'bg-green-500/20 border-2 border-green-500 opacity-60'
                       : flipped[i]
-                      ? 'bg-slate-600 border-2 border-yellow-500'
+                      ? light
+                        ? 'bg-white border-2 border-yellow-500'
+                        : 'bg-slate-600 border-2 border-yellow-500'
+                      : light
+                      ? 'bg-slate-100 hover:bg-slate-200 border-2 border-slate-300 cursor-pointer'
                       : 'bg-slate-700 hover:bg-slate-600 border-2 border-slate-600 cursor-pointer'
                   }`}
                 >
@@ -352,7 +362,7 @@ export function MemoryCardsGame({ onGameComplete }: MemoryCardsGameProps) {
       {phase === 'checking' && (
         <div className="text-center py-12">
           <div className="animate-spin w-12 h-12 border-4 border-yellow-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-slate-300">Calculating score...</p>
+          <p className={light ? 'text-slate-600' : 'text-slate-300'}>Calculating score...</p>
         </div>
       )}
 
@@ -361,19 +371,29 @@ export function MemoryCardsGame({ onGameComplete }: MemoryCardsGameProps) {
           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-fuchsia-500/20 flex items-center justify-center">
             <LayoutGrid className="w-10 h-10 text-fuchsia-400" />
           </div>
-          <h3 className="text-2xl font-bold text-green-400 mb-4">All Pairs Found!</h3>
+          <h3 className={`text-2xl font-bold mb-4 ${
+            spec && totalMatches >= spec.rounds.reduce((sum, r) => sum + r.numPairs, 0)
+              ? 'text-green-400'
+              : 'text-yellow-400'
+          }`}>
+            {spec && totalMatches >= spec.rounds.reduce((sum, r) => sum + r.numPairs, 0)
+              ? 'All Pairs Found!'
+              : timeLeft <= 0
+              ? "Time\u2019s Up!"
+              : `Found ${totalMatches}/${spec?.rounds.reduce((sum, r) => sum + r.numPairs, 0) ?? 0} Pairs`}
+          </h3>
           <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto mb-6">
-            <div className="bg-slate-700 rounded-lg p-4">
-              <div className="text-3xl font-bold text-white">{result.score?.toLocaleString()}</div>
-              <div className="text-sm text-slate-400">Score</div>
+            <div className={`rounded-lg p-4 ${light ? 'bg-slate-100' : 'bg-slate-700'}`}>
+              <div className={`text-3xl font-bold ${light ? 'text-slate-900' : 'text-white'}`}>{result.score?.toLocaleString()}</div>
+              <div className={`text-sm ${light ? 'text-slate-500' : 'text-slate-400'}`}>Score</div>
             </div>
-            <div className="bg-slate-700 rounded-lg p-4">
-              <div className="text-3xl font-bold text-white">#{result.rank}</div>
-              <div className="text-sm text-slate-400">Rank</div>
+            <div className={`rounded-lg p-4 ${light ? 'bg-slate-100' : 'bg-slate-700'}`}>
+              <div className={`text-3xl font-bold ${light ? 'text-slate-900' : 'text-white'}`}>#{result.rank}</div>
+              <div className={`text-sm ${light ? 'text-slate-500' : 'text-slate-400'}`}>Rank</div>
             </div>
-            <div className="bg-slate-700 rounded-lg p-4 col-span-2">
-              <div className="text-xl font-bold text-fuchsia-400">{result.matchAttempts} attempts</div>
-              <div className="text-sm text-slate-400">{numPairs} pairs matched</div>
+            <div className={`rounded-lg p-4 col-span-2 ${light ? 'bg-slate-100' : 'bg-slate-700'}`}>
+              <div className={`text-xl font-bold ${light ? 'text-slate-900' : 'text-white'}`}>{result.matchAttempts} attempts</div>
+              <div className={`text-sm ${light ? 'text-slate-500' : 'text-slate-400'}`}>{numPairs} pairs matched</div>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto">

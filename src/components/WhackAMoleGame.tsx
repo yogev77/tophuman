@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Hammer } from 'lucide-react'
 import { formatTime } from '@/lib/utils'
 import { ShareScore } from './ShareScore'
+import { CC } from '@/lib/currency'
 
 type GamePhase = 'idle' | 'loading' | 'play' | 'checking' | 'completed' | 'failed'
 
@@ -289,7 +290,7 @@ export function WhackAMoleGame({ onGameComplete }: WhackAMoleGameProps) {
             onClick={startGame}
             className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg text-lg transition"
           >
-            Start Game (1 $Credit)
+            Start Game (1 <CC />Credit)
           </button>
         </div>
       )}
@@ -358,16 +359,16 @@ export function WhackAMoleGame({ onGameComplete }: WhackAMoleGameProps) {
               <div className="text-sm text-slate-400">Rank</div>
             </div>
             <div className="bg-slate-700 rounded-lg p-4">
-              <div className="text-xl font-bold text-green-400">{result.hits}</div>
+              <div className="text-xl font-bold text-white">{result.hits}</div>
               <div className="text-sm text-slate-400">Hits</div>
             </div>
             <div className="bg-slate-700 rounded-lg p-4">
-              <div className="text-xl font-bold text-yellow-400">{result.misses}</div>
+              <div className="text-xl font-bold text-white">{result.misses}</div>
               <div className="text-sm text-slate-400">Misses</div>
             </div>
             {result.bombHits !== undefined && result.bombHits > 0 && (
               <div className="bg-slate-700 rounded-lg p-4 col-span-2">
-                <div className="text-xl font-bold text-red-400">{result.bombHits}</div>
+                <div className="text-xl font-bold text-white">{result.bombHits}</div>
                 <div className="text-sm text-slate-400">Bombs Hit</div>
               </div>
             )}

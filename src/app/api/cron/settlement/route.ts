@@ -338,6 +338,39 @@ async function settleDay(supabase: any, utcDay: string) {
     .eq('utc_day', utcDay)
     .in('status', ['active', 'frozen'])
 
+  // Auto-record treasury balance snapshot after settlement
+  try {
+    const { data: treasurySnapshotSetting } = await supabase
+      .from('site_settings')
+      .select('value')
+      .eq('key', 'treasury_user_id')
+      .single()
+
+    if (treasurySnapshotSetting?.value) {
+      const { data: treasuryProfiles2 } = await supabase
+        .from('profiles')
+        .select('user_id, username')
+        .or(`user_id.eq.${treasurySnapshotSetting.value},username.eq.${treasurySnapshotSetting.value}`)
+        .limit(1)
+
+      const snapshotUserId = treasuryProfiles2?.[0]?.user_id || treasurySnapshotSetting.value
+      const snapshotUsername = treasuryProfiles2?.[0]?.username || null
+
+      const { data: snapshotBalance } = await supabase.rpc('get_user_balance', { p_user_id: snapshotUserId })
+
+      await supabase.from('treasury_snapshots').insert({
+        utc_day: utcDay,
+        balance: snapshotBalance ?? 0,
+        treasury_user_id: snapshotUserId,
+        treasury_username: snapshotUsername,
+        notes: `Auto-snapshot after settlement ${settlement.id.slice(0, 8)}`,
+      })
+    }
+  } catch (snapshotErr) {
+    console.error('Failed to record treasury snapshot:', snapshotErr)
+    // Non-critical — don't fail the settlement over this
+  }
+
   return {
     success: true,
     message: `Settlement complete! Winner ${winner.user_id} gets ${winnerAmount} credits. Pending claim created.`,

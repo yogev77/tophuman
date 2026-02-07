@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Share2, Copy, Check } from 'lucide-react'
+import { C, CC } from '@/lib/currency'
 
 interface ReferralBannerProps {
   referralCode: string
@@ -29,7 +30,7 @@ export function ReferralBanner({ referralCode }: ReferralBannerProps) {
       try {
         await navigator.share({
           title: 'Join Podium Arena!',
-          text: 'Play skill games and win $Credits! Join using my link:',
+          text: `Play skill games and win ${C}Credits! Join using my link:`,
           url: referralUrl,
         })
       } catch (err) {
@@ -48,10 +49,10 @@ export function ReferralBanner({ referralCode }: ReferralBannerProps) {
           <Share2 className="w-6 h-6 text-purple-400" />
         </div>
         <div className="flex-1">
-          <h3 className="text-lg font-bold text-white mb-2">Out of $Credits?</h3>
+          <h3 className="text-lg font-bold text-white mb-2">Out of <CC />Credits?</h3>
           <p className="text-slate-300 mb-4">
             Share your invite link with friends! When they join and verify their email,
-            you&apos;ll get <span className="text-yellow-400 font-bold">100 $Credits</span> as a thank you!
+            you&apos;ll get <span className="text-yellow-400 font-bold">100 <CC />Credits</span> as a thank you!
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3">

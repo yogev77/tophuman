@@ -14,6 +14,7 @@ import {
   Clock,
   Loader2,
 } from 'lucide-react'
+import { CC } from '@/lib/currency'
 
 interface LedgerEntry {
   id: number
@@ -153,7 +154,7 @@ export default function CreditsPage() {
       {!creditsLoading && (
         <div className="mb-6">
           <span className="text-3xl font-bold text-yellow-400">{balance}</span>
-          <span className="text-slate-400 ml-2">$Credits</span>
+          <span className="text-slate-400 ml-2"><CC />Credits</span>
         </div>
       )}
 

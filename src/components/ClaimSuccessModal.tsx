@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Gift, X, Sparkles, Trophy, Users, Coins, Vault } from 'lucide-react'
+import { CC } from '@/lib/currency'
 
 interface ClaimedItem {
   type: string
@@ -147,17 +148,17 @@ export function ClaimSuccessModal({ isOpen, onClose, amount, newBalance, reason,
               {claimedItems.length > 1 && (
                 <div className="border-t border-slate-600 pt-2 mt-2 flex items-center justify-between">
                   <span className="text-slate-400 text-sm">Total</span>
-                  <span className="text-yellow-400 font-bold text-lg">+{amount} $Credits</span>
+                  <span className="text-yellow-400 font-bold text-lg">+{amount} <CC />Credits</span>
                 </div>
               )}
             </div>
           ) : (
             <div className="text-3xl font-bold text-yellow-400 mb-1">
-              +{amount} $Credits
+              +{amount} <CC />Credits
             </div>
           )}
           <div className="text-slate-400 text-sm text-center pt-2 border-t border-slate-600">
-            New balance: <span className="text-white font-semibold">{newBalance} $Credits</span>
+            New balance: <span className="text-white font-semibold">{newBalance} <CC />Credits</span>
           </div>
         </div>
 

@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Gift, Check, X, Loader2 } from 'lucide-react'
+import { C, CC } from '@/lib/currency'
 
 function AuthContent() {
   const searchParams = useSearchParams()
@@ -203,7 +204,7 @@ function AuthContent() {
               <Gift className="w-6 h-6 text-green-400 flex-shrink-0" />
               <div>
                 <p className="text-green-400 font-semibold">Referral Bonus!</p>
-                <p className="text-sm text-slate-300">Your friend will get 100 $Credits when you verify your email!</p>
+                <p className="text-sm text-slate-300">Your friend will get 100 <CC />Credits when you verify your email!</p>
               </div>
             </div>
           )}
@@ -329,7 +330,7 @@ function AuthContent() {
 
           <p className="mt-6 text-center text-slate-500 text-sm">
             {tab === 'signup'
-              ? 'Get 10 free $Credits daily!'
+              ? `Get 10 free ${C}Credits daily!`
               : 'Welcome back!'}
           </p>
         </div>

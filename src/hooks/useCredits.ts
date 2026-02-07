@@ -18,6 +18,7 @@ interface CreditsState {
   pendingTotal: number
   userId: string | null
   displayName: string | null
+  username: string | null
   referralCode: string | null
   loading: boolean
   error: string | null
@@ -31,6 +32,7 @@ export function useCredits() {
     pendingTotal: 0,
     userId: null,
     displayName: null,
+    username: null,
     referralCode: null,
     loading: true,
     error: null,
@@ -54,6 +56,7 @@ export function useCredits() {
         pendingTotal: data.pendingTotal || 0,
         userId: data.userId,
         displayName: data.displayName,
+        username: data.username || null,
         referralCode: data.referralCode,
         loading: false,
         error: null,
@@ -85,6 +88,7 @@ export function useCredits() {
           pendingTotal: 0,
           userId: null,
           displayName: null,
+          username: null,
           referralCode: null,
           loading: false,
           error: null,

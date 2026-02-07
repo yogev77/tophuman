@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Share2, Copy, Check } from 'lucide-react'
 import { useCredits } from '@/hooks/useCredits'
+import { CC } from '@/lib/currency'
 
 interface ShareScoreProps {
   gameName: string
@@ -60,7 +61,7 @@ export function ShareScore({ gameName, score, rank }: ShareScoreProps) {
         {copied ? 'Copied!' : 'Share Score'}
       </button>
       <p className="text-sm text-slate-400 mt-3 text-center">
-        Invite people to compete with you and get <span className="text-yellow-400 font-semibold">100 $Credits</span> when they join!
+        Invite people to compete with you and get <span className="text-yellow-400 font-semibold">100 <CC />Credits</span> when they join!
       </p>
     </div>
   )

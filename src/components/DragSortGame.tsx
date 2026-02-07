@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { GripVertical } from 'lucide-react'
 import { formatTime } from '@/lib/utils'
 import { ShareScore } from './ShareScore'
+import { CC } from '@/lib/currency'
+import { useTheme } from '@/hooks/useTheme'
 
 type GamePhase = 'idle' | 'loading' | 'play' | 'checking' | 'completed' | 'failed'
 
@@ -35,6 +37,8 @@ interface DragSortGameProps {
 }
 
 export function DragSortGame({ onGameComplete }: DragSortGameProps) {
+  const { theme } = useTheme()
+  const light = theme === 'light'
   const [phase, setPhase] = useState<GamePhase>('idle')
   const [turnToken, setTurnToken] = useState<string | null>(null)
   const [spec, setSpec] = useState<TurnSpec | null>(null)
@@ -44,6 +48,7 @@ export function DragSortGame({ onGameComplete }: DragSortGameProps) {
   const [result, setResult] = useState<GameResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null)
+  const [submitting, setSubmitting] = useState(false)
   const [currentRound, setCurrentRound] = useState(1)
   const [totalRounds, setTotalRounds] = useState(1)
 
@@ -59,6 +64,7 @@ export function DragSortGame({ onGameComplete }: DragSortGameProps) {
     setItems([])
     setOrder([])
     setResult(null)
+    setSubmitting(false)
 
     try {
       const createRes = await fetch('/api/game/turn/create', {
@@ -325,7 +331,7 @@ export function DragSortGame({ onGameComplete }: DragSortGameProps) {
             onClick={startGame}
             className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg text-lg transition"
           >
-            Start Game (1 $Credit)
+            Start Game (1 <CC />Credit)
           </button>
         </div>
       )}
@@ -349,6 +355,8 @@ export function DragSortGame({ onGameComplete }: DragSortGameProps) {
                       ? 'bg-green-500 text-white'
                       : i + 1 === currentRound
                       ? 'bg-yellow-500 text-slate-900'
+                      : light
+                      ? 'bg-slate-200 text-slate-500'
                       : 'bg-slate-600 text-slate-400'
                   }`}
                 >
@@ -373,9 +381,9 @@ export function DragSortGame({ onGameComplete }: DragSortGameProps) {
                 onTouchStart={(e) => handleTouchStart(e, displayIndex)}
                 onTouchMove={(e) => handleTouchMove(e)}
                 onTouchEnd={handleTouchEnd}
-                className={`flex items-center gap-2 p-4 rounded-lg cursor-grab active:cursor-grabbing transition-all select-none ${
+                className={`flex items-center gap-2 p-4 rounded-lg cursor-grab active:cursor-grabbing select-none transition-all duration-150 ${
                   draggingIndex === displayIndex
-                    ? 'bg-yellow-500 scale-105 shadow-lg shadow-yellow-500/20'
+                    ? 'bg-yellow-500 scale-110 shadow-xl shadow-yellow-500/30 -rotate-1 z-10 relative'
                     : 'bg-slate-700 hover:bg-slate-600'
                 }`}
               >
@@ -393,10 +401,30 @@ export function DragSortGame({ onGameComplete }: DragSortGameProps) {
           </div>
 
           <button
-            onClick={() => totalRounds > 1 ? submitRound() : completeGame()}
-            className="w-full mt-6 bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-6 rounded-lg transition"
+            onClick={() => {
+              if (submitting) return
+              setSubmitting(true)
+              if (totalRounds > 1) {
+                submitRound().finally(() => setSubmitting(false))
+              } else {
+                completeGame()
+              }
+            }}
+            disabled={submitting}
+            className={`w-full mt-6 font-bold py-3 px-6 rounded-lg transition-all active:scale-95 ${
+              submitting
+                ? 'bg-green-700 text-green-200 cursor-wait'
+                : 'bg-green-600 hover:bg-green-500 text-white'
+            }`}
           >
-            {totalRounds > 1 && currentRound < totalRounds ? `Submit Round ${currentRound}` : 'Submit Order'}
+            {submitting ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                Submitting...
+              </span>
+            ) : (
+              totalRounds > 1 && currentRound < totalRounds ? `Submit Round ${currentRound}` : 'Submit Order'
+            )}
           </button>
         </div>
       )}
@@ -424,7 +452,7 @@ export function DragSortGame({ onGameComplete }: DragSortGameProps) {
               <div className="text-sm text-slate-400">Rank</div>
             </div>
             <div className="bg-slate-700 rounded-lg p-4 col-span-2">
-              <div className="text-xl font-bold text-green-400">{result.correctPositions}/{result.total}</div>
+              <div className="text-xl font-bold text-white">{result.correctPositions}/{result.total}</div>
               <div className="text-sm text-slate-400">Correct Positions</div>
             </div>
           </div>

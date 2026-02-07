@@ -2,7 +2,8 @@
 
 import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { formatCountdown } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
 import { useCreditsNotification } from '@/components/CreditsNotificationProvider'
 import { EmojiKeypadGame } from '@/components/EmojiKeypadGame'
@@ -45,6 +46,7 @@ import {
   Copy,
   Check,
 } from 'lucide-react'
+import { C, CC } from '@/lib/currency'
 
 const GAME_ICON_COLORS: Record<string, { bg: string; icon: string }> = {
   emoji_keypad: { bg: 'bg-rose-500/20', icon: 'text-rose-400' },
@@ -67,96 +69,112 @@ const GAME_ICON_COLORS: Record<string, { bg: string; icon: string }> = {
 const GAME_CONFIG: Record<string, {
   component: React.ComponentType<{ onGameComplete?: () => void }>
   name: string
+  description: string
   leaderboardType: string
   icon: LucideIcon
 }> = {
   emoji_keypad: {
     component: EmojiKeypadGame,
     name: 'Emoji Sequence',
+    description: 'Memorize the emoji sequence, then tap them in order.',
     leaderboardType: 'emoji_keypad_sequence',
     icon: Target,
   },
   image_rotate: {
     component: ImageRotateGame,
     name: 'Image Puzzle',
+    description: 'Rotate the tiles to restore the original image.',
     leaderboardType: 'image_rotate',
     icon: RotateCw,
   },
   reaction_time: {
     component: ReactionTimeGame,
     name: 'Reaction Time',
+    description: 'Tap when the color changes. Skip the fakes.',
     leaderboardType: 'reaction_time',
     icon: Zap,
   },
   whack_a_mole: {
     component: WhackAMoleGame,
     name: 'Whack-a-Mole',
+    description: 'Tap the moles as fast as you can. Avoid the bombs.',
     leaderboardType: 'whack_a_mole',
     icon: Hammer,
   },
   typing_speed: {
     component: TypingSpeedGame,
     name: 'Typing Speed',
+    description: 'Type the text as fast and accurately as you can.',
     leaderboardType: 'typing_speed',
     icon: Keyboard,
   },
   mental_math: {
     component: MentalMathGame,
     name: 'Mental Math',
+    description: 'Solve arithmetic problems as quickly as possible.',
     leaderboardType: 'mental_math',
     icon: Calculator,
   },
   color_match: {
     component: ColorMatchGame,
     name: 'Color Match',
+    description: 'Match the target color as closely as you can.',
     leaderboardType: 'color_match',
     icon: Palette,
   },
   visual_diff: {
     component: VisualDiffGame,
     name: 'Spot Difference',
+    description: 'Find the differences between the two images.',
     leaderboardType: 'visual_diff',
     icon: ScanEye,
   },
   audio_pattern: {
     component: AudioPatternGame,
     name: 'Audio Pattern',
+    description: 'Listen to the pattern, then repeat it.',
     leaderboardType: 'audio_pattern',
     icon: Music,
   },
   drag_sort: {
     component: DragSortGame,
     name: 'Drag & Sort',
+    description: 'Drag the items into the correct order.',
     leaderboardType: 'drag_sort',
     icon: GripVertical,
   },
   follow_me: {
     component: FollowMeGame,
     name: 'Follow Me',
+    description: 'Trace the path from start to finish. 3 levels.',
     leaderboardType: 'follow_me',
     icon: Pencil,
   },
   duck_shoot: {
     component: DuckShootGame,
     name: 'Target Shoot',
+    description: 'Tap to fire. Hit red. Avoid green. 10 shots.',
     leaderboardType: 'duck_shoot',
     icon: Crosshair,
   },
   memory_cards: {
     component: MemoryCardsGame,
     name: 'Memory Cards',
+    description: 'Flip cards and find all matching pairs.',
     leaderboardType: 'memory_cards',
     icon: LayoutGrid,
   },
   number_chain: {
     component: NumberChainGame,
     name: 'Number Chain',
+    description: 'Tap the numbers in ascending order.',
     leaderboardType: 'number_chain',
     icon: Hash,
   },
   gridlock: {
     component: GridlockGame,
     name: 'Gridlock',
+    description: 'Slide blocks to free the green piece. 3 rounds.',
     leaderboardType: 'gridlock',
     icon: ParkingSquare,
   },
@@ -184,7 +202,7 @@ function OutOfCreditsView({ referralCode }: { referralCode: string | null }) {
       try {
         await navigator.share({
           title: 'Join Podium Arena!',
-          text: 'Play skill games and win $Credits! Join using my link:',
+          text: `Play skill games and win ${C}Credits! Join using my link:`,
           url: referralUrl,
         })
       } catch {
@@ -197,7 +215,7 @@ function OutOfCreditsView({ referralCode }: { referralCode: string | null }) {
 
   return (
     <div className="bg-slate-800 rounded-xl p-6">
-      <h3 className="text-xl font-bold text-white mb-3">You&apos;re out of $Credits</h3>
+      <h3 className="text-xl font-bold text-white mb-3">You&apos;re out of <CC />Credits</h3>
       <div className="space-y-4">
         <div className="flex items-start gap-3">
           <div className="p-2 bg-yellow-500/20 rounded-lg shrink-0 mt-0.5">
@@ -205,7 +223,7 @@ function OutOfCreditsView({ referralCode }: { referralCode: string | null }) {
           </div>
           <div>
             <p className="text-slate-300 text-sm">
-              Come back tomorrow to claim your <span className="text-yellow-400 font-semibold">free daily $Credits</span>.
+              Come back tomorrow to claim your <span className="text-yellow-400 font-semibold">free daily <CC />Credits</span>.
               Daily credits are only available when you visit &mdash; unclaimed days are lost, so don&apos;t miss out!
             </p>
           </div>
@@ -219,7 +237,7 @@ function OutOfCreditsView({ referralCode }: { referralCode: string | null }) {
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-slate-300 text-sm mb-3">
-                  Invite friends and earn <span className="text-yellow-400 font-semibold">100 $Credits</span> when they join!
+                  Invite friends and earn <span className="text-yellow-400 font-semibold">100 <CC />Credits</span> when they join!
                 </p>
                 <div className="flex gap-2">
                   <button
@@ -258,6 +276,8 @@ function GamePageContent() {
   const iconColors = GAME_ICON_COLORS[gameType] || GAME_ICON_COLORS.emoji_keypad
   const GameIcon = config.icon
   const [poolSize, setPoolSize] = useState<number | null>(null)
+  const [msUntilSettlement, setMsUntilSettlement] = useState(0)
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const fetchPoolSize = useCallback(async () => {
     try {
@@ -266,6 +286,7 @@ function GamePageContent() {
         const data = await res.json()
         const game = data.games?.find((g: { id: string }) => g.id === gameType)
         if (game) setPoolSize(game.poolSize)
+        if (data.msUntilSettlement) setMsUntilSettlement(data.msUntilSettlement)
       }
     } catch {}
   }, [gameType])
@@ -273,6 +294,14 @@ function GamePageContent() {
   useEffect(() => {
     fetchPoolSize()
   }, [fetchPoolSize])
+
+  // Countdown timer
+  useEffect(() => {
+    countdownRef.current = setInterval(() => {
+      setMsUntilSettlement(ms => Math.max(0, ms - 1000))
+    }, 1000)
+    return () => { if (countdownRef.current) clearInterval(countdownRef.current) }
+  }, [])
 
   const handleGameComplete = () => {
     refreshBalance()
@@ -339,7 +368,7 @@ function GamePageContent() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 overflow-x-hidden">
       {/* Game Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-6">
         <div className="flex items-center gap-3">
           <Link
             href="/"
@@ -347,10 +376,13 @@ function GamePageContent() {
           >
             <ArrowLeft className="h-6 w-6" />
           </Link>
-          <div className={`p-2 ${iconColors.bg} rounded-lg`}>
-            <GameIcon className={`w-6 h-6 ${iconColors.icon}`} />
+          <div className={`p-3 ${iconColors.bg} rounded-xl`}>
+            <GameIcon className={`w-10 h-10 ${iconColors.icon}`} />
           </div>
-          <h1 className="text-2xl font-bold text-white font-title">{config.name}</h1>
+          <div>
+            <h1 className="text-2xl font-bold text-white font-title">{config.name}</h1>
+            <p className="text-slate-400 text-sm">{config.description}</p>
+          </div>
         </div>
       </div>
 
@@ -362,9 +394,17 @@ function GamePageContent() {
             <GameComponent onGameComplete={handleGameComplete} />
           ) : null}
           {poolSize !== null && poolSize > 0 && (
-            <p className="text-center text-sm text-slate-400 mt-3">
-              Today&apos;s Pool: <span className="text-yellow-400 font-bold">${poolSize.toLocaleString()} Credits</span>
-            </p>
+            <div className="bg-slate-800 rounded-xl mt-3 py-4 px-6 flex items-center justify-between">
+              <p className="text-xl font-bold text-yellow-400 font-title">
+                Pool: {poolSize.toLocaleString()} <CC />Credits
+              </p>
+              <div className="text-right">
+                <div className="text-xs text-slate-400">Settlement in</div>
+                <div className="text-sm font-mono text-yellow-400">
+                  {formatCountdown(msUntilSettlement)}
+                </div>
+              </div>
+            </div>
           )}
         </div>
 

@@ -15,7 +15,7 @@ export async function GET() {
     // Get user's profile to get user_id
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('user_id, banned_at, display_name')
+      .select('user_id, banned_at, display_name, username')
       .eq('id', user.id)
       .single()
 
@@ -64,6 +64,7 @@ export async function GET() {
       pendingTotal,
       userId: profile.user_id,
       displayName: profile.display_name,
+      username: profile.username,
       referralCode,
     })
   } catch {

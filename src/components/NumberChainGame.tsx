@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Hash, Check } from 'lucide-react'
 import { formatTime } from '@/lib/utils'
 import { ShareScore } from './ShareScore'
+import { CC } from '@/lib/currency'
 
 type GamePhase = 'idle' | 'loading' | 'play' | 'checking' | 'completed' | 'failed'
 
@@ -196,7 +197,8 @@ export function NumberChainGame({ onGameComplete }: NumberChainGameProps) {
   }, [])
 
   // Instruction text
-  const instructionText = useMemo(() => {
+  const instructionArrow = spec?.direction === 'forward' ? '↑' : '↓'
+  const instructionLabel = useMemo(() => {
     if (!spec) return ''
     return spec.direction === 'forward'
       ? `Count up from ${spec.chainStart}`
@@ -220,7 +222,9 @@ export function NumberChainGame({ onGameComplete }: NumberChainGameProps) {
       {/* Instruction banner */}
       {phase === 'play' && spec && (
         <div className="text-center mb-4">
-          <span className="text-sm font-semibold text-yellow-400">{instructionText}</span>
+          <span className={`text-lg font-bold ${spec?.direction === 'forward' ? 'text-green-400' : 'text-red-400'}`}>
+            {instructionArrow} {instructionLabel}
+          </span>
         </div>
       )}
 
@@ -233,7 +237,7 @@ export function NumberChainGame({ onGameComplete }: NumberChainGameProps) {
             onClick={startGame}
             className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg text-lg transition"
           >
-            Start Game (1 $Credit)
+            Start Game (1 <CC />Credit)
           </button>
         </div>
       )}
@@ -300,7 +304,7 @@ export function NumberChainGame({ onGameComplete }: NumberChainGameProps) {
               <div className="text-sm text-slate-400">Rank</div>
             </div>
             <div className="bg-slate-700 rounded-lg p-4">
-              <div className={`text-3xl font-bold ${(result.mistakes || 0) === 0 ? 'text-green-400' : 'text-red-400'}`}>{result.mistakes || 0}</div>
+              <div className="text-3xl font-bold text-white">{result.mistakes || 0}</div>
               <div className="text-sm text-slate-400">Mistakes</div>
             </div>
           </div>

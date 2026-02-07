@@ -6,6 +6,7 @@ import { RotateCw } from 'lucide-react'
 import { formatTime } from '@/lib/utils'
 import Image from 'next/image'
 import { ShareScore } from './ShareScore'
+import { CC } from '@/lib/currency'
 
 type GamePhase = 'idle' | 'loading' | 'play' | 'checking' | 'completed' | 'failed'
 
@@ -240,7 +241,7 @@ export function ImageRotateGame({ onGameComplete }: ImageRotateGameProps) {
             onClick={startGame}
             className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg text-lg transition"
           >
-            Start Game (1 $Credit)
+            Start Game (1 <CC />Credit)
           </button>
         </div>
       )}

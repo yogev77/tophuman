@@ -6,10 +6,11 @@ import { useAuth } from '@/hooks/useAuth'
 import { useCreditsNotification } from './CreditsNotificationProvider'
 import { useTheme } from '@/hooks/useTheme'
 import { Share2, Copy, Check, Gift, Sun, Moon, Trophy, History } from 'lucide-react'
+import { C, CC } from '@/lib/currency'
 
 export function Header() {
   const { user, loading: authLoading } = useAuth()
-  const { balance, dailyGrantAvailable, hasPendingClaims, pendingTotal, claimCredits, displayName, referralCode, loading: creditsLoading, isCounterAnimating, hasUnseenNotification, markNotificationSeen } = useCreditsNotification()
+  const { balance, dailyGrantAvailable, hasPendingClaims, pendingTotal, claimCredits, displayName, username: profileUsername, referralCode, loading: creditsLoading, isCounterAnimating, hasUnseenNotification, markNotificationSeen } = useCreditsNotification()
   const { theme, toggleTheme } = useTheme()
   const [showCreditsMenu, setShowCreditsMenu] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -47,7 +48,7 @@ export function Header() {
       try {
         await navigator.share({
           title: 'Join Podium Arena!',
-          text: 'Play skill games and win $Credits! Join using my link:',
+          text: `Play skill games and win ${C}Credits! Join using my link:`,
           url: referralUrl,
         })
       } catch {
@@ -85,8 +86,8 @@ export function Header() {
                         className="relative text-yellow-400 font-semibold hover:text-yellow-300 transition"
                       >
                         <span className={isCounterAnimating ? 'credit-counter-animate' : ''}>
-                          <span className="sm:hidden">{balance} $C</span>
-                          <span className="hidden sm:inline">{balance} $Credits</span>
+                          <span className="sm:hidden"><CC />{balance}</span>
+                          <span className="hidden sm:inline"><CC />{balance} Credits</span>
                         </span>
                         {hasUnseenNotification && (
                           <span className="absolute -top-1 -right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
@@ -98,7 +99,7 @@ export function Header() {
                           <div className="p-4 border-b border-slate-700">
                             <div className="text-center">
                               <span className="text-3xl font-bold text-yellow-400">{balance}</span>
-                              <span className="text-slate-400 ml-2">$Credits</span>
+                              <span className="text-slate-400 ml-2"><CC />Credits</span>
                             </div>
                           </div>
 
@@ -112,7 +113,7 @@ export function Header() {
                             >
                               <Trophy className="w-5 h-5 text-yellow-400" />
                               <div>
-                                <div className="text-yellow-400 font-semibold">Claim {pendingTotal} $Credits!</div>
+                                <div className="text-yellow-400 font-semibold">Claim {pendingTotal} <CC />Credits!</div>
                                 <div className="text-sm text-slate-400">You have unclaimed winnings</div>
                               </div>
                             </button>
@@ -128,7 +129,7 @@ export function Header() {
                             >
                               <Gift className="w-5 h-5 text-green-400" />
                               <div>
-                                <div className="text-white font-semibold">Claim Daily $Credits</div>
+                                <div className="text-white font-semibold">Claim Daily <CC />Credits</div>
                                 <div className="text-sm text-slate-400">Your daily credits are ready</div>
                               </div>
                             </button>
@@ -149,7 +150,7 @@ export function Header() {
                               <span className="text-white font-semibold">Invite Friends</span>
                             </div>
                             <p className="text-sm text-slate-400 mb-3">
-                              Get <span className="text-yellow-400 font-bold">100 $Credits</span> when friends join!
+                              Get <span className="text-yellow-400 font-bold">100 <CC />Credits</span> when friends join!
                             </p>
                             <div className="flex gap-2">
                               <button
@@ -175,7 +176,7 @@ export function Header() {
 
                   <div className="flex items-center gap-3">
                     <Link
-                      href="/profile"
+                      href={profileUsername ? `/player/${profileUsername}` : '/profile'}
                       className="text-slate-400 hover:text-white text-sm transition"
                     >
                       <span className="sm:hidden w-9 h-9 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-white font-semibold text-sm">

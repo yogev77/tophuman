@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Calculator } from 'lucide-react'
 import { formatTime } from '@/lib/utils'
 import { ShareScore } from './ShareScore'
+import { CC } from '@/lib/currency'
 
 type GamePhase = 'idle' | 'loading' | 'play' | 'checking' | 'completed' | 'failed'
 
@@ -215,7 +216,7 @@ export function MentalMathGame({ onGameComplete }: MentalMathGameProps) {
             onClick={startGame}
             className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg text-lg transition"
           >
-            Start Game (1 $Credit)
+            Start Game (1 <CC />Credit)
           </button>
         </div>
       )}
@@ -293,11 +294,11 @@ export function MentalMathGame({ onGameComplete }: MentalMathGameProps) {
               <div className="text-sm text-slate-400">Rank</div>
             </div>
             <div className="bg-slate-700 rounded-lg p-4">
-              <div className="text-xl font-bold text-green-400">{result.correct}/{result.total}</div>
+              <div className="text-xl font-bold text-white">{result.correct}/{result.total}</div>
               <div className="text-sm text-slate-400">Correct</div>
             </div>
             <div className="bg-slate-700 rounded-lg p-4">
-              <div className="text-xl font-bold text-blue-400">
+              <div className="text-xl font-bold text-white">
                 {result.averageTimeMs ? `${(result.averageTimeMs / 1000).toFixed(1)}s` : '-'}
               </div>
               <div className="text-sm text-slate-400">Avg Time</div>

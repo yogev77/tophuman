@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { ScanEye } from 'lucide-react'
 import { formatTime } from '@/lib/utils'
 import { ShareScore } from './ShareScore'
+import { CC } from '@/lib/currency'
 
 type GamePhase = 'idle' | 'loading' | 'play' | 'checking' | 'completed' | 'failed'
 
@@ -17,7 +18,8 @@ interface Shape {
 }
 
 interface TurnSpec {
-  gridSize: number
+  gridWidth: number
+  gridHeight: number
   baseShapes: Shape[]
   modifiedShapes: Shape[]
   numDifferences: number
@@ -108,8 +110,8 @@ export function VisualDiffGame({ onGameComplete }: VisualDiffGameProps) {
 
     const rect = e.currentTarget.getBoundingClientRect()
     // Convert screen coordinates to SVG viewBox coordinates
-    const scaleX = spec.gridSize / rect.width
-    const scaleY = spec.gridSize / rect.height
+    const scaleX = spec.gridWidth / rect.width
+    const scaleY = spec.gridHeight / rect.height
     const x = (e.clientX - rect.left) * scaleX
     const y = (e.clientY - rect.top) * scaleY
 
@@ -188,20 +190,34 @@ export function VisualDiffGame({ onGameComplete }: VisualDiffGameProps) {
           y={shape.y - shape.size}
           width={shape.size * 2}
           height={shape.size * 2}
+          rx={4}
+          ry={4}
           fill={shape.color}
         />
       )
     } else {
-      // Triangle
-      const points = [
-        `${shape.x},${shape.y - shape.size}`,
-        `${shape.x - shape.size},${shape.y + shape.size}`,
-        `${shape.x + shape.size},${shape.y + shape.size}`,
+      // Rounded triangle using a path with arc corners
+      const s = shape.size
+      const cx = shape.x
+      const cy = shape.y
+      const r = 3 // corner radius
+      // Three vertices of equilateral-ish triangle
+      const top = { x: cx, y: cy - s }
+      const bl = { x: cx - s, y: cy + s }
+      const br = { x: cx + s, y: cy + s }
+      const d = [
+        `M ${top.x} ${top.y + r}`,
+        `Q ${top.x} ${top.y} ${top.x + r} ${top.y + r * 0.5}`,
+        `L ${br.x - r} ${br.y - r * 0.5}`,
+        `Q ${br.x} ${br.y} ${br.x - r} ${br.y}`,
+        `L ${bl.x + r} ${bl.y}`,
+        `Q ${bl.x} ${bl.y} ${bl.x + r * 0.5} ${bl.y - r}`,
+        'Z',
       ].join(' ')
       return (
-        <polygon
+        <path
           key={index}
-          points={points}
+          d={d}
           fill={shape.color}
         />
       )
@@ -218,7 +234,7 @@ export function VisualDiffGame({ onGameComplete }: VisualDiffGameProps) {
             </span>
           </div>
           <div className="text-slate-400 text-sm">
-            Spot the differences. Clicks: {clicks.length}
+            Spot {spec.numDifferences} differences. Clicks: {clicks.length}
           </div>
         </div>
       )}
@@ -232,7 +248,7 @@ export function VisualDiffGame({ onGameComplete }: VisualDiffGameProps) {
             onClick={startGame}
             className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg text-lg transition"
           >
-            Start Game (1 $Credit)
+            Start Game (1 <CC />Credit)
           </button>
         </div>
       )}
@@ -248,28 +264,28 @@ export function VisualDiffGame({ onGameComplete }: VisualDiffGameProps) {
         <div>
           <div className="grid grid-cols-2 gap-2">
             <svg
-              viewBox={`0 0 ${spec.gridSize} ${spec.gridSize}`}
+              viewBox={`0 0 ${spec.gridWidth} ${spec.gridHeight}`}
               className="w-full bg-slate-900 rounded-lg cursor-crosshair"
               onClick={(e) => handleClick(e, 'left')}
             >
               {spec.baseShapes.map((shape, i) => renderShape(shape, i))}
               {clicks.filter(c => c.side === 'left').map((click, i) => (
                 <g key={`marker-left-${i}`}>
-                  <circle cx={click.x} cy={click.y} r={12} fill="none" stroke="#ffffff" strokeWidth={3} />
-                  <circle cx={click.x} cy={click.y} r={4} fill="#ffffff" />
+                  <circle cx={click.x} cy={click.y} r={8} fill="none" stroke="#ffffff" strokeWidth={2} />
+                  <circle cx={click.x} cy={click.y} r={3} fill="#ffffff" />
                 </g>
               ))}
             </svg>
             <svg
-              viewBox={`0 0 ${spec.gridSize} ${spec.gridSize}`}
+              viewBox={`0 0 ${spec.gridWidth} ${spec.gridHeight}`}
               className="w-full bg-slate-900 rounded-lg cursor-crosshair"
               onClick={(e) => handleClick(e, 'right')}
             >
               {spec.modifiedShapes.map((shape, i) => renderShape(shape, i))}
               {clicks.filter(c => c.side === 'right').map((click, i) => (
                 <g key={`marker-right-${i}`}>
-                  <circle cx={click.x} cy={click.y} r={12} fill="none" stroke="#ffffff" strokeWidth={3} />
-                  <circle cx={click.x} cy={click.y} r={4} fill="#ffffff" />
+                  <circle cx={click.x} cy={click.y} r={8} fill="none" stroke="#ffffff" strokeWidth={2} />
+                  <circle cx={click.x} cy={click.y} r={3} fill="#ffffff" />
                 </g>
               ))}
             </svg>
@@ -306,7 +322,7 @@ export function VisualDiffGame({ onGameComplete }: VisualDiffGameProps) {
               <div className="text-sm text-slate-400">Rank</div>
             </div>
             <div className="bg-slate-700 rounded-lg p-4 col-span-2">
-              <div className="text-xl font-bold text-green-400">{result.found}/{result.total}</div>
+              <div className="text-xl font-bold text-white">{result.found}/{result.total}</div>
               <div className="text-sm text-slate-400">Differences Found</div>
             </div>
           </div>

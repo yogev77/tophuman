@@ -15,6 +15,13 @@ function WelcomeContent() {
       const referralCode = localStorage.getItem('referralCode')
       const next = searchParams.get('next') || '/'
 
+      // Auto-grant first daily credits so new users start with a balance
+      try {
+        await fetch('/api/credits/grant', { method: 'POST' })
+      } catch (err) {
+        console.error('Auto-grant error:', err)
+      }
+
       if (referralCode) {
         setStatus('Applying referral bonus...')
         try {

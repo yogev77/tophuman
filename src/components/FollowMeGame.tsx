@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { Pencil } from 'lucide-react'
 import { ShareScore } from './ShareScore'
+import { CC } from '@/lib/currency'
+import { useTheme } from '@/hooks/useTheme'
 
 type GamePhase = 'idle' | 'loading' | 'ready' | 'draw' | 'checking' | 'completed' | 'failed'
 
@@ -14,7 +16,7 @@ interface Point {
 
 interface TurnSpec {
   canvasSize: number
-  path: Point[]
+  paths: Point[][]
   timeLimitMs: number
 }
 
@@ -34,6 +36,8 @@ interface FollowMeGameProps {
 const TOTAL_ROUNDS = 3
 
 export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
+  const { theme } = useTheme()
+  const light = theme === 'light'
   const [phase, setPhase] = useState<GamePhase>('idle')
   const [turnToken, setTurnToken] = useState<string | null>(null)
   const [spec, setSpec] = useState<TurnSpec | null>(null)
@@ -61,29 +65,44 @@ export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
     ctx.fillStyle = '#1e293b' // slate-800
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-    // Draw target path
-    if (spec.path.length > 1) {
-      ctx.strokeStyle = '#3b82f6' // blue-500
-      ctx.lineWidth = 8
-      ctx.lineCap = 'round'
-      ctx.lineJoin = 'round'
-      ctx.beginPath()
-      ctx.moveTo(spec.path[0].x, spec.path[0].y)
-      for (let i = 1; i < spec.path.length; i++) {
-        ctx.lineTo(spec.path[i].x, spec.path[i].y)
-      }
-      ctx.stroke()
+    // Get the current round's path
+    const currentPath = spec.paths[currentRound - 1]
+    if (!currentPath || currentPath.length < 2) return
 
+    // Check if this path loops (start ≈ end)
+    const dx = currentPath[0].x - currentPath[currentPath.length - 1].x
+    const dy = currentPath[0].y - currentPath[currentPath.length - 1].y
+    const isLoop = Math.sqrt(dx * dx + dy * dy) < 20
+
+    // Draw target path
+    ctx.strokeStyle = '#3b82f6' // blue-500
+    ctx.lineWidth = 8
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    ctx.beginPath()
+    ctx.moveTo(currentPath[0].x, currentPath[0].y)
+    for (let i = 1; i < currentPath.length; i++) {
+      ctx.lineTo(currentPath[i].x, currentPath[i].y)
+    }
+    ctx.stroke()
+
+    if (isLoop) {
+      // For loops, just draw a single start/end indicator
+      ctx.fillStyle = '#22c55e' // green-500
+      ctx.beginPath()
+      ctx.arc(currentPath[0].x, currentPath[0].y, 12, 0, Math.PI * 2)
+      ctx.fill()
+    } else {
       // Draw start indicator
       ctx.fillStyle = '#22c55e' // green-500
       ctx.beginPath()
-      ctx.arc(spec.path[0].x, spec.path[0].y, 12, 0, Math.PI * 2)
+      ctx.arc(currentPath[0].x, currentPath[0].y, 12, 0, Math.PI * 2)
       ctx.fill()
 
       // Draw end indicator
       ctx.fillStyle = '#ef4444' // red-500
       ctx.beginPath()
-      ctx.arc(spec.path[spec.path.length - 1].x, spec.path[spec.path.length - 1].y, 12, 0, Math.PI * 2)
+      ctx.arc(currentPath[currentPath.length - 1].x, currentPath[currentPath.length - 1].y, 12, 0, Math.PI * 2)
       ctx.fill()
     }
 
@@ -100,7 +119,7 @@ export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
       }
       ctx.stroke()
     }
-  }, [spec, userPath])
+  }, [spec, userPath, currentRound])
 
   useEffect(() => {
     drawCanvas()
@@ -283,19 +302,19 @@ export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
 
     setPhase('checking')
 
-    // Combine all paths including current one if not empty
+    // Include current round's path if it has enough points
     const finalPaths = userPath.length > 10 ? [...allPaths, userPath] : allPaths
-    const combinedPath = finalPaths.flat()
 
     try {
-      // Send draw complete event with all paths combined
+      // Send last round's path as draw_complete
+      const lastPath = finalPaths[finalPaths.length - 1] || []
       await fetch('/api/game/turn/event', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           turnToken,
           eventType: 'draw_complete',
-          points: combinedPath,
+          points: lastPath,
           rounds: finalPaths.length,
           clientTimestampMs: Date.now(),
         }),
@@ -342,14 +361,14 @@ export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
       {phase === 'idle' && (
         <div className="text-center py-12">
           <p className="text-slate-300 mb-6">
-            Trace the blue path {TOTAL_ROUNDS} times! Start from the green dot and end at the red dot.
+            Trace {TOTAL_ROUNDS} different paths! Start from the green dot and follow the blue line.
             Speed and accuracy both count toward your score.
           </p>
           <button
             onClick={startGame}
             className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg text-lg transition"
           >
-            Start Game (1 $Credit)
+            Start Game (1 <CC />Credit)
           </button>
         </div>
       )}
@@ -372,6 +391,8 @@ export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
                     ? 'bg-green-500 text-white'
                     : i + 1 === currentRound
                     ? 'bg-yellow-500 text-slate-900'
+                    : light
+                    ? 'bg-slate-200 text-slate-500'
                     : 'bg-slate-600 text-slate-400'
                 }`}
               >
@@ -382,7 +403,7 @@ export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
           <p className={`text-lg mb-4 ${phase === 'ready' ? 'text-yellow-400' : 'text-green-400'}`}>
             {phase === 'ready'
               ? `Line ${currentRound}/${TOTAL_ROUNDS}: Start from the green dot!`
-              : `Line ${currentRound}/${TOTAL_ROUNDS}: Keep tracing to the red dot!`}
+              : `Line ${currentRound}/${TOTAL_ROUNDS}: Keep tracing!`}
           </p>
           <div className="inline-block border-4 border-slate-600 rounded-lg overflow-hidden touch-none max-w-full">
             <canvas
@@ -444,13 +465,13 @@ export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
               <div className="text-sm text-slate-400">Rank</div>
             </div>
             <div className="bg-slate-700 rounded-lg p-4">
-              <div className="text-xl font-bold text-blue-400">
+              <div className="text-xl font-bold text-white">
                 {result.accuracy ? Math.round(result.accuracy * 100) : 0}%
               </div>
               <div className="text-sm text-slate-400">Accuracy</div>
             </div>
             <div className="bg-slate-700 rounded-lg p-4">
-              <div className="text-xl font-bold text-purple-400">
+              <div className="text-xl font-bold text-white">
                 {result.coverage ? Math.round(result.coverage * 100) : 0}%
               </div>
               <div className="text-sm text-slate-400">Coverage</div>

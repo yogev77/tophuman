@@ -1,7 +1,8 @@
 import crypto from 'crypto'
 
 export interface VisualDiffConfig {
-  grid_size: number
+  grid_width: number
+  grid_height: number
   num_differences: number
   time_limit_seconds: number
   num_shapes: number
@@ -17,7 +18,8 @@ interface Shape {
 
 export interface VisualDiffTurnSpec {
   seed: string
-  gridSize: number
+  gridWidth: number
+  gridHeight: number
   baseShapes: Shape[]
   differences: { index: number; property: 'color' | 'size' | 'type'; newValue: string | number }[]
   timeLimitMs: number
@@ -44,7 +46,8 @@ const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6'
 const SHAPE_TYPES: ('circle' | 'square' | 'triangle')[] = ['circle', 'square', 'triangle']
 
 export const DEFAULT_VISUAL_DIFF_CONFIG: VisualDiffConfig = {
-  grid_size: 300,
+  grid_width: 150,
+  grid_height: 300,
   num_differences: 5,
   time_limit_seconds: 60,
   num_shapes: 15,
@@ -76,11 +79,11 @@ export function generateVisualDiffTurnSpec(
   const baseShapes: Shape[] = []
   for (let i = 0; i < config.num_shapes; i++) {
     baseShapes.push({
-      x: Math.floor(random() * (config.grid_size - 40)) + 20,
-      y: Math.floor(random() * (config.grid_size - 40)) + 20,
+      x: Math.floor(random() * (config.grid_width - 40)) + 20,
+      y: Math.floor(random() * (config.grid_height - 40)) + 20,
       type: SHAPE_TYPES[Math.floor(random() * SHAPE_TYPES.length)],
       color: COLORS[Math.floor(random() * COLORS.length)],
-      size: Math.floor(random() * 20) + 15,
+      size: Math.floor(random() * 15) + 10,
     })
   }
 
@@ -104,8 +107,8 @@ export function generateVisualDiffTurnSpec(
     } else if (propertyChoice === 1) {
       // Change size
       const currentSize = baseShapes[index].size
-      const newSize = currentSize + (random() > 0.5 ? 10 : -8)
-      differences.push({ index, property: 'size', newValue: Math.max(10, newSize) })
+      const newSize = currentSize + (random() > 0.5 ? 8 : -6)
+      differences.push({ index, property: 'size', newValue: Math.max(6, newSize) })
     } else {
       // Change type
       let newType = SHAPE_TYPES[Math.floor(random() * SHAPE_TYPES.length)]
@@ -118,7 +121,8 @@ export function generateVisualDiffTurnSpec(
 
   return {
     seed,
-    gridSize: config.grid_size,
+    gridWidth: config.grid_width,
+    gridHeight: config.grid_height,
     baseShapes,
     differences,
     timeLimitMs: config.time_limit_seconds * 1000,
@@ -126,7 +130,8 @@ export function generateVisualDiffTurnSpec(
 }
 
 export function getVisualDiffClientSpec(spec: VisualDiffTurnSpec): {
-  gridSize: number
+  gridWidth: number
+  gridHeight: number
   baseShapes: Shape[]
   modifiedShapes: Shape[]
   numDifferences: number
@@ -145,7 +150,8 @@ export function getVisualDiffClientSpec(spec: VisualDiffTurnSpec): {
   }
 
   return {
-    gridSize: spec.gridSize,
+    gridWidth: spec.gridWidth,
+    gridHeight: spec.gridHeight,
     baseShapes: spec.baseShapes,
     modifiedShapes,
     numDifferences: spec.differences.length,

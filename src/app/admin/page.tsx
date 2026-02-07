@@ -115,6 +115,16 @@ interface LedgerEntry {
   created_at: string
 }
 
+interface TreasurySnapshot {
+  id: number
+  utc_day: string
+  balance: number
+  treasury_user_id: string
+  treasury_username: string | null
+  notes: string | null
+  created_at: string
+}
+
 const GAME_OPTIONS: GameOption[] = [
   { id: 'emoji_keypad', icon: Target, name: 'Emoji Keypad', desc: 'Memorize & tap sequence' },
   { id: 'image_rotate', icon: RotateCw, name: 'Image Rotate', desc: 'Rotate tiles to restore' },
@@ -178,6 +188,12 @@ export default function AdminPage() {
   const [treasuryEntries, setTreasuryEntries] = useState<LedgerEntry[]>([])
   const [treasuryTotal, setTreasuryTotal] = useState(0)
   const [treasuryLoading, setTreasuryLoading] = useState(false)
+
+  // Treasury snapshots state
+  const [snapshots, setSnapshots] = useState<TreasurySnapshot[]>([])
+  const [snapshotsTotal, setSnapshotsTotal] = useState(0)
+  const [snapshotsLoading, setSnapshotsLoading] = useState(false)
+  const [recordingSnapshot, setRecordingSnapshot] = useState(false)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -302,6 +318,44 @@ export default function AdminPage() {
     }
   }, [])
 
+  const fetchSnapshots = useCallback(async (offset = 0, append = false) => {
+    setSnapshotsLoading(true)
+    try {
+      const res = await fetch(`/api/admin/treasury-snapshots?limit=20&offset=${offset}`)
+      if (res.ok) {
+        const data = await res.json()
+        setSnapshotsTotal(data.total)
+        if (append) {
+          setSnapshots(prev => [...prev, ...data.snapshots])
+        } else {
+          setSnapshots(data.snapshots)
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch treasury snapshots:', err)
+    } finally {
+      setSnapshotsLoading(false)
+    }
+  }, [])
+
+  const recordSnapshot = async () => {
+    setRecordingSnapshot(true)
+    try {
+      const res = await fetch('/api/admin/treasury-snapshots', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+      if (res.ok) {
+        fetchSnapshots()
+      }
+    } catch (err) {
+      console.error('Failed to record snapshot:', err)
+    } finally {
+      setRecordingSnapshot(false)
+    }
+  }
+
   const saveTreasuryUser = async () => {
     if (!treasuryInput.trim()) return
 
@@ -340,17 +394,20 @@ export default function AdminPage() {
     fetchTreasuryUser()
   }, [fetchData])
 
-  // Fetch treasury history and settlement history when switching to treasury tab
+  // Fetch treasury history, snapshots, and settlement history when switching to treasury tab
   useEffect(() => {
     if (activeTab === 'treasury') {
       if (treasuryUserId && treasuryEntries.length === 0 && treasuryBalance === null) {
         fetchTreasuryHistory(treasuryUserId)
       }
+      if (snapshots.length === 0 && !snapshotsLoading) {
+        fetchSnapshots()
+      }
       if (settlementHistory.length === 0 && !settlementHistoryLoading) {
         fetchSettlementHistory()
       }
     }
-  }, [activeTab, treasuryUserId, treasuryEntries.length, treasuryBalance, fetchTreasuryHistory, settlementHistory.length, settlementHistoryLoading, fetchSettlementHistory])
+  }, [activeTab, treasuryUserId, treasuryEntries.length, treasuryBalance, fetchTreasuryHistory, snapshots.length, snapshotsLoading, fetchSnapshots, settlementHistory.length, settlementHistoryLoading, fetchSettlementHistory])
 
   const updateGameSetting = async (gameId: string, isActive: boolean, opensAt: string | null) => {
     setUpdatingGame(gameId)
@@ -946,6 +1003,71 @@ export default function AdminPage() {
               <p className="text-slate-400">Set a treasury user above to view their credit history.</p>
             </div>
           )}
+
+          {/* Balance Snapshots */}
+          <div className="bg-slate-800 rounded-xl p-6 mt-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-white">Balance Snapshots</h2>
+              <button
+                onClick={recordSnapshot}
+                disabled={recordingSnapshot}
+                className="bg-yellow-500 hover:bg-yellow-400 disabled:bg-slate-600 text-slate-900 font-bold py-2 px-4 rounded-lg text-sm transition"
+              >
+                {recordingSnapshot ? 'Recording...' : 'Record Snapshot Now'}
+              </button>
+            </div>
+            {snapshotsLoading && snapshots.length === 0 ? (
+              <div className="animate-pulse space-y-3">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="h-10 bg-slate-700 rounded"></div>
+                ))}
+              </div>
+            ) : snapshots.length === 0 ? (
+              <p className="text-slate-400">No snapshots recorded yet.</p>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="text-left text-slate-400 text-sm">
+                        <th className="pb-3">Date</th>
+                        <th className="pb-3 text-right">Balance</th>
+                        <th className="pb-3">Treasury User</th>
+                        <th className="pb-3">Notes</th>
+                        <th className="pb-3">Recorded At</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {snapshots.map((s) => (
+                        <tr key={s.id} className="border-t border-slate-700">
+                          <td className="py-3 text-white">{s.utc_day}</td>
+                          <td className="py-3 text-right font-mono text-yellow-400">{s.balance.toLocaleString()}</td>
+                          <td className="py-3 text-slate-300 text-sm">{s.treasury_username || s.treasury_user_id.slice(0, 12) + '...'}</td>
+                          <td className="py-3 text-slate-400 text-sm">{s.notes || '-'}</td>
+                          <td className="py-3 text-slate-400 text-sm">
+                            {new Date(s.created_at).toLocaleDateString()}{' '}
+                            <span className="text-slate-500">{new Date(s.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {snapshots.length < snapshotsTotal && (
+                  <div className="mt-4 text-center">
+                    <button
+                      onClick={() => fetchSnapshots(snapshots.length, true)}
+                      disabled={snapshotsLoading}
+                      className="bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white px-6 py-2 rounded-lg text-sm transition"
+                    >
+                      {snapshotsLoading ? 'Loading...' : `Load more (${snapshots.length} of ${snapshotsTotal})`}
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
 
           {/* Settlement Allocation History */}
           <div className="bg-slate-800 rounded-xl p-6 mt-8">

@@ -11,6 +11,7 @@ interface CreditsNotificationContextType {
   pendingTotal: number
   hasPendingClaims: boolean
   displayName: string | null
+  username: string | null
   referralCode: string | null
   userId: string | null
   loading: boolean
@@ -159,6 +160,7 @@ export function CreditsNotificationProvider({ children }: { children: React.Reac
       pendingTotal: credits.pendingTotal,
       hasPendingClaims,
       displayName: credits.displayName,
+      username: credits.username,
       referralCode: credits.referralCode,
       userId: credits.userId,
       loading: credits.loading,

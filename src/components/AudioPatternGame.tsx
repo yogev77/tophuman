@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { Music } from 'lucide-react'
 import { ShareScore } from './ShareScore'
+import { CC } from '@/lib/currency'
 
 type GamePhase = 'idle' | 'loading' | 'countdown' | 'listen' | 'play' | 'checking' | 'completed' | 'failed'
 
@@ -282,7 +283,7 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
             onClick={startGame}
             className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg text-lg transition"
           >
-            Start Game (1 $Credit)
+            Start Game (1 <CC />Credit)
           </button>
         </div>
       )}
@@ -379,7 +380,7 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
             </div>
             {(result.correct ?? 0) > 0 && (
               <div className="bg-slate-700 rounded-lg p-4 col-span-2">
-                <div className="text-xl font-bold text-green-400">{result.correct} {result.correct === 1 ? 'level' : 'levels'}</div>
+                <div className="text-xl font-bold text-white">{result.correct} {result.correct === 1 ? 'level' : 'levels'}</div>
                 <div className="text-sm text-slate-400">Completed</div>
               </div>
             )}

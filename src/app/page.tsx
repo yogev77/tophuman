@@ -27,7 +27,11 @@ import {
   Share2,
   Copy,
   Check,
+  Gamepad2,
+  Trophy,
+  TrendingUp,
 } from 'lucide-react'
+import { C, CC } from '@/lib/currency'
 
 const GAME_ICONS: Record<string, LucideIcon> = {
   emoji_keypad: Target,
@@ -70,7 +74,9 @@ interface TopPlayerEntry {
   gameId: string
   gameName: string
   playerName: string
+  playerUsername: string | null
   score: number
+  poolSize?: number
 }
 
 interface GameInfo {
@@ -85,6 +91,7 @@ interface GameInfo {
     playerCount: number
     topScore: number
     topPlayerName: string | null
+    topPlayerUsername: string | null
     turnCount: number
   }
 }
@@ -98,6 +105,12 @@ interface GamesData {
   }
   msUntilSettlement: number
   utcDay: string
+}
+
+function abbreviateNumber(n: number): string {
+  if (n >= 1000000) return `${(n / 1000000).toFixed(1).replace(/\.0$/, '')}M`
+  if (n >= 1000) return `${(n / 1000).toFixed(1).replace(/\.0$/, '')}K`
+  return n.toLocaleString()
 }
 
 function formatTimeLeft(ms: number): string {
@@ -159,9 +172,15 @@ function TopPlayersTicker({ games }: { games: GameInfo[] }) {
           <Icon className={`w-4 h-4 ${iconColors.icon}`} />
         </div>
         <Crown className="w-3 h-3 text-yellow-400" />
-        <span className="text-white font-medium">{game.todayStats.topPlayerName}</span>
+        {game.todayStats.topPlayerUsername ? (
+          <Link href={`/player/${game.todayStats.topPlayerUsername}`} className="text-white font-medium hover:text-yellow-400 transition">
+            {game.todayStats.topPlayerName}
+          </Link>
+        ) : (
+          <span className="text-white font-medium">{game.todayStats.topPlayerName}</span>
+        )}
         <span className="text-green-400 font-bold">{game.todayStats.topScore.toLocaleString()}</span>
-        <span className="text-yellow-400">{game.poolSize} $C</span>
+        <span className="text-yellow-400"><CC />{game.poolSize}</span>
       </div>
     )
   })
@@ -188,7 +207,7 @@ function GameTile({ game, msUntilSettlement }: { game: GameInfo; msUntilSettleme
   const content = (
     <div className="relative">
       {isPlayable && (
-        <span className="absolute top-0 right-0 text-[10px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full flex items-center gap-1">
+        <span className="absolute top-0 right-0 text-[10px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full items-center gap-1 hidden sm:flex">
           <Clock className="w-3 h-3" />
           {formatTimeLeft(msUntilSettlement)}
         </span>
@@ -210,7 +229,7 @@ function GameTile({ game, msUntilSettlement }: { game: GameInfo; msUntilSettleme
           <div className={`text-sm font-bold ${isPlayable ? 'text-yellow-400' : 'text-slate-500'}`}>
             {game.poolSize > 0 ? `${game.poolSize.toLocaleString()}` : '-'}
           </div>
-          <div className="text-[10px] text-slate-500">$Credit Pool</div>
+          <div className="text-[10px] text-slate-500"><CC />Credit Pool</div>
         </div>
         <div className="py-2 px-1">
           <div className={`text-sm font-bold ${isPlayable ? 'text-white' : 'text-slate-500'}`}>
@@ -229,7 +248,17 @@ function GameTile({ game, msUntilSettlement }: { game: GameInfo; msUntilSettleme
         {game.todayStats.topPlayerName && game.todayStats.topScore > 0 ? (
           <>
             <Crown className="w-3.5 h-3.5 text-yellow-400" />
-            <span className="text-xs text-white font-medium truncate max-w-[120px]">{game.todayStats.topPlayerName}</span>
+            {game.todayStats.topPlayerUsername ? (
+              <Link
+                href={`/player/${game.todayStats.topPlayerUsername}`}
+                className="text-xs text-white font-medium truncate max-w-[120px] hover:text-yellow-400 transition"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {game.todayStats.topPlayerName}
+              </Link>
+            ) : (
+              <span className="text-xs text-white font-medium truncate max-w-[120px]">{game.todayStats.topPlayerName}</span>
+            )}
             <span className="text-xs text-green-400 font-bold">{game.todayStats.topScore.toLocaleString()}</span>
           </>
         ) : (
@@ -269,7 +298,8 @@ export default function HomePage() {
   const [copied, setCopied] = useState(false)
   const [topPlayersAllTime, setTopPlayersAllTime] = useState<TopPlayerEntry[]>([])
   const [topPlayersToday, setTopPlayersToday] = useState<TopPlayerEntry[]>([])
-  const [topPlayersTab, setTopPlayersTab] = useState<'allTime' | 'today'>('allTime')
+  const [topPlayersTab, setTopPlayersTab] = useState<'allTime' | 'today'>('today')
+  const [siteTab, setSiteTab] = useState<'games' | 'topCharts'>('games')
   const sharePopupRef = useRef<HTMLDivElement>(null)
 
   const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/auth/signup` : ''
@@ -300,7 +330,7 @@ export default function HomePage() {
       try {
         await navigator.share({
           title: 'Join Podium Arena!',
-          text: 'Play skill games and win $Credits! Join using my link:',
+          text: `Play skill games and win ${C}Credits! Join using my link:`,
           url: shareUrl,
         })
       } catch {
@@ -396,7 +426,7 @@ export default function HomePage() {
           <div className="flex flex-wrap items-center justify-center gap-6 text-center">
             <div>
               <div className="text-2xl font-bold text-yellow-400">
-                {data.pool.totalCredits} $Credits
+                {data.pool.totalCredits} <CC />Credits
               </div>
               <div className="text-sm text-slate-400">Total Across All Games</div>
             </div>
@@ -421,87 +451,119 @@ export default function HomePage() {
       {/* Top Players Ticker */}
       {data && <TopPlayersTicker games={data.games} />}
 
-      {/* Games Grid */}
-      {loading ? (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3, 4, 5, 6].map(i => (
-            <div key={i} className="bg-slate-800 rounded-xl p-6 animate-pulse">
-              <div className="h-12 w-12 bg-slate-700 rounded-lg mb-3"></div>
-              <div className="h-5 bg-slate-700 rounded w-2/3 mb-2"></div>
-              <div className="h-4 bg-slate-700 rounded w-full mb-4"></div>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="h-12 bg-slate-700 rounded"></div>
-                <div className="h-12 bg-slate-700 rounded"></div>
-                <div className="h-12 bg-slate-700 rounded"></div>
-              </div>
-            </div>
-          ))}
+      {/* Sticky Site Tab Controller */}
+      <div className="sticky top-0 z-30 -mx-4 px-4 py-2 bg-slate-900/95 backdrop-blur-sm flex justify-center">
+        <div className="flex gap-1 bg-slate-800 rounded-xl p-1 w-full md:w-1/2">
+          <button
+            onClick={() => setSiteTab('games')}
+            className={`flex-1 flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition ${
+              siteTab === 'games'
+                ? 'bg-yellow-500 text-slate-900'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Gamepad2 className="w-4 h-4" />
+            Games
+          </button>
+          <button
+            onClick={() => setSiteTab('topCharts')}
+            className={`flex-1 flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition ${
+              siteTab === 'topCharts'
+                ? 'bg-yellow-500 text-slate-900'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Trophy className="w-4 h-4" />
+            Top Charts
+          </button>
         </div>
-      ) : data ? (
-        <>
-          {/* Active Games */}
-          {playableGames.length > 0 && (
-            <>
-              <h2 className="text-2xl font-bold text-white mb-6 font-title">Play Now</h2>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
-                {playableGames.map(game => (
-                  <GameTile
-                    key={game.id}
-                    game={game}
-                    msUntilSettlement={timeLeft}
-                  />
-                ))}
-              </div>
-            </>
-          )}
+      </div>
 
-          {/* Scheduled Games */}
-          {scheduledGames.length > 0 && (
+      {/* Games Tab */}
+      {siteTab === 'games' && (
+        <div className="mt-6">
+          {loading ? (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1, 2, 3, 4, 5, 6].map(i => (
+                <div key={i} className="bg-slate-800 rounded-xl p-6 animate-pulse">
+                  <div className="h-12 w-12 bg-slate-700 rounded-lg mb-3"></div>
+                  <div className="h-5 bg-slate-700 rounded w-2/3 mb-2"></div>
+                  <div className="h-4 bg-slate-700 rounded w-full mb-4"></div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="h-12 bg-slate-700 rounded"></div>
+                    <div className="h-12 bg-slate-700 rounded"></div>
+                    <div className="h-12 bg-slate-700 rounded"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : data ? (
             <>
-              <h2 className="text-xl font-bold text-slate-400 mb-4">Coming Soon</h2>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
-                {scheduledGames.map(game => (
-                  <GameTile
-                    key={game.id}
-                    game={game}
-                    msUntilSettlement={timeLeft}
-                  />
-                ))}
-              </div>
-            </>
-          )}
+              {/* Active Games */}
+              {playableGames.length > 0 && (
+                <>
+                  <h2 className="text-2xl font-bold text-white mb-6 font-title">Play Now</h2>
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
+                    {playableGames.map(game => (
+                      <GameTile
+                        key={game.id}
+                        game={game}
+                        msUntilSettlement={timeLeft}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
 
-          {/* Inactive Games */}
-          {inactiveGames.length > 0 && (
-            <>
-              <h2 className="text-xl font-bold text-slate-500 mb-4">Not Available</h2>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {inactiveGames.map(game => (
-                  <GameTile
-                    key={game.id}
-                    game={game}
-                    msUntilSettlement={timeLeft}
-                  />
-                ))}
-              </div>
-            </>
-          )}
+              {/* Scheduled Games */}
+              {scheduledGames.length > 0 && (
+                <>
+                  <h2 className="text-xl font-bold text-slate-400 mb-4">Coming Soon</h2>
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
+                    {scheduledGames.map(game => (
+                      <GameTile
+                        key={game.id}
+                        game={game}
+                        msUntilSettlement={timeLeft}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
 
-          {playableGames.length === 0 && scheduledGames.length === 0 && inactiveGames.length === 0 && (
+              {/* Inactive Games */}
+              {inactiveGames.length > 0 && (
+                <>
+                  <h2 className="text-xl font-bold text-slate-500 mb-4">Not Available</h2>
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {inactiveGames.map(game => (
+                      <GameTile
+                        key={game.id}
+                        game={game}
+                        msUntilSettlement={timeLeft}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {playableGames.length === 0 && scheduledGames.length === 0 && inactiveGames.length === 0 && (
+                <div className="text-center text-slate-400 py-12">
+                  No games configured yet.
+                </div>
+              )}
+            </>
+          ) : (
             <div className="text-center text-slate-400 py-12">
-              No games configured yet.
+              Failed to load games. Please refresh the page.
             </div>
           )}
-        </>
-      ) : (
-        <div className="text-center text-slate-400 py-12">
-          Failed to load games. Please refresh the page.
         </div>
       )}
 
-      {/* Top Players */}
-      {(topPlayersAllTime.length > 0 || topPlayersToday.length > 0) && (() => {
-        const renderTable = (entries: TopPlayerEntry[], emptyLabel: string) => {
+      {/* Top Charts Tab */}
+      {siteTab === 'topCharts' && (() => {
+        const renderTable = (entries: TopPlayerEntry[], emptyLabel: string, showPool?: boolean) => {
           if (entries.length === 0) {
             return (
               <div className="text-center text-slate-500 py-8">
@@ -514,9 +576,10 @@ export default function HomePage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-slate-700">
-                    <th className="text-left text-sm text-slate-400 font-medium px-4 py-3">Game</th>
-                    <th className="text-left text-sm text-slate-400 font-medium px-4 py-3">Player</th>
-                    <th className="text-right text-sm text-slate-400 font-medium px-4 py-3">Score</th>
+                    <th className="text-left text-sm text-slate-400 font-medium px-3 sm:px-4 py-3">Game</th>
+                    <th className="text-left text-sm text-slate-400 font-medium px-3 sm:px-4 py-3">Player</th>
+                    <th className="text-right text-sm text-slate-400 font-medium px-3 sm:px-4 py-3">Score</th>
+                    {showPool && <th className="text-right text-sm text-yellow-500 font-medium px-3 sm:px-4 py-3"><CC />Pool</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -525,20 +588,31 @@ export default function HomePage() {
                     const colors = GAME_ICON_COLORS[entry.gameId] || GAME_ICON_COLORS.emoji_keypad
                     return (
                       <tr key={entry.gameId} className={i < entries.length - 1 ? 'border-b border-slate-700/50' : ''}>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-3">
-                            <div className={`p-1.5 rounded-lg ${colors.bg}`}>
+                        <td className="px-3 sm:px-4 py-3">
+                          <div className="flex items-center gap-2 sm:gap-3">
+                            <div className={`p-1.5 rounded-lg shrink-0 ${colors.bg}`}>
                               <Icon className={`w-4 h-4 ${colors.icon}`} />
                             </div>
-                            <span className="text-white text-sm font-medium">{entry.gameName}</span>
+                            <span className="text-white text-sm font-medium leading-tight">{entry.gameName}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3">
-                          <span className="text-slate-500 text-sm">{entry.playerName}</span>
+                        <td className="px-3 sm:px-4 py-3">
+                          {entry.playerUsername ? (
+                            <Link href={`/player/${entry.playerUsername}`} className="text-slate-500 text-sm hover:text-yellow-400 transition">
+                              {entry.playerName}
+                            </Link>
+                          ) : (
+                            <span className="text-slate-500 text-sm">{entry.playerName}</span>
+                          )}
                         </td>
-                        <td className="px-4 py-3 text-right">
-                          <span className="text-green-400 font-bold text-sm">{entry.score.toLocaleString()}</span>
+                        <td className="px-3 sm:px-4 py-3 text-right">
+                          <span className="text-green-400 font-bold text-sm">{abbreviateNumber(entry.score)}</span>
                         </td>
+                        {showPool && (
+                          <td className="px-3 sm:px-4 py-3 text-right">
+                            <span className="text-yellow-400 font-bold text-sm">{abbreviateNumber(entry.poolSize || 0)}</span>
+                          </td>
+                        )}
                       </tr>
                     )
                   })}
@@ -549,34 +623,22 @@ export default function HomePage() {
         }
 
         return (
-          <div className="mt-16">
-            <h2 className="text-2xl font-bold text-white text-center mb-6 font-title">Top Players</h2>
-
+          <div className="mt-6">
             {/* Desktop: side by side */}
             <div className="hidden lg:grid lg:grid-cols-2 lg:gap-6">
               <div>
-                <h3 className="text-sm font-medium text-slate-400 mb-3 text-center uppercase tracking-wider">All Time</h3>
-                {renderTable(topPlayersAllTime, '')}
+                <h3 className="text-sm font-medium text-slate-400 mb-3 text-center uppercase tracking-wider">Today</h3>
+                {renderTable(topPlayersToday, ' today', true)}
               </div>
               <div>
-                <h3 className="text-sm font-medium text-slate-400 mb-3 text-center uppercase tracking-wider">Today</h3>
-                {renderTable(topPlayersToday, ' today')}
+                <h3 className="text-sm font-medium text-slate-400 mb-3 text-center uppercase tracking-wider">All Time</h3>
+                {renderTable(topPlayersAllTime, '')}
               </div>
             </div>
 
             {/* Mobile: tabs */}
             <div className="lg:hidden">
               <div className="flex justify-center gap-2 mb-4">
-                <button
-                  onClick={() => setTopPlayersTab('allTime')}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                    topPlayersTab === 'allTime'
-                      ? 'bg-yellow-500 text-slate-900'
-                      : 'bg-slate-800 text-slate-400 hover:text-white'
-                  }`}
-                >
-                  All Time
-                </button>
                 <button
                   onClick={() => setTopPlayersTab('today')}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
@@ -587,39 +649,47 @@ export default function HomePage() {
                 >
                   Today
                 </button>
+                <button
+                  onClick={() => setTopPlayersTab('allTime')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                    topPlayersTab === 'allTime'
+                      ? 'bg-yellow-500 text-slate-900'
+                      : 'bg-slate-800 text-slate-400 hover:text-white'
+                  }`}
+                >
+                  All Time
+                </button>
               </div>
               {renderTable(
                 topPlayersTab === 'allTime' ? topPlayersAllTime : topPlayersToday,
-                topPlayersTab === 'today' ? ' today' : ''
+                topPlayersTab === 'today' ? ' today' : '',
+                topPlayersTab === 'today'
               )}
             </div>
           </div>
         )
       })()}
 
-      {/* How It Works */}
+      {/* See You on the Podium */}
       <div className="mt-16">
-        <h2 className="text-2xl font-bold text-white text-center mb-8 font-title">How It Works</h2>
-        <div className="grid md:grid-cols-4 gap-6">
-          <div className="bg-slate-800 rounded-xl p-6 text-center">
-            <div className="text-4xl font-bold text-blue-400 mb-4">1</div>
-            <h3 className="font-semibold text-white mb-2">Sign Up</h3>
-            <p className="text-slate-400 text-sm">Create account and verify email</p>
-          </div>
-          <div className="bg-slate-800 rounded-xl p-6 text-center">
-            <div className="text-4xl font-bold text-blue-400 mb-4">2</div>
-            <h3 className="font-semibold text-white mb-2">Claim $Credits</h3>
-            <p className="text-slate-400 text-sm">Get 5 free $Credits every day</p>
-          </div>
-          <div className="bg-slate-800 rounded-xl p-6 text-center">
-            <div className="text-4xl font-bold text-blue-400 mb-4">3</div>
-            <h3 className="font-semibold text-white mb-2">Play</h3>
-            <p className="text-slate-400 text-sm">Spend 1 $Credit per game turn</p>
-          </div>
-          <div className="bg-slate-800 rounded-xl p-6 text-center">
-            <div className="text-4xl font-bold text-blue-400 mb-4">4</div>
-            <h3 className="font-semibold text-white mb-2">Win</h3>
-            <p className="text-slate-400 text-sm">Top scorer wins the daily pool!</p>
+        <h2 className="text-2xl font-bold text-white text-center mb-8 font-title">See You on the Podium</h2>
+        <div className="bg-slate-800 rounded-xl p-6 md:p-8">
+          <div className="grid md:grid-cols-3 md:divide-x md:divide-slate-700">
+            <div className="text-center px-6 py-4">
+              <Gamepad2 className="w-8 h-8 text-yellow-400 mx-auto mb-4" />
+              <h3 className="font-semibold text-white mb-2">Play</h3>
+              <p className="text-slate-400 text-sm">One credit gets you into any game.</p>
+            </div>
+            <div className="text-center px-6 py-4">
+              <TrendingUp className="w-8 h-8 text-yellow-400 mx-auto mb-4" />
+              <h3 className="font-semibold text-white mb-2">Build the Pool</h3>
+              <p className="text-slate-400 text-sm">Every play increases that game&apos;s daily pool.</p>
+            </div>
+            <div className="text-center px-6 py-4">
+              <Trophy className="w-8 h-8 text-yellow-400 mx-auto mb-4" />
+              <h3 className="font-semibold text-white mb-2">Take Your Spot</h3>
+              <p className="text-slate-400 text-sm">Climb the leaderboard and take the largest share of that game.</p>
+            </div>
           </div>
         </div>
       </div>
@@ -646,7 +716,7 @@ export default function HomePage() {
           Play With Friends
         </button>
         <p className="mt-4 text-slate-400">
-          Invite friends and get <span className="text-yellow-400 font-bold">100 $Credits</span> when they join!
+          Invite friends and get <span className="text-yellow-400 font-bold">100 <CC />Credits</span> when they join!
         </p>
 
         {showSharePopup && (
@@ -660,7 +730,7 @@ export default function HomePage() {
                 <span className="text-white font-semibold">Invite Friends</span>
               </div>
               <p className="text-sm text-slate-400 mb-3 text-left">
-                Get <span className="text-yellow-400 font-bold">100 $Credits</span> when friends join!
+                Get <span className="text-yellow-400 font-bold">100 <CC />Credits</span> when friends join!
               </p>
               <div className="flex gap-2">
                 <button

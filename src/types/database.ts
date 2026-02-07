@@ -346,6 +346,35 @@ export interface Database {
           updated_at?: string
         }
       }
+      treasury_snapshots: {
+        Row: {
+          id: number
+          utc_day: string
+          balance: number
+          treasury_user_id: string
+          treasury_username: string | null
+          notes: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          utc_day: string
+          balance: number
+          treasury_user_id: string
+          treasury_username?: string | null
+          notes?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          utc_day?: string
+          balance?: number
+          treasury_user_id?: string
+          treasury_username?: string | null
+          notes?: string | null
+          created_at?: string
+        }
+      }
       audit_logs: {
         Row: {
           id: number

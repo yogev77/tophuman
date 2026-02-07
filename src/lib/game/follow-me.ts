@@ -15,7 +15,7 @@ export interface Point {
 export interface FollowMeTurnSpec {
   seed: string
   canvasSize: number
-  path: Point[]
+  paths: Point[][]
   timeLimitMs: number
 }
 
@@ -56,56 +56,69 @@ function seededRandom(seed: string): () => number {
   }
 }
 
-export function generateFollowMeTurnSpec(
-  userId: string,
-  config: FollowMeConfig
-): FollowMeTurnSpec {
-  const seedInput = `${userId}_${crypto.randomUUID()}_${Date.now()}`
-  const seed = crypto.createHash('sha256').update(seedInput).digest('hex')
-  const random = seededRandom(seed)
-
+function generatePath(
+  random: () => number,
+  canvasSize: number,
+  numControlPoints: number,
+  numPoints: number,
+  loop: boolean
+): Point[] {
   const padding = 30
-  const size = config.canvas_size - padding * 2
+  const size = canvasSize - padding * 2
 
-  // Generate control points for bezier curves
-  const numControlPoints = 3 + config.path_complexity
   const controlPoints: Point[] = []
 
-  // Start point
-  controlPoints.push({
-    x: padding + random() * size * 0.3,
-    y: padding + random() * size,
-  })
+  if (loop) {
+    // Generate points in a rough circle/loop shape
+    const cx = canvasSize / 2
+    const cy = canvasSize / 2
+    const baseRadius = size * 0.3
 
-  // Middle control points
-  for (let i = 1; i < numControlPoints - 1; i++) {
-    const xProgress = i / (numControlPoints - 1)
+    for (let i = 0; i < numControlPoints; i++) {
+      const angle = (i / numControlPoints) * Math.PI * 2
+      const radiusVariance = baseRadius * (0.6 + random() * 0.8)
+      controlPoints.push({
+        x: Math.max(padding, Math.min(canvasSize - padding, cx + Math.cos(angle) * radiusVariance)),
+        y: Math.max(padding, Math.min(canvasSize - padding, cy + Math.sin(angle) * radiusVariance)),
+      })
+    }
+    // Close the loop by repeating the first point
+    controlPoints.push({ ...controlPoints[0] })
+  } else {
+    // Start point
     controlPoints.push({
-      x: padding + xProgress * size,
+      x: padding + random() * size * 0.3,
+      y: padding + random() * size,
+    })
+
+    // Middle control points
+    for (let i = 1; i < numControlPoints - 1; i++) {
+      const xProgress = i / (numControlPoints - 1)
+      controlPoints.push({
+        x: padding + xProgress * size,
+        y: padding + random() * size,
+      })
+    }
+
+    // End point
+    controlPoints.push({
+      x: padding + size * 0.7 + random() * size * 0.3,
       y: padding + random() * size,
     })
   }
 
-  // End point
-  controlPoints.push({
-    x: padding + size * 0.7 + random() * size * 0.3,
-    y: padding + random() * size,
-  })
-
-  // Generate smooth path using cubic bezier interpolation
+  // Generate smooth path using Catmull-Rom spline interpolation
   const path: Point[] = []
-  const pointsPerSegment = Math.ceil(config.num_points / (controlPoints.length - 1))
+  const pointsPerSegment = Math.ceil(numPoints / (controlPoints.length - 1))
 
   for (let i = 0; i < controlPoints.length - 1; i++) {
-    const p0 = controlPoints[Math.max(0, i - 1)]
+    const p0 = controlPoints[(i - 1 + controlPoints.length) % controlPoints.length]
     const p1 = controlPoints[i]
     const p2 = controlPoints[i + 1]
     const p3 = controlPoints[Math.min(controlPoints.length - 1, i + 2)]
 
     for (let t = 0; t < pointsPerSegment; t++) {
       const tNorm = t / pointsPerSegment
-
-      // Catmull-Rom spline interpolation
       const t2 = tNorm * tNorm
       const t3 = t2 * tNorm
 
@@ -124,8 +137,8 @@ export function generateFollowMeTurnSpec(
       )
 
       path.push({
-        x: Math.max(padding, Math.min(config.canvas_size - padding, x)),
-        y: Math.max(padding, Math.min(config.canvas_size - padding, y)),
+        x: Math.max(padding, Math.min(canvasSize - padding, x)),
+        y: Math.max(padding, Math.min(canvasSize - padding, y)),
       })
     }
   }
@@ -133,60 +146,55 @@ export function generateFollowMeTurnSpec(
   // Add the last point
   path.push(controlPoints[controlPoints.length - 1])
 
+  return path
+}
+
+export function generateFollowMeTurnSpec(
+  userId: string,
+  config: FollowMeConfig
+): FollowMeTurnSpec {
+  const seedInput = `${userId}_${crypto.randomUUID()}_${Date.now()}`
+  const seed = crypto.createHash('sha256').update(seedInput).digest('hex')
+  const random = seededRandom(seed)
+
+  // Level 1: Simple path - few control points, gentle curves
+  const path1 = generatePath(random, config.canvas_size, 3, 35, false)
+
+  // Level 2: More curves and longer path
+  const path2 = generatePath(random, config.canvas_size, 5, 50, false)
+
+  // Level 3: A looping path
+  const path3 = generatePath(random, config.canvas_size, 6, 55, true)
+
   return {
     seed,
     canvasSize: config.canvas_size,
-    path,
+    paths: [path1, path2, path3],
     timeLimitMs: config.time_limit_seconds * 1000,
   }
 }
 
 export function getFollowMeClientSpec(spec: FollowMeTurnSpec): {
   canvasSize: number
-  path: Point[]
+  paths: Point[][]
   timeLimitMs: number
 } {
   return {
     canvasSize: spec.canvasSize,
-    path: spec.path,
+    paths: spec.paths,
     timeLimitMs: spec.timeLimitMs,
   }
 }
 
-export function validateFollowMeTurn(
-  spec: FollowMeTurnSpec,
-  events: FollowMeEvent[]
-): FollowMeResult {
-  const drawEvent = events.find(e => e.eventType === 'draw_complete')
-
-  if (!drawEvent || !drawEvent.points || drawEvent.points.length < 10) {
-    return { valid: false, reason: 'no_drawing', accuracy: 0, coverage: 0 }
-  }
-
-  const userPath = drawEvent.points
-
-  // Calculate time taken
-  const startEvent = events.find(e => e.eventType === 'draw_start')
-  const startTime = startEvent?.clientTimestampMs || 0
-  const endTime = drawEvent.clientTimestampMs || 0
-  const timeTakenMs = endTime - startTime
-
-  // Check for impossibly fast drawing
-  if (timeTakenMs < 500 && userPath.length > 20) {
-    return {
-      valid: false,
-      reason: 'impossible_speed',
-      accuracy: 0,
-      coverage: 0,
-      flag: true,
-    }
-  }
-
+function validateRoundPath(
+  targetPath: Point[],
+  userPoints: Point[]
+): { accuracy: number; coverage: number } {
   // Calculate accuracy: average distance from user points to nearest target point
   let totalDistance = 0
-  for (const userPoint of userPath) {
+  for (const userPoint of userPoints) {
     let minDist = Infinity
-    for (const targetPoint of spec.path) {
+    for (const targetPoint of targetPath) {
       const dist = Math.sqrt(
         Math.pow(userPoint.x - targetPoint.x, 2) +
         Math.pow(userPoint.y - targetPoint.y, 2)
@@ -195,46 +203,119 @@ export function validateFollowMeTurn(
     }
     totalDistance += minDist
   }
-  const avgDistance = totalDistance / userPath.length
+  const avgDistance = totalDistance / userPoints.length
 
   // Calculate coverage: what % of target path was traced
-  const coverageThreshold = 20 // pixels
+  const coverageThreshold = 20
   let coveredPoints = 0
-  for (const targetPoint of spec.path) {
-    let isCovered = false
-    for (const userPoint of userPath) {
+  for (const targetPoint of targetPath) {
+    for (const userPoint of userPoints) {
       const dist = Math.sqrt(
         Math.pow(userPoint.x - targetPoint.x, 2) +
         Math.pow(userPoint.y - targetPoint.y, 2)
       )
       if (dist <= coverageThreshold) {
-        isCovered = true
+        coveredPoints++
         break
       }
     }
-    if (isCovered) coveredPoints++
   }
-  const coverage = coveredPoints / spec.path.length
+  const coverage = coveredPoints / targetPath.length
 
-  // Must have at least 50% coverage
-  if (coverage < 0.5) {
-    return { valid: false, reason: 'low_coverage', accuracy: 0, coverage }
-  }
-
-  // Calculate accuracy score (lower distance = better)
-  // Max expected distance for "good" tracing is about 15 pixels
   const maxGoodDistance = 15
-  const accuracyRatio = Math.max(0, 1 - avgDistance / (maxGoodDistance * 2))
+  const accuracy = Math.max(0, 1 - avgDistance / (maxGoodDistance * 2))
 
-  const accuracyScore = Math.pow(accuracyRatio, 1.15) * 4000
-  const coverageScore = coverage * 3000
+  return { accuracy, coverage }
+}
+
+export function validateFollowMeTurn(
+  spec: FollowMeTurnSpec,
+  events: FollowMeEvent[]
+): FollowMeResult {
+  // Collect per-round paths from round_complete events + draw_complete for last round
+  const roundEvents = events
+    .filter(e => e.eventType === 'round_complete')
+    .sort((a, b) => (a.clientTimestampMs || 0) - (b.clientTimestampMs || 0))
+
+  const drawEvent = events.find(e => e.eventType === 'draw_complete')
+
+  // Build user paths per round
+  const userRoundPaths: Point[][] = roundEvents.map(e => e.points || [])
+
+  // draw_complete might have the last round's path
+  if (drawEvent?.points && drawEvent.points.length > 0) {
+    userRoundPaths.push(drawEvent.points)
+  }
+
+  // Fallback: if old client sends combined path in draw_complete with no round events
+  if (userRoundPaths.length === 0 && drawEvent?.points && drawEvent.points.length >= 10) {
+    // Validate against all paths combined (legacy)
+    const allTargetPoints = spec.paths.flat()
+    const result = validateRoundPath(allTargetPoints, drawEvent.points)
+
+    if (result.coverage < 0.5) {
+      return { valid: false, reason: 'low_coverage', accuracy: 0, coverage: result.coverage }
+    }
+
+    const startEvent = events.find(e => e.eventType === 'draw_start')
+    const timeTakenMs = (drawEvent.clientTimestampMs || 0) - (startEvent?.clientTimestampMs || 0)
+    const speed = Math.sqrt(spec.timeLimitMs / Math.max(timeTakenMs, 2000))
+    const score = Math.round((Math.pow(result.accuracy, 1.15) * 4000 + result.coverage * 3000) * speed)
+
+    return { valid: true, accuracy: result.accuracy, coverage: result.coverage, score }
+  }
+
+  if (userRoundPaths.length === 0 || userRoundPaths.every(p => p.length < 10)) {
+    return { valid: false, reason: 'no_drawing', accuracy: 0, coverage: 0 }
+  }
+
+  // Calculate time taken
+  const startEvent = events.find(e => e.eventType === 'draw_start')
+  const lastEvent = drawEvent || roundEvents[roundEvents.length - 1]
+  const startTime = startEvent?.clientTimestampMs || 0
+  const endTime = lastEvent?.clientTimestampMs || 0
+  const timeTakenMs = endTime - startTime
+
+  if (timeTakenMs < 500 && userRoundPaths.flat().length > 20) {
+    return { valid: false, reason: 'impossible_speed', accuracy: 0, coverage: 0, flag: true }
+  }
+
+  // Validate each round against its corresponding path
+  let totalAccuracy = 0
+  let totalCoverage = 0
+  let validRounds = 0
+
+  for (let i = 0; i < Math.min(userRoundPaths.length, spec.paths.length); i++) {
+    if (userRoundPaths[i].length < 10) continue
+
+    const result = validateRoundPath(spec.paths[i], userRoundPaths[i])
+    totalAccuracy += result.accuracy
+    totalCoverage += result.coverage
+    validRounds++
+  }
+
+  if (validRounds === 0) {
+    return { valid: false, reason: 'no_drawing', accuracy: 0, coverage: 0 }
+  }
+
+  const avgAccuracy = totalAccuracy / validRounds
+  const avgCoverage = totalCoverage / validRounds
+
+  if (avgCoverage < 0.5) {
+    return { valid: false, reason: 'low_coverage', accuracy: 0, coverage: avgCoverage }
+  }
+
+  const accuracyScore = Math.pow(avgAccuracy, 1.15) * 4000
+  const coverageScore = avgCoverage * 3000
   const speed = Math.sqrt(spec.timeLimitMs / Math.max(timeTakenMs, 2000))
-  const score = Math.round((accuracyScore + coverageScore) * speed)
+  // Bonus for completing more rounds
+  const roundBonus = validRounds / spec.paths.length
+  const score = Math.round((accuracyScore + coverageScore) * speed * roundBonus)
 
   return {
     valid: true,
-    accuracy: accuracyRatio,
-    coverage,
+    accuracy: avgAccuracy,
+    coverage: avgCoverage,
     score,
   }
 }

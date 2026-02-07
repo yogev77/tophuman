@@ -179,6 +179,7 @@ export async function GET() {
       .filter((id): id is string => id !== null)
 
     const topPlayerNames = new Map<string, string>()
+    const topPlayerUsernames = new Map<string, string>()
     if (topPlayerIds.length > 0) {
       const { data: profiles } = await supabase
         .from('profiles')
@@ -187,6 +188,9 @@ export async function GET() {
 
       for (const profile of profiles || []) {
         topPlayerNames.set(profile.user_id, profile.display_name || profile.username || 'Anonymous')
+        if (profile.username) {
+          topPlayerUsernames.set(profile.user_id, profile.username)
+        }
       }
     }
 
@@ -205,6 +209,7 @@ export async function GET() {
 
       const topPlayerId = stats?.topPlayerId
       const topPlayerName = topPlayerId ? topPlayerNames.get(topPlayerId) : null
+      const topPlayerUsername = topPlayerId ? topPlayerUsernames.get(topPlayerId) : null
 
       return {
         id,
@@ -219,6 +224,7 @@ export async function GET() {
           playerCount: stats?.players.size ?? 0,
           topScore: stats?.topScore ?? 0,
           topPlayerName: topPlayerName || null,
+          topPlayerUsername: topPlayerUsername || null,
           turnCount: stats?.turnCount ?? 0,
         },
       }

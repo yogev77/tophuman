@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { Crosshair } from 'lucide-react'
 import { ShareScore } from './ShareScore'
+import { CC } from '@/lib/currency'
 
 type GamePhase = 'idle' | 'loading' | 'playing' | 'checking' | 'completed' | 'failed'
 
@@ -54,35 +55,58 @@ interface BulletTrail {
 
 const MAX_SHOTS = 10
 
+// Minimal target: thin rings + colored center
 function drawTarget(ctx: CanvasRenderingContext2D, cx: number, cy: number, size: number, isDecoy: boolean) {
-  const radius = size / 2
-  const ringCount = 5
-  const ringWidth = radius / ringCount
+  const r = size / 2
 
-  // Draw rings from outside in
-  for (let i = 0; i < ringCount; i++) {
-    const r = radius - i * ringWidth
-
-    // Alternate: black ring, white gap
-    // Even rings = black fill, odd rings = white fill
-    ctx.beginPath()
-    ctx.arc(cx, cy, r, 0, Math.PI * 2)
-    ctx.fillStyle = i % 2 === 0 ? '#1a1a1a' : '#ffffff'
-    ctx.fill()
-
-    // Black ring outline
-    ctx.beginPath()
-    ctx.arc(cx, cy, r, 0, Math.PI * 2)
-    ctx.strokeStyle = '#000000'
-    ctx.lineWidth = 1.5
-    ctx.stroke()
-  }
-
-  // Center dot
-  const dotRadius = ringWidth * 0.7
+  // Outer ring
   ctx.beginPath()
-  ctx.arc(cx, cy, dotRadius, 0, Math.PI * 2)
-  ctx.fillStyle = isDecoy ? '#22c55e' : '#ef4444'
+  ctx.arc(cx, cy, r, 0, Math.PI * 2)
+  ctx.strokeStyle = '#000'
+  ctx.lineWidth = 1.5
+  ctx.stroke()
+
+  // Middle ring
+  ctx.beginPath()
+  ctx.arc(cx, cy, r * 0.6, 0, Math.PI * 2)
+  ctx.stroke()
+
+  // Inner ring
+  ctx.beginPath()
+  ctx.arc(cx, cy, r * 0.3, 0, Math.PI * 2)
+  ctx.stroke()
+
+  // Center dot — red = shoot, green = avoid
+  ctx.beginPath()
+  ctx.arc(cx, cy, r * 0.15, 0, Math.PI * 2)
+  ctx.fillStyle = isDecoy ? '#16a34a' : '#dc2626'
+  ctx.fill()
+}
+
+// Gun: half-circle base + thin barrel
+function drawGun(ctx: CanvasRenderingContext2D, cx: number, bottomY: number) {
+  const baseR = 16
+  const barrelW = 4
+  const barrelH = 22
+
+  // Barrel (rounded rect)
+  const bx = cx - barrelW / 2
+  const by = bottomY - baseR - barrelH + 4
+  ctx.beginPath()
+  ctx.roundRect(bx, by, barrelW, barrelH, 2)
+  ctx.fillStyle = '#000'
+  ctx.fill()
+
+  // Half-circle base
+  ctx.beginPath()
+  ctx.arc(cx, bottomY, baseR, Math.PI, 0)
+  ctx.fillStyle = '#000'
+  ctx.fill()
+
+  // Sight line on barrel tip
+  ctx.beginPath()
+  ctx.arc(cx, by, 2, 0, Math.PI * 2)
+  ctx.fillStyle = '#dc2626'
   ctx.fill()
 }
 
@@ -113,66 +137,67 @@ export function DuckShootGame({ onGameComplete }: DuckShootGameProps) {
     if (!ctx) return
 
     const now = Date.now()
+    const w = canvas.width
+    const h = canvas.height
 
-    // Minimalist range background
-    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height)
-    gradient.addColorStop(0, '#e2e8f0')
-    gradient.addColorStop(0.85, '#cbd5e1')
-    gradient.addColorStop(0.85, '#64748b')
-    gradient.addColorStop(1, '#475569')
-    ctx.fillStyle = gradient
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    // White background
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, w, h)
 
-    // Subtle lane lines
-    ctx.strokeStyle = 'rgba(148, 163, 184, 0.3)'
+    // Grid lines — thin, dark gray
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.07)'
     ctx.lineWidth = 1
-    for (let y = 60; y < canvas.height - 50; y += 50) {
+    const gridSpacing = 40
+    for (let y = gridSpacing; y < h; y += gridSpacing) {
       ctx.beginPath()
       ctx.moveTo(0, y)
-      ctx.lineTo(canvas.width, y)
+      ctx.lineTo(w, y)
+      ctx.stroke()
+    }
+    for (let x = gridSpacing; x < w; x += gridSpacing) {
+      ctx.beginPath()
+      ctx.moveTo(x, 0)
+      ctx.lineTo(x, h)
       ctx.stroke()
     }
 
-    const cannonX = canvas.width / 2
-    const cannonY = canvas.height - 32
+    // Center firing line — faint dashed
+    ctx.setLineDash([4, 6])
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.12)'
+    ctx.lineWidth = 1
+    ctx.beginPath()
+    ctx.moveTo(w / 2, 0)
+    ctx.lineTo(w / 2, h - 40)
+    ctx.stroke()
+    ctx.setLineDash([])
 
-    // Draw bullet trails straight up from cannon
-    const activeTrails = bulletTrails.filter(t => now - t.startTime < 300)
+    const cannonX = w / 2
+    const cannonY = h - 6
 
+    // Bullet trails
+    const activeTrails = bulletTrails.filter(t => now - t.startTime < 250)
     for (const trail of activeTrails) {
       const age = now - trail.startTime
-      const opacity = 1 - age / 300
-
+      const opacity = 1 - age / 250
       const targetY = trail.hit && trail.hitY !== undefined ? trail.hitY : 0
 
-      if (trail.decoy) {
-        ctx.strokeStyle = `rgba(34, 197, 94, ${opacity})`
-      } else {
-        ctx.strokeStyle = trail.hit
-          ? `rgba(234, 179, 8, ${opacity})`
-          : `rgba(239, 68, 68, ${opacity * 0.5})`
-      }
-      ctx.lineWidth = trail.hit ? 3 : 1.5
+      ctx.strokeStyle = trail.decoy
+        ? `rgba(22, 163, 98, ${opacity})`
+        : trail.hit
+        ? `rgba(220, 38, 38, ${opacity})`
+        : `rgba(0, 0, 0, ${opacity * 0.3})`
+      ctx.lineWidth = trail.hit ? 2 : 1
       ctx.beginPath()
-      ctx.moveTo(cannonX, cannonY)
+      ctx.moveTo(cannonX, cannonY - 40)
       ctx.lineTo(cannonX, targetY)
       ctx.stroke()
 
-      // Muzzle flash
-      if (age < 80) {
-        ctx.fillStyle = `rgba(255, 200, 50, ${opacity})`
-        ctx.beginPath()
-        ctx.arc(cannonX, cannonY - 5, 6, 0, Math.PI * 2)
-        ctx.fill()
-      }
-
-      // Impact marker
-      if (trail.hit && trail.hitY !== undefined && age < 200) {
+      // Impact
+      if (trail.hit && trail.hitY !== undefined && age < 180) {
+        const s = 10 * (1 - age / 180)
         if (trail.decoy) {
-          // Green X for decoy hit
-          const s = 8 * (1 - age / 200)
-          ctx.strokeStyle = `rgba(34, 197, 94, ${opacity})`
-          ctx.lineWidth = 3
+          ctx.strokeStyle = `rgba(22, 163, 98, ${opacity})`
+          ctx.lineWidth = 2
           ctx.beginPath()
           ctx.moveTo(cannonX - s, trail.hitY - s)
           ctx.lineTo(cannonX + s, trail.hitY + s)
@@ -180,43 +205,25 @@ export function DuckShootGame({ onGameComplete }: DuckShootGameProps) {
           ctx.lineTo(cannonX - s, trail.hitY + s)
           ctx.stroke()
         } else {
-          ctx.fillStyle = `rgba(239, 68, 68, ${opacity})`
           ctx.beginPath()
-          ctx.arc(cannonX, trail.hitY, 8 * (1 - age / 200), 0, Math.PI * 2)
-          ctx.fill()
+          ctx.arc(cannonX, trail.hitY, s, 0, Math.PI * 2)
+          ctx.strokeStyle = `rgba(220, 38, 38, ${opacity})`
+          ctx.lineWidth = 2
+          ctx.stroke()
         }
       }
     }
 
-    // Draw targets
+    // Targets
     for (const duck of activeDucks) {
       if (duck.hit || duck.decoyHit) continue
-
-      const targetCX = duck.x + spec.duckSize / 2
-      const targetCY = duck.spawn.yPosition + spec.duckSize / 2
-
-      drawTarget(ctx, targetCX, targetCY, spec.duckSize, duck.spawn.isDecoy)
+      const cx = duck.x + spec.duckSize / 2
+      const cy = duck.spawn.yPosition + spec.duckSize / 2
+      drawTarget(ctx, cx, cy, spec.duckSize, duck.spawn.isDecoy)
     }
 
-    // Draw gun at bottom center - minimalist
-    const gunX = canvas.width / 2
-    const gunY = canvas.height - 12
-
-    // Barrel
-    ctx.fillStyle = '#1e293b'
-    ctx.fillRect(gunX - 3, gunY - 18, 6, 20)
-
-    // Sight dot
-    ctx.fillStyle = '#ef4444'
-    ctx.beginPath()
-    ctx.arc(gunX, gunY - 20, 3, 0, Math.PI * 2)
-    ctx.fill()
-
-    // Gun body
-    ctx.fillStyle = '#334155'
-    ctx.beginPath()
-    ctx.roundRect(gunX - 10, gunY - 2, 20, 10, 3)
-    ctx.fill()
+    // Gun
+    drawGun(ctx, cannonX, cannonY)
 
   }, [spec, activeDucks, bulletTrails])
 
@@ -224,7 +231,8 @@ export function DuckShootGame({ onGameComplete }: DuckShootGameProps) {
     if (phase !== 'playing' || !spec) return
 
     const elapsed = Date.now() - gameStartTimeRef.current
-    const speedMultiplier = 1 + (shots * 0.15)
+    // Speed tiers: shots 1-3 = 1x, shots 4-7 = 1.5x, shots 8-10 = 2x
+    const speedMultiplier = shots < 4 ? 1 : shots < 8 ? 1.5 : 2
 
     setActiveDucks(prev => {
       const updated: ActiveDuck[] = []
@@ -338,9 +346,10 @@ export function DuckShootGame({ onGameComplete }: DuckShootGameProps) {
     if (phase !== 'playing' || !turnToken || !spec) return
     if (shots >= MAX_SHOTS) return
     e.preventDefault()
+    e.stopPropagation()
 
     const now = Date.now()
-    if (now - lastShotTimeRef.current < 200) return
+    if (now - lastShotTimeRef.current < 250) return
     lastShotTimeRef.current = now
 
     const canvas = canvasRef.current
@@ -361,7 +370,6 @@ export function DuckShootGame({ onGameComplete }: DuckShootGameProps) {
       const duckLeft = duck.x
       const duckRight = duck.x + spec.duckSize
       const duckCenterX = duck.x + spec.duckSize / 2
-      const duckCenterY = duck.spawn.yPosition + spec.duckSize / 2
 
       if (cannonX >= duckLeft && cannonX <= duckRight) {
         hitDuckIndex = duck.index
@@ -371,13 +379,11 @@ export function DuckShootGame({ onGameComplete }: DuckShootGameProps) {
         hitAccuracy = Math.max(0, 1 - (distanceFromCenter / maxDistance))
 
         if (duck.spawn.isDecoy) {
-          // Decoy hit — penalty
           setPenalties(prev => prev + 1)
           setActiveDucks(prev =>
             prev.map(d => (d.index === duck.index ? { ...d, decoyHit: true } : d))
           )
         } else {
-          // Valid hit
           setHits(prev => prev + 1)
           setActiveDucks(prev =>
             prev.map(d => (d.index === duck.index ? { ...d, hit: true } : d))
@@ -468,71 +474,77 @@ export function DuckShootGame({ onGameComplete }: DuckShootGameProps) {
   useEffect(() => {
     if (bulletTrails.length === 0) return
     const timer = setTimeout(() => {
-      setBulletTrails(prev => prev.filter(t => Date.now() - t.startTime < 300))
+      setBulletTrails(prev => prev.filter(t => Date.now() - t.startTime < 250))
     }, 100)
     return () => clearTimeout(timer)
   }, [bulletTrails])
 
+  const remaining = MAX_SHOTS - shots
+
   return (
     <div className="bg-slate-800 rounded-xl p-4 sm:p-6">
-      <div className="flex items-center justify-between mb-4 sm:mb-6 flex-wrap gap-2">
-        <h2 className="text-xl font-bold text-white">Target Shoot</h2>
-        {phase === 'playing' && spec && (
-          <div className="flex items-center gap-2 sm:gap-4 text-sm sm:text-base">
-            <span className="text-green-400 font-bold">{hits} hits</span>
-            {penalties > 0 && <span className="text-red-400 font-bold">-{penalties}</span>}
-            <span className="text-yellow-400 font-bold">{MAX_SHOTS - shots} left</span>
-            <span className={`text-xl sm:text-2xl font-mono ${timeLeft < 10000 ? 'text-red-400' : 'text-green-400'}`}>
-              {Math.ceil(timeLeft / 1000)}s
-            </span>
-          </div>
-        )}
-      </div>
+      {phase === 'playing' && spec && (
+        <div className="flex items-center justify-end mb-3 gap-3 text-sm font-mono tracking-wide">
+          <span className="text-white">{hits}<span className="text-slate-500 ml-1">hit</span></span>
+          {penalties > 0 && <span className="text-red-400">-{penalties}</span>}
+          <span className="text-slate-400">{remaining}<span className="text-slate-500 ml-1">left</span></span>
+          <span className={`text-lg font-bold ${timeLeft < 10000 ? 'text-red-400' : 'text-white'}`}>
+            {Math.ceil(timeLeft / 1000)}
+          </span>
+        </div>
+      )}
 
       {phase === 'idle' && (
         <div className="text-center py-12">
-          <p className="text-slate-300 mb-6">
-            Hit the <span className="text-red-400 font-semibold">red</span> targets! Avoid the <span className="text-green-400 font-semibold">green</span> ones. You have {MAX_SHOTS} shots — tap to fire straight up.
-          </p>
           <button
             onClick={startGame}
             className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg text-lg transition"
           >
-            Start Game (1 $Credit)
+            Start Game (1 <CC />Credit)
           </button>
         </div>
       )}
 
       {phase === 'loading' && (
         <div className="text-center py-12">
-          <div className="animate-spin w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-slate-300">Loading targets...</p>
+          <div className="animate-spin w-10 h-10 border-2 border-black border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-slate-400 text-sm">Loading...</p>
         </div>
       )}
 
       {phase === 'playing' && spec && (
-        <div className="text-center">
-          <div
-            className="inline-block border-4 border-slate-600 rounded-lg overflow-hidden cursor-crosshair max-w-full"
-            onClick={handleShoot}
-            onTouchStart={handleShoot}
-          >
+        <div
+          className="touch-none select-none"
+          onClick={handleShoot}
+          onTouchStart={handleShoot}
+        >
+          {/* Shot indicators */}
+          <div className="flex justify-center gap-1.5 mb-3">
+            {Array.from({ length: MAX_SHOTS }).map((_, i) => (
+              <div
+                key={i}
+                className={`w-2 h-2 rounded-full ${
+                  i < shots ? 'bg-slate-600' : 'bg-red-500'
+                }`}
+              />
+            ))}
+          </div>
+          <div className="rounded-lg overflow-hidden border border-black/10">
             <canvas
               ref={canvasRef}
               width={spec.canvasWidth}
               height={spec.canvasHeight}
-              className="max-w-full h-auto"
-              style={{ maxWidth: '100%', height: 'auto' }}
+              className="w-full h-auto pointer-events-none"
             />
           </div>
-          <p className="text-slate-400 mt-2 text-sm">Tap to shoot when a <span className="text-red-400">red</span> target crosses the center!</p>
+          <p className="text-slate-500 mt-2 text-xs text-center tracking-wide">TAP ANYWHERE TO FIRE</p>
         </div>
       )}
 
       {phase === 'checking' && (
         <div className="text-center py-12">
-          <div className="animate-spin w-12 h-12 border-4 border-yellow-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-slate-300">Calculating score...</p>
+          <div className="animate-spin w-10 h-10 border-2 border-black border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-slate-400 text-sm">Calculating...</p>
         </div>
       )}
 
@@ -552,13 +564,13 @@ export function DuckShootGame({ onGameComplete }: DuckShootGameProps) {
               <div className="text-sm text-slate-400">Rank</div>
             </div>
             <div className="bg-slate-700 rounded-lg p-4">
-              <div className="text-xl font-bold text-green-400">
+              <div className="text-xl font-bold text-white">
                 {result.hits}/{MAX_SHOTS}
               </div>
               <div className="text-sm text-slate-400">Hits</div>
             </div>
             <div className="bg-slate-700 rounded-lg p-4">
-              <div className="text-xl font-bold text-blue-400">
+              <div className="text-xl font-bold text-white">
                 {result.accuracy ? Math.round(result.accuracy * 100) : 0}%
               </div>
               <div className="text-sm text-slate-400">Accuracy</div>

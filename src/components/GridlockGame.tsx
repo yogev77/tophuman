@@ -6,6 +6,7 @@ import { ParkingSquare } from 'lucide-react'
 import { formatTime } from '@/lib/utils'
 import { useTheme } from '@/hooks/useTheme'
 import { ShareScore } from './ShareScore'
+import { CC } from '@/lib/currency'
 
 type GamePhase = 'idle' | 'loading' | 'play' | 'round_complete' | 'checking' | 'completed' | 'failed'
 
@@ -361,6 +362,82 @@ export function GridlockGame({ onGameComplete }: GridlockGameProps) {
     dragRef.current = null
   }, [])
 
+  // Mouse drag handlers (desktop)
+  const handleMouseDown = useCallback((e: React.MouseEvent, pieceId: string) => {
+    if (phase !== 'play') return
+    e.preventDefault()
+    dragRef.current = { pieceId, startX: e.clientX, startY: e.clientY, cellsMoved: 0, lastCellX: 0, lastCellY: 0, axis: null }
+    setSelectedPiece(pieceId)
+  }, [phase])
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!dragRef.current || phase !== 'play') return
+
+    const { pieceId, startX, startY, lastCellX, lastCellY } = dragRef.current
+    const currentPieces = piecesRef.current
+    const piece = currentPieces.find(p => p.id === pieceId)
+    if (!piece) return
+
+    const cs = getCellSize()
+    const dx = e.clientX - startX
+    const dy = e.clientY - startY
+
+    // Lock to dominant axis once threshold is crossed
+    if (!dragRef.current.axis) {
+      if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+        dragRef.current.axis = Math.abs(dx) >= Math.abs(dy) ? 'x' : 'y'
+      } else {
+        return
+      }
+    }
+
+    if (dragRef.current.axis === 'x') {
+      const targetCell = Math.round(dx / cs)
+      if (targetCell !== lastCellX) {
+        const dir = targetCell > lastCellX ? 1 : -1
+        let current = lastCellX
+        while (current !== targetCell) {
+          movePiece(pieceId, 0, dir)
+          current += dir
+        }
+        dragRef.current = { ...dragRef.current, cellsMoved: dragRef.current.cellsMoved + Math.abs(current - lastCellX), lastCellX: current }
+      }
+    } else {
+      const targetCell = Math.round(dy / cs)
+      if (targetCell !== lastCellY) {
+        const dir = targetCell > lastCellY ? 1 : -1
+        let current = lastCellY
+        while (current !== targetCell) {
+          movePiece(pieceId, dir, 0)
+          current += dir
+        }
+        dragRef.current = { ...dragRef.current, cellsMoved: dragRef.current.cellsMoved + Math.abs(current - lastCellY), lastCellY: current }
+      }
+    }
+  }, [phase, getCellSize, movePiece])
+
+  const handleMouseUp = useCallback(() => {
+    if (!dragRef.current) return
+    if (dragRef.current.cellsMoved === 0) {
+      // Click — toggle selection (already set in mouseDown)
+    } else {
+      setSelectedPiece(null)
+    }
+    dragRef.current = null
+  }, [])
+
+  // Attach mousemove/mouseup to window so drag continues outside the piece
+  useEffect(() => {
+    if (phase !== 'play') return
+
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [phase, handleMouseMove, handleMouseUp])
+
   // Prevent page scroll on the grid area during gameplay
   useEffect(() => {
     const el = gridRef.current
@@ -382,15 +459,39 @@ export function GridlockGame({ onGameComplete }: GridlockGameProps) {
 
   return (
     <div ref={gameContainerRef} className={`rounded-xl p-4 sm:p-6 ${light ? 'bg-white shadow-md' : 'bg-slate-800'}`}>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className={`text-xl font-bold ${light ? 'text-slate-900' : 'text-white'}`}>Gridlock</h2>
-        {(phase === 'play' || phase === 'round_complete') && (
-          <div className="flex items-center gap-4">
-            <span className={`text-sm ${light ? 'text-slate-500' : 'text-slate-400'}`}>{moveCount} moves</span>
+      <div className="mb-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <h2 className={`text-xl font-bold ${light ? 'text-slate-900' : 'text-white'}`}>Gridlock</h2>
+            {(phase === 'play' || phase === 'round_complete') && spec && (
+              <div className="flex gap-1.5">
+                {spec.rounds.map((_, i) => (
+                  <div
+                    key={i}
+                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                      i < currentRound
+                        ? 'bg-green-500 text-white'
+                        : i === currentRound
+                        ? 'bg-yellow-500 text-slate-900'
+                        : light
+                        ? 'bg-slate-200 text-slate-500'
+                        : 'bg-slate-600 text-slate-400'
+                    }`}
+                  >
+                    {i + 1}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          {(phase === 'play' || phase === 'round_complete') && (
             <span className={`text-2xl font-mono ${timeLeft < 15000 ? 'text-red-500' : 'text-green-500'}`}>
               {formatTime(timeLeft)}
             </span>
-          </div>
+          )}
+        </div>
+        {(phase === 'play' || phase === 'round_complete') && (
+          <div className={`text-sm mt-1 ${light ? 'text-slate-500' : 'text-slate-400'}`}>{moveCount} moves</div>
         )}
       </div>
 
@@ -403,7 +504,7 @@ export function GridlockGame({ onGameComplete }: GridlockGameProps) {
             onClick={startGame}
             className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg text-lg transition"
           >
-            Start Game (1 $Credit)
+            Start Game (1 <CC />Credit)
           </button>
         </div>
       )}
@@ -417,26 +518,6 @@ export function GridlockGame({ onGameComplete }: GridlockGameProps) {
 
       {(phase === 'play' || phase === 'round_complete') && spec && (
         <div>
-          {/* Round indicators */}
-          <div className="flex justify-center gap-2 mb-4">
-            {spec.rounds.map((_, i) => (
-              <div
-                key={i}
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                  i < currentRound
-                    ? 'bg-green-500 text-white'
-                    : i === currentRound
-                    ? 'bg-yellow-500 text-slate-900'
-                    : light
-                    ? 'bg-slate-200 text-slate-500'
-                    : 'bg-slate-600 text-slate-400'
-                }`}
-              >
-                {i + 1}
-              </div>
-            ))}
-          </div>
-
           {phase === 'round_complete' && (
             <div className="text-center py-4 mb-4">
               <p className="text-green-500 font-bold text-lg animate-pulse">
@@ -519,6 +600,7 @@ export function GridlockGame({ onGameComplete }: GridlockGameProps) {
                       e.stopPropagation()
                       handlePieceClick(piece.id)
                     }}
+                    onMouseDown={(e) => handleMouseDown(e, piece.id)}
                     onTouchStart={(e) => handleTouchStart(e, piece.id)}
                     onTouchMove={handleTouchMove}
                     onTouchEnd={handleTouchEnd}
@@ -539,7 +621,7 @@ export function GridlockGame({ onGameComplete }: GridlockGameProps) {
                     }}
                   >
                     {piece.isTarget && (
-                      <span className="text-white text-[9px] font-bold leading-tight text-center">Get me<br/>out!</span>
+                      <span className="text-white text-sm font-bold text-center">Free Me</span>
                     )}
                   </div>
                 )
@@ -547,9 +629,6 @@ export function GridlockGame({ onGameComplete }: GridlockGameProps) {
             </div>
           </div>
 
-          {!selectedPiece && phase === 'play' && (
-            <p className={`text-center text-sm mt-4 ${light ? 'text-slate-400' : 'text-slate-500'}`}>Swipe blocks to slide them, or tap then use arrows</p>
-          )}
         </div>
       )}
 
