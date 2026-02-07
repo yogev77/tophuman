@@ -266,7 +266,7 @@ export function NumberChainGame({ onGameComplete }: NumberChainGameProps) {
                     : isFlashRed
                     ? 'bg-red-500/40 text-white border-2 border-red-500'
                     : isNext && nextIndex === 0
-                    ? 'bg-yellow-500/20 text-white border-2 border-yellow-500/50 hover:bg-yellow-500/30'
+                    ? 'bg-yellow-500/20 text-white border-2 border-yellow-500/50 hover:bg-yellow-500/30 animate-pulse'
                     : 'bg-slate-700 text-white border-2 border-slate-600 hover:bg-slate-600'
                 }`}
               >
