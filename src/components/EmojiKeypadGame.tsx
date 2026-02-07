@@ -365,7 +365,7 @@ export function EmojiKeypadGame({ onGameComplete }: EmojiKeypadGameProps) {
             >
               Play Again
             </button>
-            <Link href="/" className="bg-slate-600 hover:bg-slate-500 text-white font-bold py-3 px-8 rounded-lg transition">
+            <Link href="/" className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 px-8 rounded-lg transition">
               New Game
             </Link>
           </div>
@@ -395,7 +395,7 @@ export function EmojiKeypadGame({ onGameComplete }: EmojiKeypadGameProps) {
             >
               Try Again
             </button>
-            <Link href="/" className="bg-slate-600 hover:bg-slate-500 text-white font-bold py-3 px-8 rounded-lg transition">
+            <Link href="/" className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 px-8 rounded-lg transition">
               New Game
             </Link>
           </div>
