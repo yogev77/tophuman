@@ -164,9 +164,7 @@ function solvePuzzle(gridSize: number, pieces: Piece[], exitRow: number): number
 
       for (let pi = 0; pi < curPieces.length; pi++) {
         const piece = curPieces[pi]
-        const dirs: [number, number][] = piece.orientation === 'h'
-          ? [[0, -1], [0, 1]]
-          : [[-1, 0], [1, 0]]
+        const dirs: [number, number][] = [[0, -1], [0, 1], [-1, 0], [1, 0]]
 
         for (const [dr, dc] of dirs) {
           // Try sliding 1..N cells in this direction

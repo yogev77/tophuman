@@ -60,7 +60,7 @@ export function GridlockGame({ onGameComplete }: GridlockGameProps) {
 
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const completeCalledRef = useRef(false)
-  const dragRef = useRef<{ pieceId: string; startX: number; startY: number; cellsMoved: number; lastCell: number } | null>(null)
+  const dragRef = useRef<{ pieceId: string; startX: number; startY: number; cellsMoved: number; lastCellX: number; lastCellY: number; axis: 'x' | 'y' | null } | null>(null)
   const gameContainerRef = useRef<HTMLDivElement | null>(null)
   const gridRef = useRef<HTMLDivElement | null>(null)
   const piecesRef = useRef<Piece[]>(pieces)
@@ -186,10 +186,6 @@ export function GridlockGame({ onGameComplete }: GridlockGameProps) {
     const piece = pieces.find(p => p.id === pieceId)
     if (!piece) return
 
-    // Enforce orientation: h pieces move left/right only, v pieces move up/down only
-    if (piece.orientation === 'h' && dr !== 0) return
-    if (piece.orientation === 'v' && dc !== 0) return
-
     if (!canMovePiece(piece, dr, dc)) return
 
     const newPieces = pieces.map(p =>
@@ -270,24 +266,23 @@ export function GridlockGame({ onGameComplete }: GridlockGameProps) {
 
     const overlays: { row: number; col: number; arrow: string; dr: number; dc: number }[] = []
 
-    if (piece.orientation === 'h') {
-      // Left arrow: cell immediately left of piece
-      if (canMovePiece(piece, 0, -1)) {
-        overlays.push({ row: piece.row, col: piece.col - 1, arrow: '←', dr: 0, dc: -1 })
-      }
-      // Right arrow: cell immediately right of piece
-      if (canMovePiece(piece, 0, 1)) {
-        overlays.push({ row: piece.row, col: piece.col + piece.length, arrow: '→', dr: 0, dc: 1 })
-      }
-    } else {
-      // Up arrow: cell immediately above piece
-      if (canMovePiece(piece, -1, 0)) {
-        overlays.push({ row: piece.row - 1, col: piece.col, arrow: '↑', dr: -1, dc: 0 })
-      }
-      // Down arrow: cell immediately below piece
-      if (canMovePiece(piece, 1, 0)) {
-        overlays.push({ row: piece.row + piece.length, col: piece.col, arrow: '↓', dr: 1, dc: 0 })
-      }
+    // Left
+    if (canMovePiece(piece, 0, -1)) {
+      overlays.push({ row: piece.row, col: piece.col - 1, arrow: '←', dr: 0, dc: -1 })
+    }
+    // Right
+    if (canMovePiece(piece, 0, 1)) {
+      const rightCol = piece.orientation === 'h' ? piece.col + piece.length : piece.col + 1
+      overlays.push({ row: piece.row, col: rightCol, arrow: '→', dr: 0, dc: 1 })
+    }
+    // Up
+    if (canMovePiece(piece, -1, 0)) {
+      overlays.push({ row: piece.row - 1, col: piece.col, arrow: '↑', dr: -1, dc: 0 })
+    }
+    // Down
+    if (canMovePiece(piece, 1, 0)) {
+      const bottomRow = piece.orientation === 'v' ? piece.row + piece.length : piece.row + 1
+      overlays.push({ row: bottomRow, col: piece.col, arrow: '↓', dr: 1, dc: 0 })
     }
 
     return overlays
@@ -302,7 +297,7 @@ export function GridlockGame({ onGameComplete }: GridlockGameProps) {
   const handleTouchStart = useCallback((e: React.TouchEvent, pieceId: string) => {
     if (phase !== 'play') return
     const touch = e.touches[0]
-    dragRef.current = { pieceId, startX: touch.clientX, startY: touch.clientY, cellsMoved: 0, lastCell: 0 }
+    dragRef.current = { pieceId, startX: touch.clientX, startY: touch.clientY, cellsMoved: 0, lastCellX: 0, lastCellY: 0, axis: null }
     setSelectedPiece(pieceId)
   }, [phase])
 
@@ -312,8 +307,7 @@ export function GridlockGame({ onGameComplete }: GridlockGameProps) {
     e.stopPropagation()
 
     const touch = e.touches[0]
-    const { pieceId, startX, startY, lastCell } = dragRef.current
-    // Use ref to get latest pieces (state may be stale in rapid moves)
+    const { pieceId, startX, startY, lastCellX, lastCellY } = dragRef.current
     const currentPieces = piecesRef.current
     const piece = currentPieces.find(p => p.id === pieceId)
     if (!piece) return
@@ -322,25 +316,37 @@ export function GridlockGame({ onGameComplete }: GridlockGameProps) {
     const dx = touch.clientX - startX
     const dy = touch.clientY - startY
 
-    let targetCell: number
-    if (piece.orientation === 'h') {
-      targetCell = Math.round(dx / cs)
-    } else {
-      targetCell = Math.round(dy / cs)
+    // Lock to dominant axis once threshold is crossed
+    if (!dragRef.current.axis) {
+      if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+        dragRef.current.axis = Math.abs(dx) >= Math.abs(dy) ? 'x' : 'y'
+      } else {
+        return
+      }
     }
 
-    if (targetCell !== lastCell) {
-      const dir = targetCell > lastCell ? 1 : -1
-      let current = lastCell
-      while (current !== targetCell) {
-        if (piece.orientation === 'h') {
+    if (dragRef.current.axis === 'x') {
+      const targetCell = Math.round(dx / cs)
+      if (targetCell !== lastCellX) {
+        const dir = targetCell > lastCellX ? 1 : -1
+        let current = lastCellX
+        while (current !== targetCell) {
           movePiece(pieceId, 0, dir)
-        } else {
-          movePiece(pieceId, dir, 0)
+          current += dir
         }
-        current += dir
+        dragRef.current = { ...dragRef.current, cellsMoved: dragRef.current.cellsMoved + Math.abs(current - lastCellX), lastCellX: current }
       }
-      dragRef.current = { ...dragRef.current, cellsMoved: dragRef.current.cellsMoved + Math.abs(current - lastCell), lastCell: current }
+    } else {
+      const targetCell = Math.round(dy / cs)
+      if (targetCell !== lastCellY) {
+        const dir = targetCell > lastCellY ? 1 : -1
+        let current = lastCellY
+        while (current !== targetCell) {
+          movePiece(pieceId, dir, 0)
+          current += dir
+        }
+        dragRef.current = { ...dragRef.current, cellsMoved: dragRef.current.cellsMoved + Math.abs(current - lastCellY), lastCellY: current }
+      }
     }
   }, [phase, getCellSize, movePiece])
 
