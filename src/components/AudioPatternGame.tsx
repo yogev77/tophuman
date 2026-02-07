@@ -384,14 +384,14 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
               </div>
             )}
           </div>
-          <div className="flex gap-4 justify-center">
+          <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto">
             <button
               onClick={startGame}
               className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg transition"
             >
               Play Again
             </button>
-            <Link href="/" className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 px-8 rounded-lg transition">
+            <Link href="/" className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 px-8 rounded-lg transition text-center">
               New Game
             </Link>
           </div>
@@ -408,14 +408,14 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
           <p className="text-slate-300 mb-6">
             Complete at least a few correct taps to earn points. Listen carefully and try again!
           </p>
-          <div className="flex gap-4 justify-center">
+          <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto">
             <button
               onClick={startGame}
               className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg transition"
             >
               Try Again
             </button>
-            <Link href="/" className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 px-8 rounded-lg transition">
+            <Link href="/" className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 px-8 rounded-lg transition text-center">
               New Game
             </Link>
           </div>

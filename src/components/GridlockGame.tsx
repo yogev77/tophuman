@@ -576,7 +576,7 @@ export function GridlockGame({ onGameComplete }: GridlockGameProps) {
               <div className={`text-sm ${light ? 'text-slate-500' : 'text-slate-400'}`}>Rank</div>
             </div>
           </div>
-          <div className="flex gap-4 justify-center">
+          <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto">
             <button
               onClick={startGame}
               className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg transition"
@@ -604,7 +604,7 @@ export function GridlockGame({ onGameComplete }: GridlockGameProps) {
               ? 'Could not complete any rounds in time.'
               : 'Better luck next time!'}
           </p>
-          <div className="flex gap-4 justify-center">
+          <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto">
             <button
               onClick={startGame}
               className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg transition"
