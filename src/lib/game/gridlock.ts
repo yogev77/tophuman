@@ -238,9 +238,9 @@ function generatePuzzle(
   // Round 0 (easy): 3-4 moves — target blocked, blocker must be freed first
   // Round 1 (medium): 5-7 moves — deeper chain, more blockers
   // Round 2 (hard): 8+ moves — multiple interleaved chains
-  const minMoves = roundIndex === 0 ? 3 : roundIndex === 1 ? 5 : 8
-  const maxMoves = roundIndex === 0 ? 6 : roundIndex === 1 ? 10 : 20
-  const numBlockers = roundIndex === 0 ? 4 : roundIndex === 1 ? 7 : 10
+  const minMoves = roundIndex === 0 ? 3 : roundIndex === 1 ? 5 : 6
+  const maxMoves = roundIndex === 0 ? 6 : roundIndex === 1 ? 10 : 14
+  const numBlockers = roundIndex === 0 ? 4 : roundIndex === 1 ? 6 : 7
 
   // Retry up to N times to get a puzzle within desired difficulty
   for (let attempt = 0; attempt < 40; attempt++) {
