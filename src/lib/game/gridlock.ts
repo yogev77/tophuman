@@ -198,7 +198,7 @@ function solvePuzzle(gridSize: number, pieces: Piece[], exitRow: number): number
 
             // Check if target reached exit
             const target = newPieces.find(p => p.isTarget)!
-            if (target.col + target.length > gridSize - 1) {
+            if (target.row === exitRow && target.col + target.length > gridSize - 1) {
               return moves + 1
             }
 

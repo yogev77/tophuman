@@ -213,7 +213,7 @@ export function GridlockGame({ onGameComplete }: GridlockGameProps) {
 
     // Check if target reached exit
     const target = newPieces.find(p => p.isTarget)
-    if (target && target.col >= spec.gridSize - 2) {
+    if (target && target.row === spec.exitRow && target.col >= spec.gridSize - 2) {
       // Round complete!
       const newRoundMoves = [...roundMoves, newMoveCount]
       setRoundMoves(newRoundMoves)
