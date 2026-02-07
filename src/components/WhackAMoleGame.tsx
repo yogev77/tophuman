@@ -47,12 +47,14 @@ export function WhackAMoleGame({ onGameComplete }: WhackAMoleGameProps) {
   const spawnTimersRef = useRef<NodeJS.Timeout[]>([])
   const gameStartTimeRef = useRef<number>(0)
   const hitsRef = useRef(0)
+  const completeCalledRef = useRef(false)
 
   const startGame = useCallback(async () => {
     setPhase('loading')
     setError(null)
     setHits(0)
     hitsRef.current = 0
+    completeCalledRef.current = false
     setMisses(0)
     setBombHits(0)
     setActiveEntities(new Map())
@@ -100,6 +102,14 @@ export function WhackAMoleGame({ onGameComplete }: WhackAMoleGameProps) {
         }, timeOffset)
         spawnTimersRef.current.push(spawnTimer)
       })
+
+      // Auto-end when last spawn has expired (no more entities will appear)
+      const lastSpawnTime = Math.max(...newSpec.spawnSequence.map(s => s[0]))
+      const allSpawnsEndTime = lastSpawnTime + newSpec.moleDurationMs + 200 // small buffer
+      const endTimer = setTimeout(() => {
+        completeGame(turnData.turnToken)
+      }, allSpawnsEndTime)
+      spawnTimersRef.current.push(endTimer)
 
       // Start countdown timer
       const startTime = Date.now()
@@ -212,7 +222,8 @@ export function WhackAMoleGame({ onGameComplete }: WhackAMoleGameProps) {
 
   const completeGame = async (token?: string) => {
     const finalToken = token || turnToken
-    if (!finalToken) return
+    if (!finalToken || completeCalledRef.current) return
+    completeCalledRef.current = true
 
     // Stop all timers
     if (timerRef.current) {
