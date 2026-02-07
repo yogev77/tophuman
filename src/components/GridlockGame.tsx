@@ -469,23 +469,20 @@ export function GridlockGame({ onGameComplete }: GridlockGameProps) {
                 ))
               )}
 
-              {/* Exit marker — green/white dashed line on the right border */}
-              <svg
-                className="absolute pointer-events-none"
+              {/* Exit gate — thick green opening on right border */}
+              <div
+                className="absolute pointer-events-none z-30"
                 style={{
-                  top: spec.exitRow * cellSize + 2,
-                  right: -1,
-                  width: 4,
-                  height: cellSize,
+                  top: spec.exitRow * cellSize - 2,
+                  right: -10,
+                  width: 14,
+                  height: cellSize + 8,
                 }}
               >
-                <line
-                  x1="2" y1="2" x2="2" y2={cellSize - 2}
-                  stroke="#22c55e"
-                  strokeWidth="4"
-                  strokeDasharray="6 4"
-                />
-              </svg>
+                <div className="w-full h-full rounded-r-md bg-green-500 flex items-center justify-center shadow-[0_0_12px_rgba(34,197,94,0.6)]">
+                  <span className="text-white text-lg font-bold">&#x203A;</span>
+                </div>
+              </div>
 
               {/* Arrow overlays on adjacent cells */}
               {getArrowOverlays().map(overlay => (
@@ -542,7 +539,7 @@ export function GridlockGame({ onGameComplete }: GridlockGameProps) {
                     }}
                   >
                     {piece.isTarget && (
-                      <span className="text-white text-xs font-bold">CAR</span>
+                      <span className="text-white text-[9px] font-bold leading-tight text-center">Get me<br/>out!</span>
                     )}
                   </div>
                 )
