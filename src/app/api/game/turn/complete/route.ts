@@ -60,6 +60,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Turn not active' }, { status: 400 })
     }
 
+    // Server-side elapsed time cross-check
+    if (turn.started_at) {
+      const elapsedMs = Date.now() - new Date(turn.started_at).getTime()
+      const turnSpec = turn.spec as { timeLimitMs?: number }
+      const maxAllowedMs = (turnSpec.timeLimitMs || 120000) + 10000 // 10s grace for network
+      if (elapsedMs > maxAllowedMs) {
+        await supabase.from('game_turns').update({ status: 'expired' }).eq('id', turn.id)
+        return NextResponse.json({ error: 'Turn expired' }, { status: 400 })
+      }
+    }
+
     // Get all events for this turn
     const { data: events, error: eventsError } = await supabase
       .from('turn_events')
@@ -69,6 +80,21 @@ export async function POST(request: NextRequest) {
 
     if (eventsError) {
       return NextResponse.json({ error: 'Failed to get events' }, { status: 500 })
+    }
+
+    // Verify event hash chain integrity
+    if (events && events.length > 0) {
+      for (let i = 0; i < events.length; i++) {
+        if (i === 0) {
+          if (events[i].prev_hash !== null) {
+            return NextResponse.json({ error: 'Event integrity violation' }, { status: 400 })
+          }
+        } else {
+          if (events[i].prev_hash !== events[i - 1].event_hash) {
+            return NextResponse.json({ error: 'Event integrity violation' }, { status: 400 })
+          }
+        }
+      }
     }
 
     // Determine game type and validate accordingly

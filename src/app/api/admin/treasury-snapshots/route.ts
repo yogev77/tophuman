@@ -92,14 +92,25 @@ export async function POST(request: NextRequest) {
     const treasuryIdentifier = treasurySetting.value
 
     // Resolve to actual user_id and username
-    const { data: profiles } = await serviceClient
+    // Resolve treasury user safely (avoid filter injection)
+    const { data: tById } = await serviceClient
       .from('profiles')
       .select('user_id, username')
-      .or(`user_id.eq.${treasuryIdentifier},username.eq.${treasuryIdentifier}`)
+      .eq('user_id', treasuryIdentifier)
       .limit(1)
 
-    const treasuryUserId = profiles?.[0]?.user_id || treasuryIdentifier
-    const treasuryUsername = profiles?.[0]?.username || null
+    let treasuryProfile = tById?.[0]
+    if (!treasuryProfile) {
+      const { data: tByName } = await serviceClient
+        .from('profiles')
+        .select('user_id, username')
+        .eq('username', treasuryIdentifier)
+        .limit(1)
+      treasuryProfile = tByName?.[0]
+    }
+
+    const treasuryUserId = treasuryProfile?.user_id || treasuryIdentifier
+    const treasuryUsername = treasuryProfile?.username || null
 
     // Get current balance
     const { data: balance } = await serviceClient.rpc('get_user_balance', { p_user_id: treasuryUserId })

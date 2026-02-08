@@ -179,10 +179,14 @@ export function validateDuckShootTurn(
     }
   }
 
-  // Calculate hits and accuracy - trust client's hit detection
+  // Calculate hits and accuracy — server-side position validation
   const hitDucks = new Set<number>()
   const hitDecoys = new Set<number>()
   let totalAccuracy = 0
+
+  // Use first event timestamp as game start reference
+  const eventTimestamps = events.map(e => new Date(e.serverTimestamp).getTime()).filter(t => t > 0)
+  const gameStartMs = eventTimestamps.length > 0 ? Math.min(...eventTimestamps) : 0
 
   for (const shoot of shoots) {
     if (shoot.duckIndex !== undefined && !hitDucks.has(shoot.duckIndex) && !hitDecoys.has(shoot.duckIndex)) {
@@ -193,7 +197,21 @@ export function validateDuckShootTurn(
           hitDecoys.add(shoot.duckIndex)
         } else {
           hitDucks.add(shoot.duckIndex)
-          totalAccuracy += shoot.hitAccuracy ?? 0.5
+          // Server-side accuracy: calculate expected duck position at shot time
+          const shotTimeMs = new Date(shoot.serverTimestamp).getTime()
+          const duckAgeMs = shotTimeMs - gameStartMs - spawn.spawnTimeMs
+          if (duckAgeMs >= 0 && shoot.x !== undefined && shoot.y !== undefined) {
+            const duckX = spawn.fromLeft
+              ? spawn.speed * duckAgeMs / 1000
+              : spec.canvasWidth - spawn.speed * duckAgeMs / 1000
+            const duckY = spawn.yPosition
+            const dx = shoot.x - duckX
+            const dy = shoot.y - duckY
+            const distance = Math.sqrt(dx * dx + dy * dy)
+            totalAccuracy += Math.max(0, 1 - distance / (spec.duckSize / 2))
+          } else {
+            totalAccuracy += 0.3 // Fallback if position data missing
+          }
         }
       }
     }

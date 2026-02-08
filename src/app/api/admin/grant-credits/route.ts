@@ -30,12 +30,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User ID required' }, { status: 400 })
     }
 
-    if (!amount || typeof amount !== 'number' || amount <= 0 || amount > 1000) {
-      return NextResponse.json({ error: 'Amount must be between 1 and 1000' }, { status: 400 })
+    if (!amount || typeof amount !== 'number' || amount <= 0 || amount > 1000 || !Number.isInteger(amount)) {
+      return NextResponse.json({ error: 'Amount must be a whole number between 1 and 1000' }, { status: 400 })
     }
 
     // Use service client to bypass RLS for cross-user operations
     const serviceClient = createServiceClient()
+
+    // Daily admin grant cap: max 10,000 credits per day across all admins
+    const todayForCap = new Date().toISOString().split('T')[0]
+    const { data: todayGrants } = await serviceClient
+      .from('credit_ledger')
+      .select('amount')
+      .eq('event_type', 'admin_adjustment')
+      .eq('utc_day', todayForCap)
+      .gt('amount', 0)
+
+    const totalGrantedToday = (todayGrants || []).reduce((sum: number, g: { amount: number }) => sum + g.amount, 0)
+    if (totalGrantedToday + amount > 10000) {
+      return NextResponse.json({ error: 'Daily admin grant cap reached' }, { status: 400 })
+    }
 
     // Verify target user exists
     const { data: targetProfiles, error: profileLookupError } = await serviceClient
@@ -74,6 +88,16 @@ export async function POST(request: NextRequest) {
     // Get new balance
     const { data: newBalance } = await serviceClient.rpc('get_user_balance', {
       p_user_id: userId,
+    })
+
+    // Audit log
+    await serviceClient.from('audit_logs').insert({
+      actor_type: 'admin',
+      actor_id: user.id,
+      action: 'grant_credits',
+      resource_type: 'credit_ledger',
+      resource_id: userId,
+      details: { amount, reason: reason || 'Admin grant', newBalance: newBalance ?? 0 },
     })
 
     return NextResponse.json({

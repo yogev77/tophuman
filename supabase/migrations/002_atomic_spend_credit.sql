@@ -1,0 +1,48 @@
+-- ============================================
+-- FIX: Atomic credit spending with advisory lock
+-- Prevents double-spend race condition when two
+-- requests arrive simultaneously for the same user
+-- Also fixes hardcoded game_type_id for daily pool
+-- ============================================
+
+CREATE OR REPLACE FUNCTION spend_credit(
+  p_user_id TEXT,
+  p_turn_id TEXT,
+  p_game_type_id TEXT DEFAULT 'emoji_keypad_sequence'
+)
+RETURNS BOOLEAN AS $$
+DECLARE
+    v_today DATE := (NOW() AT TIME ZONE 'UTC')::DATE;
+    v_balance INTEGER;
+BEGIN
+    -- Acquire per-user advisory lock to prevent concurrent double-spend.
+    -- This lock is held until the transaction commits/rolls back.
+    PERFORM pg_advisory_xact_lock(hashtext(p_user_id));
+
+    -- Check balance (now serialized — no TOCTOU race condition)
+    SELECT get_user_balance(p_user_id) INTO v_balance;
+
+    IF v_balance < 1 THEN
+        RETURN FALSE;
+    END IF;
+
+    -- Deduct 1 credit
+    INSERT INTO credit_ledger (user_id, event_type, amount, utc_day, reference_id, reference_type)
+    VALUES (p_user_id, 'turn_spend', -1, v_today, p_turn_id, 'turn');
+
+    -- Update daily pool with correct game type
+    INSERT INTO daily_pools (utc_day, game_type_id, total_credits, unique_players, total_turns)
+    VALUES (v_today, p_game_type_id, 1, 1, 1)
+    ON CONFLICT (utc_day) DO UPDATE SET
+        total_credits = daily_pools.total_credits + 1,
+        total_turns = daily_pools.total_turns + 1,
+        unique_players = (
+            SELECT COUNT(DISTINCT user_id)
+            FROM game_turns
+            WHERE utc_day = v_today AND status IN ('pending', 'active', 'completed')
+        ),
+        status = 'active';
+
+    RETURN TRUE;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;

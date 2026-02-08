@@ -20,6 +20,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Referral code required' }, { status: 400 })
     }
 
+    // Validate referral code format (hex, exactly 8 chars)
+    if (typeof referralCode !== 'string' || !/^[a-f0-9]{8}$/i.test(referralCode)) {
+      return NextResponse.json({ error: 'Invalid referral code' }, { status: 400 })
+    }
+
     // Anti-fraud: Check for disposable email
     if (user.email && isDisposableEmail(user.email)) {
       console.warn(`Referral blocked: disposable email ${user.email}`)
@@ -64,13 +69,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Already used a referral' }, { status: 400 })
     }
 
-    // Find referrer by matching the last 8 chars of their user_id
-    const { data: profiles } = await serviceSupabase
+    // Find referrer by matching the last 8 chars of their user_id (targeted query)
+    const { data: matchingProfiles } = await serviceSupabase
       .from('profiles')
-      .select('user_id')
+      .select('user_id, created_at')
+      .like('user_id', `%${referralCode}`)
 
-    const referrer = profiles?.find(p =>
-      p.user_id.replace('usr_', '').slice(-8) === referralCode
+    const referrer = matchingProfiles?.find(p =>
+      p.user_id.replace('usr_', '').slice(-8) === referralCode.toLowerCase()
     )
 
     if (!referrer) {
@@ -80,6 +86,23 @@ export async function POST(request: Request) {
     // Can't refer yourself
     if (referrer.user_id === currentProfile.user_id) {
       return NextResponse.json({ error: 'Cannot refer yourself' }, { status: 400 })
+    }
+
+    // Anti-fraud: Referrer account must be at least 7 days old
+    const referrerAge = Date.now() - new Date(referrer.created_at).getTime()
+    const sevenDays = 7 * 24 * 60 * 60 * 1000
+    if (referrerAge < sevenDays) {
+      return NextResponse.json({ error: 'Referral not available yet' }, { status: 400 })
+    }
+
+    // Anti-fraud: Max 10 successful referrals per referrer
+    const { count: referralCount } = await serviceSupabase
+      .from('profiles')
+      .select('*', { count: 'exact', head: true })
+      .eq('referred_by', referrer.user_id)
+
+    if ((referralCount ?? 0) >= 10) {
+      return NextResponse.json({ error: 'Referral code no longer available' }, { status: 400 })
     }
 
     const today = new Date().toISOString().split('T')[0]

@@ -60,6 +60,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Insufficient credits' }, { status: 400 })
     }
 
+    // Rate limit: max 5 turns per minute per user
+    const oneMinuteAgo = new Date(Date.now() - 60000).toISOString()
+    const { count: recentTurns } = await supabase
+      .from('game_turns')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', profile.user_id)
+      .gte('created_at', oneMinuteAgo)
+
+    if ((recentTurns ?? 0) >= 5) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
+    }
+
     // Use requested game type or fall back to active game type setting
     let activeGameType: string
     if (requestedGameType) {
@@ -71,6 +83,18 @@ export async function POST(request: Request) {
         .eq('key', 'active_game_type')
         .single()
       activeGameType = (gameSetting?.value as string) || 'emoji_keypad'
+    }
+
+    // Validate game type against whitelist
+    const VALID_GAME_TYPES = new Set([
+      'emoji_keypad', 'emoji_keypad_sequence', 'image_rotate', 'reaction_time',
+      'whack_a_mole', 'typing_speed', 'mental_math', 'color_match',
+      'visual_diff', 'audio_pattern', 'drag_sort', 'follow_me',
+      'duck_shoot', 'memory_cards', 'number_chain', 'gridlock',
+    ])
+
+    if (!VALID_GAME_TYPES.has(activeGameType)) {
+      return NextResponse.json({ error: 'Invalid game type' }, { status: 400 })
     }
 
     const today = new Date().toISOString().split('T')[0]
@@ -228,13 +252,14 @@ export async function POST(request: Request) {
 
     if (turnError) {
       console.error('Turn creation error:', turnError)
-      return NextResponse.json({ error: 'Failed to create turn: ' + turnError.message }, { status: 500 })
+      return NextResponse.json({ error: 'Failed to create turn' }, { status: 500 })
     }
 
-    // Spend credit
+    // Spend credit (atomic — advisory lock prevents double-spend)
     const { data: spent } = await supabase.rpc('spend_credit', {
       p_user_id: profile.user_id,
       p_turn_id: turn.id,
+      p_game_type_id: gameTypeId,
     })
 
     if (!spent) {
@@ -252,7 +277,6 @@ export async function POST(request: Request) {
     })
   } catch (err) {
     console.error('Create turn error:', err)
-    const message = err instanceof Error ? err.message : 'Unknown error'
-    return NextResponse.json({ error: 'Internal error: ' + message }, { status: 500 })
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 }

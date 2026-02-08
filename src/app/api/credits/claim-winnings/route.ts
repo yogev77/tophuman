@@ -65,7 +65,21 @@ export async function POST() {
       const eventType = EVENT_TYPE_MAP[claim.claim_type] || claim.claim_type
       const gameTypeId = (claim.metadata as Record<string, unknown>)?.game_type_id as string | undefined
 
-      // Insert ledger entry with game_type_id in metadata
+      // Atomically mark claim as claimed FIRST (prevents double-claim race condition)
+      // If two requests arrive simultaneously, only one UPDATE will match the IS NULL condition
+      const { data: claimedRows, error: claimError } = await supabase
+        .from('pending_claims')
+        .update({ claimed_at: new Date().toISOString() })
+        .eq('id', claim.id)
+        .is('claimed_at', null)
+        .select('id')
+
+      if (claimError || !claimedRows || claimedRows.length === 0) {
+        // Already claimed by another concurrent request — skip
+        continue
+      }
+
+      // Now safe to insert ledger entry (claim is locked)
       const ledgerMetadata = gameTypeId ? { game_type_id: gameTypeId } : undefined
       const { data: ledgerEntry, error: ledgerError } = await supabase
         .from('credit_ledger')
@@ -87,18 +101,11 @@ export async function POST() {
         continue
       }
 
-      // Mark claim as claimed
-      const { error: updateError } = await supabase
+      // Update claim with ledger reference
+      await supabase
         .from('pending_claims')
-        .update({
-          claimed_at: new Date().toISOString(),
-          ledger_entry_id: ledgerEntry.id,
-        })
+        .update({ ledger_entry_id: ledgerEntry.id })
         .eq('id', claim.id)
-
-      if (updateError) {
-        console.error('Failed to mark claim as claimed:', updateError)
-      }
 
       claimedItems.push({
         type: claim.claim_type,

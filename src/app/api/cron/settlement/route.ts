@@ -8,8 +8,9 @@ import crypto from 'crypto'
 export async function GET(request: NextRequest) {
   try {
     // Verify cron secret (set CRON_SECRET in environment)
+    const cronSecret = process.env.CRON_SECRET
     const authHeader = request.headers.get('authorization')
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -75,8 +76,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(result)
   } catch (err) {
     console.error('Manual settlement error:', err)
-    const message = err instanceof Error ? err.message : String(err)
-    return NextResponse.json({ error: message }, { status: 500 })
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 }
 
@@ -335,13 +335,22 @@ async function settleDay(supabase: any, utcDay: string) {
     if (treasurySetting?.value) {
       // Resolve the treasury user's actual user_id from profiles
       // (site_settings may store a username like "podiumarena" instead of user_id)
-      const { data: treasuryProfiles } = await supabase
+      // Resolve treasury user safely (avoid filter injection)
+      const { data: tById } = await supabase
         .from('profiles')
         .select('user_id')
-        .or(`user_id.eq.${treasurySetting.value},username.eq.${treasurySetting.value}`)
+        .eq('user_id', treasurySetting.value)
         .limit(1)
 
-      const treasuryUserId = treasuryProfiles?.[0]?.user_id || treasurySetting.value
+      let treasuryUserId = tById?.[0]?.user_id
+      if (!treasuryUserId) {
+        const { data: tByName } = await supabase
+          .from('profiles')
+          .select('user_id')
+          .eq('username', treasurySetting.value)
+          .limit(1)
+        treasuryUserId = tByName?.[0]?.user_id || treasurySetting.value
+      }
 
       // Auto-claim: insert directly into credit_ledger (no pending_claim needed for treasury)
       const { error: sinkError } = await supabase.from('credit_ledger').insert({
@@ -390,14 +399,27 @@ async function settleDay(supabase: any, utcDay: string) {
       .single()
 
     if (treasurySnapshotSetting?.value) {
-      const { data: treasuryProfiles2 } = await supabase
+      // Resolve treasury user safely (avoid filter injection)
+      const { data: snapById } = await supabase
         .from('profiles')
         .select('user_id, username')
-        .or(`user_id.eq.${treasurySnapshotSetting.value},username.eq.${treasurySnapshotSetting.value}`)
+        .eq('user_id', treasurySnapshotSetting.value)
         .limit(1)
 
-      const snapshotUserId = treasuryProfiles2?.[0]?.user_id || treasurySnapshotSetting.value
-      const snapshotUsername = treasuryProfiles2?.[0]?.username || null
+      let snapshotUserId: string
+      let snapshotUsername: string | null = null
+      if (snapById?.[0]) {
+        snapshotUserId = snapById[0].user_id
+        snapshotUsername = snapById[0].username
+      } else {
+        const { data: snapByName } = await supabase
+          .from('profiles')
+          .select('user_id, username')
+          .eq('username', treasurySnapshotSetting.value)
+          .limit(1)
+        snapshotUserId = snapByName?.[0]?.user_id || treasurySnapshotSetting.value
+        snapshotUsername = snapByName?.[0]?.username || null
+      }
 
       const { data: snapshotBalance } = await supabase.rpc('get_user_balance', { p_user_id: snapshotUserId })
 

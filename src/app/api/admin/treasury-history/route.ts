@@ -34,14 +34,25 @@ export async function GET(request: NextRequest) {
     const serviceClient = createServiceClient()
 
     // Resolve the identifier to an actual user_id (may be a username)
-    const { data: resolvedProfiles } = await serviceClient
+    // Resolve user safely (avoid filter injection in .or())
+    const { data: byUserId } = await serviceClient
       .from('profiles')
       .select('user_id, display_name, username')
-      .or(`user_id.eq.${userId},username.eq.${userId}`)
+      .eq('user_id', userId)
       .limit(1)
 
-    const resolvedUserId = resolvedProfiles?.[0]?.user_id || userId
-    const displayName = resolvedProfiles?.[0]?.display_name || resolvedProfiles?.[0]?.username || userId
+    let resolvedProfile = byUserId?.[0]
+    if (!resolvedProfile) {
+      const { data: byUsername } = await serviceClient
+        .from('profiles')
+        .select('user_id, display_name, username')
+        .eq('username', userId)
+        .limit(1)
+      resolvedProfile = byUsername?.[0]
+    }
+
+    const resolvedUserId = resolvedProfile?.user_id || userId
+    const displayName = resolvedProfile?.display_name || resolvedProfile?.username || userId
 
     // Fetch balance and entries in parallel
     const [balanceResult, countResult, entriesResult] = await Promise.all([

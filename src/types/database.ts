@@ -439,7 +439,7 @@ export interface Database {
         Returns: boolean
       }
       spend_credit: {
-        Args: { p_user_id: string; p_turn_id: string }
+        Args: { p_user_id: string; p_turn_id: string; p_game_type_id?: string }
         Returns: boolean
       }
     }

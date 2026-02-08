@@ -128,14 +128,25 @@ export async function GET(request: NextRequest) {
 
     let treasuryDisplayName = 'Treasury'
     if (treasurySetting?.value) {
-      const { data: treasuryProfiles } = await serviceClient
+      // Resolve treasury user safely (avoid filter injection)
+      const { data: tById } = await serviceClient
         .from('profiles')
         .select('display_name, username')
-        .or(`user_id.eq.${treasurySetting.value},username.eq.${treasurySetting.value}`)
+        .eq('user_id', treasurySetting.value)
         .limit(1)
 
-      if (treasuryProfiles?.[0]) {
-        treasuryDisplayName = treasuryProfiles[0].display_name || treasuryProfiles[0].username || 'Treasury'
+      let treasuryProfile = tById?.[0]
+      if (!treasuryProfile) {
+        const { data: tByName } = await serviceClient
+          .from('profiles')
+          .select('display_name, username')
+          .eq('username', treasurySetting.value)
+          .limit(1)
+        treasuryProfile = tByName?.[0]
+      }
+
+      if (treasuryProfile) {
+        treasuryDisplayName = treasuryProfile.display_name || treasuryProfile.username || 'Treasury'
       }
     }
 
