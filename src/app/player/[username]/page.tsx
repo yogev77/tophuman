@@ -765,7 +765,20 @@ function PlayerProfileContent() {
   const isOwnProfile = myUsername === username
 
   useEffect(() => {
+    const cacheKey = `profile_${username}`
     const fetchProfile = async () => {
+      // Show cached data instantly, then refresh in background
+      try {
+        const cached = sessionStorage.getItem(cacheKey)
+        if (cached) {
+          const { data: cachedData, ts } = JSON.parse(cached)
+          setData(cachedData)
+          setLoading(false)
+          // If cache is less than 60s old, skip refetch
+          if (Date.now() - ts < 60000) return
+        }
+      } catch { /* ignore parse errors */ }
+
       try {
         const res = await fetch(`/api/player/${encodeURIComponent(username)}`)
         if (res.status === 404) {
@@ -775,6 +788,7 @@ function PlayerProfileContent() {
         if (res.ok) {
           const playerData = await res.json()
           setData(playerData)
+          try { sessionStorage.setItem(cacheKey, JSON.stringify({ data: playerData, ts: Date.now() })) } catch { /* quota */ }
         }
       } catch (err) {
         console.error('Failed to fetch player profile:', err)
@@ -875,14 +889,22 @@ function PlayerProfileContent() {
         </div>
       )}
 
-      {/* Profile Tab Content */}
-      {activeTab === 'profile' && <ProfileTab data={data} />}
+      {/* Tab Contents — kept mounted to preserve state across tab switches */}
+      <div className={activeTab === 'profile' ? '' : 'hidden'}>
+        <ProfileTab data={data} />
+      </div>
 
-      {/* History Tab Content (own profile only) */}
-      {activeTab === 'history' && isOwnProfile && <HistoryTab />}
+      {isOwnProfile && (
+        <div className={activeTab === 'history' ? '' : 'hidden'}>
+          <HistoryTab />
+        </div>
+      )}
 
-      {/* Settings Tab Content (own profile only) */}
-      {activeTab === 'settings' && isOwnProfile && <SettingsTab />}
+      {isOwnProfile && (
+        <div className={activeTab === 'settings' ? '' : 'hidden'}>
+          <SettingsTab />
+        </div>
+      )}
     </div>
   )
 }
