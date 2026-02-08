@@ -664,8 +664,8 @@ export default function HomePage() {
                   <tr className="border-b border-slate-700">
                     <th className="text-left text-sm text-slate-400 font-medium px-3 sm:px-4 py-3">Game</th>
                     <th className="text-left text-sm text-slate-400 font-medium px-3 sm:px-4 py-3">Player</th>
-                    <th className="text-right text-sm text-slate-400 font-medium px-3 sm:px-4 py-3">Score</th>
-                    {showPool && <th className="text-right text-sm text-yellow-500 font-medium px-3 sm:px-4 py-3"><CC />Pool</th>}
+                    <th className="text-right text-sm text-slate-400 font-medium px-2 py-3">Score</th>
+                    {showPool && <th className="text-right text-sm text-yellow-500 font-medium px-3 sm:px-4 py-3 whitespace-nowrap"><CC />Pool</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -691,7 +691,7 @@ export default function HomePage() {
                             <span className="text-slate-500 text-sm">{entry.playerName}</span>
                           )}
                         </td>
-                        <td className="px-3 sm:px-4 py-3 text-right">
+                        <td className="px-2 py-3 text-right">
                           <span className="text-green-400 font-bold text-sm">{abbreviateNumber(entry.score)}</span>
                         </td>
                         {showPool && (

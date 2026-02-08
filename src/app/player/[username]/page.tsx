@@ -701,7 +701,7 @@ function HistoryTab() {
             <div className="text-xs text-slate-400 font-medium mb-2 px-1">
               {formatHistoryDate(day.utc_day)}
             </div>
-            <div className="bg-slate-800 rounded-xl overflow-hidden divide-y divide-slate-700">
+            <div className="bg-slate-800 rounded-xl overflow-hidden">
               {day.entries.map((grouped, idx) => {
                 const config = getHistoryEventConfig(grouped.event_type, grouped.totalAmount)
                 const Icon = config.icon
@@ -709,7 +709,7 @@ function HistoryTab() {
                 const gameName = grouped.gameTypeId ? HISTORY_GAME_NAMES[grouped.gameTypeId] : null
 
                 return (
-                  <div key={`${grouped.event_type}-${grouped.gameTypeId || idx}`} className="px-4 py-3 flex items-center gap-3">
+                  <div key={`${grouped.event_type}-${grouped.gameTypeId || idx}`} className={`px-4 py-3 flex items-center gap-3${idx > 0 ? ' border-t border-light-divider' : ''}`}>
                     <div className={`p-2 rounded-lg bg-slate-700/50 ${config.colorClass}`}>
                       <Icon className="w-4 h-4" />
                     </div>

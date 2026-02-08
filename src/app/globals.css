@@ -92,8 +92,11 @@ html.light .border-slate-700\/50 {
   border-color: rgb(226 232 240 / 0.8);
 }
 
-html.light .divide-slate-700 > :not(:first-child) {
-  border-color: #f1f5f9;
+.border-light-divider {
+  border-color: #334155; /* slate-700 */
+}
+html.light .border-light-divider {
+  border-color: #f1f5f9; /* matches bg */
 }
 
 html.light .border-slate-600 {
