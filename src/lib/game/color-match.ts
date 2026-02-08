@@ -33,8 +33,8 @@ export interface ColorMatchResult {
 }
 
 export const DEFAULT_COLOR_MATCH_CONFIG: ColorMatchConfig = {
-  num_rounds: 5,
-  time_limit_seconds: 90,
+  num_rounds: 3,
+  time_limit_seconds: 60,
   tolerance: 30,
 }
 

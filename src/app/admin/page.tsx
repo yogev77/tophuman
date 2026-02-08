@@ -1,7 +1,8 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { formatCountdown } from '@/lib/utils'
 import {
   Target,
   RotateCw,
@@ -146,10 +147,10 @@ const EVENT_TYPE_STYLES: Record<string, { label: string; color: string }> = {
   daily_grant: { label: 'Daily Grant', color: 'bg-green-500/20 text-green-400' },
   turn_spend: { label: 'Game Played', color: 'bg-red-500/20 text-red-400' },
   prize_win: { label: 'Prize Win', color: 'bg-yellow-500/20 text-yellow-400' },
-  rebate: { label: 'Rebate', color: 'bg-blue-500/20 text-blue-400' },
+  rebate: { label: 'Credit Back', color: 'bg-blue-500/20 text-blue-400' },
   admin_adjustment: { label: 'Admin', color: 'bg-purple-500/20 text-purple-400' },
   referral_bonus: { label: 'Referral', color: 'bg-cyan-500/20 text-cyan-400' },
-  sink: { label: 'Sink', color: 'bg-orange-500/20 text-orange-400' },
+  sink: { label: 'Treasury', color: 'bg-orange-500/20 text-orange-400' },
   expiration: { label: 'Expired', color: 'bg-slate-500/20 text-slate-400' },
 }
 
@@ -172,6 +173,10 @@ export default function AdminPage() {
   const [treasuryInput, setTreasuryInput] = useState('')
   const [savingTreasury, setSavingTreasury] = useState(false)
   const [treasuryResult, setTreasuryResult] = useState<{ success: boolean; message: string } | null>(null)
+
+  // Settlement countdown
+  const [msUntilSettlement, setMsUntilSettlement] = useState(0)
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // Settlement result state (inline display instead of alert)
   const [settleResult, setSettleResult] = useState<SettlementResult | null>(null)
@@ -213,6 +218,7 @@ export default function AdminPage() {
           totalTurns: gamesData.pool.totalTurns,
           status: gamesData.pool.status,
         })
+        if (gamesData.msUntilSettlement) setMsUntilSettlement(gamesData.msUntilSettlement)
       } else {
         // Fallback to direct DB query
         const { data: pool } = await supabase
@@ -393,6 +399,14 @@ export default function AdminPage() {
     fetchGameSettings()
     fetchTreasuryUser()
   }, [fetchData])
+
+  // Countdown timer
+  useEffect(() => {
+    countdownRef.current = setInterval(() => {
+      setMsUntilSettlement(ms => Math.max(0, ms - 1000))
+    }, 1000)
+    return () => { if (countdownRef.current) clearInterval(countdownRef.current) }
+  }, [])
 
   // Fetch treasury history, snapshots, and settlement history when switching to treasury tab
   useEffect(() => {
@@ -581,7 +595,7 @@ export default function AdminPage() {
           <div className="bg-slate-800 rounded-xl p-6 mb-8">
             <h2 className="text-xl font-bold text-white mb-4">Today&apos;s Stats</h2>
             {stats ? (
-              <div className="grid grid-cols-4 gap-4">
+              <div className="grid grid-cols-5 gap-4">
                 <div className="bg-slate-700 rounded-lg p-4 text-center">
                   <div className="text-3xl font-bold text-yellow-400">{stats.totalCredits}</div>
                   <div className="text-sm text-slate-400">Pool Size</div>
@@ -599,6 +613,12 @@ export default function AdminPage() {
                     {stats.status.toUpperCase()}
                   </div>
                   <div className="text-sm text-slate-400">Status</div>
+                </div>
+                <div className="bg-slate-700 rounded-lg p-4 text-center">
+                  <div className="text-2xl font-bold font-mono text-yellow-400">
+                    {formatCountdown(msUntilSettlement)}
+                  </div>
+                  <div className="text-sm text-slate-400">Till Settlement</div>
                 </div>
               </div>
             ) : (
@@ -810,11 +830,11 @@ export default function AdminPage() {
                       <div className="text-yellow-400 font-bold">{settleResult.settlement.winnerAmount}</div>
                     </div>
                     <div>
-                      <div className="text-slate-400 text-xs">Rebates</div>
+                      <div className="text-slate-400 text-xs">Credit Back</div>
                       <div className="text-blue-400 font-bold">{settleResult.settlement.rebateTotal}</div>
                     </div>
                     <div>
-                      <div className="text-slate-400 text-xs">Sink</div>
+                      <div className="text-slate-400 text-xs">Treasury</div>
                       <div className="text-orange-400 font-bold">{settleResult.settlement.sinkAmount}</div>
                     </div>
                     <div>
@@ -1091,8 +1111,8 @@ export default function AdminPage() {
                         <th className="pb-3 px-3 text-right">Pool</th>
                         <th className="pb-3 px-3">Winner</th>
                         <th className="pb-3 px-3 text-right">Prize</th>
-                        <th className="pb-3 px-3 text-right">Rebates</th>
-                        <th className="pb-3 px-3 text-right">Sink</th>
+                        <th className="pb-3 px-3 text-right">Credit Back</th>
+                        <th className="pb-3 px-3 text-right">Treasury</th>
                         <th className="pb-3 pl-3">Status</th>
                       </tr>
                     </thead>
@@ -1157,8 +1177,8 @@ export default function AdminPage() {
                                                   'bg-slate-500/20 text-slate-400'
                                                 }`}>
                                                   {c.claim_type === 'prize_win' ? 'Prize' :
-                                                   c.claim_type === 'rebate' ? 'Rebate' :
-                                                   c.claim_type === 'sink' ? 'Sink' : c.claim_type}
+                                                   c.claim_type === 'rebate' ? 'Credit Back' :
+                                                   c.claim_type === 'sink' ? 'Treasury' : c.claim_type}
                                                 </span>
                                               </td>
                                               <td className="py-1.5 text-right font-mono text-green-400">{c.amount}</td>

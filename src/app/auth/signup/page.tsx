@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Gift, Check, X, Loader2 } from 'lucide-react'
+import { Spinner } from '@/components/Spinner'
 import { C, CC } from '@/lib/currency'
 
 function AuthContent() {
@@ -343,7 +344,7 @@ export default function AuthPage() {
   return (
     <Suspense fallback={
       <div className="min-h-[80vh] flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-yellow-500 border-t-transparent rounded-full"></div>
+        <Spinner size="md" />
       </div>
     }>
       <AuthContent />

@@ -37,7 +37,7 @@ export function CreditsNotificationProvider({ children }: { children: React.Reac
     amount: number
     newBalance: number
     reason: 'daily' | 'prize' | 'referral' | 'rebate'
-    claimedItems: { type: string; amount: number }[]
+    claimedItems: { type: string; amount: number; gameTypeId?: string }[]
   }>({ isOpen: false, amount: 0, newBalance: 0, reason: 'daily', claimedItems: [] })
 
   const hasPendingClaims = credits.pendingTotal > 0

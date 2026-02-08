@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { GripVertical } from 'lucide-react'
 import { formatTime } from '@/lib/utils'
 import { ShareScore } from './ShareScore'
+import { Spinner } from '@/components/Spinner'
 import { CC } from '@/lib/currency'
 import { useTheme } from '@/hooks/useTheme'
 
@@ -314,7 +315,6 @@ export function DragSortGame({ onGameComplete }: DragSortGameProps) {
   return (
     <div className="bg-slate-800 rounded-xl p-4 sm:p-6">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold text-white">Drag & Sort</h2>
         {phase === 'play' && (
           <span className={`text-2xl font-mono ${timeLeft < 10000 ? 'text-red-400' : 'text-green-400'}`}>
             {formatTime(timeLeft)}
@@ -338,7 +338,7 @@ export function DragSortGame({ onGameComplete }: DragSortGameProps) {
 
       {phase === 'loading' && (
         <div className="text-center py-12">
-          <div className="animate-spin w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <div className="mx-auto mb-4"><Spinner /></div>
           <p className="text-slate-300">Preparing items...</p>
         </div>
       )}
@@ -431,7 +431,7 @@ export function DragSortGame({ onGameComplete }: DragSortGameProps) {
 
       {phase === 'checking' && (
         <div className="text-center py-12">
-          <div className="animate-spin w-12 h-12 border-4 border-yellow-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <div className="mx-auto mb-4"><Spinner /></div>
           <p className="text-slate-300">Checking order...</p>
         </div>
       )}

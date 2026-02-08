@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Palette } from 'lucide-react'
 import { formatTime } from '@/lib/utils'
 import { ShareScore } from './ShareScore'
+import { Spinner } from '@/components/Spinner'
 import { CC } from '@/lib/currency'
 
 type GamePhase = 'idle' | 'loading' | 'play' | 'checking' | 'completed' | 'failed'
@@ -206,6 +207,7 @@ export function ColorMatchGame({ onGameComplete }: ColorMatchGameProps) {
   const [timeLeft, setTimeLeft] = useState(0)
   const [result, setResult] = useState<GameResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -264,29 +266,35 @@ export function ColorMatchGame({ onGameComplete }: ColorMatchGameProps) {
   }, [])
 
   const submitColor = async () => {
-    if (!turnToken || !spec) return
+    if (!turnToken || !spec || submitting) return
+    setSubmitting(true)
 
-    // Send color submission
-    await fetch('/api/game/turn/event', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        turnToken,
-        eventType: 'submit_color',
-        round: currentRound,
-        r: userColor.r,
-        g: userColor.g,
-        b: userColor.b,
-        clientTimestampMs: Date.now(),
-      }),
-    })
+    try {
+      // Send color submission
+      await fetch('/api/game/turn/event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          turnToken,
+          eventType: 'submit_color',
+          round: currentRound,
+          r: userColor.r,
+          g: userColor.g,
+          b: userColor.b,
+          clientTimestampMs: Date.now(),
+        }),
+      })
 
-    // Move to next round or complete
-    if (currentRound + 1 >= spec.targetColors.length) {
-      completeGame()
-    } else {
-      setCurrentRound(currentRound + 1)
-      setUserColor({ r: 128, g: 128, b: 128 })
+      // Move to next round or complete
+      if (currentRound + 1 >= spec.targetColors.length) {
+        completeGame()
+      } else {
+        setCurrentRound(currentRound + 1)
+        setUserColor({ r: 128, g: 128, b: 128 })
+        setSubmitting(false)
+      }
+    } catch {
+      setSubmitting(false)
     }
   }
 
@@ -331,12 +339,11 @@ export function ColorMatchGame({ onGameComplete }: ColorMatchGameProps) {
 
   return (
     <div className="bg-slate-800 rounded-xl p-4 sm:p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold text-white">Color Match</h2>
+      <div className="flex items-center justify-between mb-3">
         {phase === 'play' && spec && (
           <div className="flex items-center gap-4">
-            <span className="text-slate-400">
-              Round {currentRound + 1} / {spec.targetColors.length}
+            <span className="text-slate-400 text-sm">
+              Round {currentRound + 1}/{spec.targetColors.length}
             </span>
             <span className={`text-2xl font-mono ${timeLeft < 10000 ? 'text-red-400' : 'text-green-400'}`}>
               {formatTime(timeLeft)}
@@ -361,46 +368,56 @@ export function ColorMatchGame({ onGameComplete }: ColorMatchGameProps) {
 
       {phase === 'loading' && (
         <div className="text-center py-12">
-          <div className="animate-spin w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <div className="mx-auto mb-4"><Spinner /></div>
           <p className="text-slate-300">Preparing game...</p>
         </div>
       )}
 
       {phase === 'play' && targetColor && (
         <div>
-          <div className="grid grid-cols-2 gap-4 mb-6">
+          <div className="grid grid-cols-2 gap-3 mb-4">
             <div className="text-center">
-              <p className="text-slate-400 text-sm mb-2">Target Color</p>
+              <p className="text-slate-400 text-xs mb-1">Target</p>
               <div
-                className="w-full h-32 rounded-lg border-4 border-slate-600"
+                className="w-full h-16 rounded-lg border-2 border-slate-600"
                 style={{ backgroundColor: `rgb(${targetColor.r}, ${targetColor.g}, ${targetColor.b})` }}
               />
             </div>
             <div className="text-center">
-              <p className="text-slate-400 text-sm mb-2">Your Color</p>
+              <p className="text-slate-400 text-xs mb-1">Yours</p>
               <div
-                className="w-full h-32 rounded-lg border-4 border-slate-600"
+                className="w-full h-16 rounded-lg border-2 border-slate-600"
                 style={{ backgroundColor: `rgb(${userColor.r}, ${userColor.g}, ${userColor.b})` }}
               />
             </div>
           </div>
 
-          <div className="mb-6">
+          <div className="mb-4">
             <ColorPicker color={userColor} onChange={setUserColor} />
           </div>
 
           <button
             onClick={submitColor}
-            className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-6 rounded-lg transition"
+            disabled={submitting}
+            className="w-full bg-green-600 hover:bg-green-500 disabled:bg-green-600/50 text-white font-bold py-3 px-6 rounded-lg transition flex items-center justify-center gap-2"
           >
-            Submit Color
+            {submitting ? (
+              <>
+                <Spinner size="sm" />
+                Sending...
+              </>
+            ) : currentRound + 1 >= (spec?.targetColors.length ?? 0) ? (
+              'Submit Final Color'
+            ) : (
+              `Submit & Next (${currentRound + 1}/${spec?.targetColors.length})`
+            )}
           </button>
         </div>
       )}
 
       {phase === 'checking' && (
         <div className="text-center py-12">
-          <div className="animate-spin w-12 h-12 border-4 border-yellow-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <div className="mx-auto mb-4"><Spinner /></div>
           <p className="text-slate-300">Calculating accuracy...</p>
         </div>
       )}

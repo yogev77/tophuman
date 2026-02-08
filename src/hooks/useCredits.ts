@@ -127,7 +127,7 @@ export function useCredits() {
     totalClaimed: number
     newBalance: number
     primaryType: 'prize' | 'rebate' | 'referral' | 'daily'
-    claimed: { type: string; amount: number }[]
+    claimed: { type: string; amount: number; gameTypeId?: string }[]
   } | null> => {
     try {
       const res = await fetch('/api/credits/claim-winnings', { method: 'POST' })

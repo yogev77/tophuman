@@ -6,6 +6,7 @@ import { ParkingSquare } from 'lucide-react'
 import { formatTime } from '@/lib/utils'
 import { useTheme } from '@/hooks/useTheme'
 import { ShareScore } from './ShareScore'
+import { Spinner } from '@/components/Spinner'
 import { CC } from '@/lib/currency'
 
 type GamePhase = 'idle' | 'loading' | 'play' | 'round_complete' | 'checking' | 'completed' | 'failed'
@@ -462,7 +463,6 @@ export function GridlockGame({ onGameComplete }: GridlockGameProps) {
       <div className="mb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h2 className={`text-xl font-bold ${light ? 'text-slate-900' : 'text-white'}`}>Gridlock</h2>
             {(phase === 'play' || phase === 'round_complete') && spec && (
               <div className="flex gap-1.5">
                 {spec.rounds.map((_, i) => (
@@ -511,7 +511,7 @@ export function GridlockGame({ onGameComplete }: GridlockGameProps) {
 
       {phase === 'loading' && (
         <div className="text-center py-12">
-          <div className="animate-spin w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <div className="mx-auto mb-4"><Spinner /></div>
           <p className={light ? 'text-slate-600' : 'text-slate-300'}>Building puzzles...</p>
         </div>
       )}
@@ -634,7 +634,7 @@ export function GridlockGame({ onGameComplete }: GridlockGameProps) {
 
       {phase === 'checking' && (
         <div className="text-center py-12">
-          <div className="animate-spin w-12 h-12 border-4 border-yellow-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <div className="mx-auto mb-4"><Spinner /></div>
           <p className={light ? 'text-slate-600' : 'text-slate-300'}>Calculating score...</p>
         </div>
       )}

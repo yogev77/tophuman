@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { ScanEye } from 'lucide-react'
 import { formatTime } from '@/lib/utils'
 import { ShareScore } from './ShareScore'
+import { Spinner } from '@/components/Spinner'
 import { CC } from '@/lib/currency'
 
 type GamePhase = 'idle' | 'loading' | 'play' | 'checking' | 'completed' | 'failed'
@@ -255,7 +256,7 @@ export function VisualDiffGame({ onGameComplete }: VisualDiffGameProps) {
 
       {phase === 'loading' && (
         <div className="text-center py-12">
-          <div className="animate-spin w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <div className="mx-auto mb-4"><Spinner /></div>
           <p className="text-slate-300">Generating images...</p>
         </div>
       )}
@@ -301,7 +302,7 @@ export function VisualDiffGame({ onGameComplete }: VisualDiffGameProps) {
 
       {phase === 'checking' && (
         <div className="text-center py-12">
-          <div className="animate-spin w-12 h-12 border-4 border-yellow-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <div className="mx-auto mb-4"><Spinner /></div>
           <p className="text-slate-300">Checking your answers...</p>
         </div>
       )}

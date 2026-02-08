@@ -136,7 +136,7 @@ export function Header() {
                           )}
 
                           <Link
-                            href="/credits"
+                            href={profileUsername ? `/player/${profileUsername}?tab=history` : '/credits'}
                             onClick={() => setShowCreditsMenu(false)}
                             className="w-full px-4 py-3 flex items-center gap-3 hover:bg-slate-700 transition text-left"
                           >
@@ -177,7 +177,7 @@ export function Header() {
                   <div className="flex items-center gap-3">
                     <Link
                       href={profileUsername ? `/player/${profileUsername}` : '/profile'}
-                      className="text-slate-400 hover:text-white text-sm transition"
+                      className="tap-highlight text-slate-400 hover:text-white text-sm transition"
                     >
                       <span className="sm:hidden w-9 h-9 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-white font-semibold text-sm">
                         {userName[0].toUpperCase()}
@@ -186,7 +186,7 @@ export function Header() {
                     </Link>
                     <button
                       onClick={toggleTheme}
-                      className="hidden sm:block p-2 rounded-lg bg-slate-800 hover:bg-slate-700 transition"
+                      className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 transition"
                       aria-label="Toggle theme"
                     >
                       {theme === 'dark' ? (

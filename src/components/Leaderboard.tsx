@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Crown } from 'lucide-react'
 import { formatCredits, formatTime } from '@/lib/utils'
 import Link from 'next/link'
@@ -23,41 +23,89 @@ interface PoolInfo {
   status: string
 }
 
+interface CachedData {
+  entries: LeaderboardEntry[]
+  pool: PoolInfo | null
+}
+
 interface LeaderboardProps {
   gameType: string
   gameTypeName: string
 }
 
 export function Leaderboard({ gameType, gameTypeName }: LeaderboardProps) {
+  const [period, setPeriod] = useState<'today' | 'alltime'>('today')
+  const [initialLoading, setInitialLoading] = useState(true)
+  const cache = useRef<Record<string, CachedData>>({})
+
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [pool, setPool] = useState<PoolInfo | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [period, setPeriod] = useState<'today' | 'alltime'>('today')
 
-  const fetchLeaderboard = useCallback(async () => {
+  const fetchPeriod = useCallback(async (p: 'today' | 'alltime') => {
     try {
-      const res = await fetch(`/api/leaderboard?gameType=${gameType}&period=${period}`)
+      const res = await fetch(`/api/leaderboard?gameType=${gameType}&period=${p}`)
       if (res.ok) {
         const data = await res.json()
-        setEntries(data.entries)
-        setPool(data.pool)
+        cache.current[p] = { entries: data.entries, pool: data.pool }
+        return { entries: data.entries, pool: data.pool }
       }
     } catch (err) {
       console.error('Leaderboard error:', err)
-    } finally {
-      setLoading(false)
     }
-  }, [gameType, period])
+    return null
+  }, [gameType])
 
+  // Initial load: fetch both periods
   useEffect(() => {
-    setLoading(true)
-    fetchLeaderboard()
-    const interval = setInterval(fetchLeaderboard, 10000) // Refresh every 10s
+    let cancelled = false
+    const init = async () => {
+      const [todayData, alltimeData] = await Promise.all([
+        fetchPeriod('today'),
+        fetchPeriod('alltime'),
+      ])
+      if (cancelled) return
+      const current = period === 'today' ? todayData : alltimeData
+      if (current) {
+        setEntries(current.entries)
+        setPool(current.pool)
+      }
+      setInitialLoading(false)
+    }
+    init()
+    return () => { cancelled = true }
+  }, [fetchPeriod]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Periodic refresh of current tab
+  useEffect(() => {
+    const refresh = async () => {
+      const data = await fetchPeriod(period)
+      if (data) {
+        setEntries(data.entries)
+        setPool(data.pool)
+      }
+    }
+    const interval = setInterval(refresh, 10000)
     return () => clearInterval(interval)
-  }, [fetchLeaderboard])
+  }, [fetchPeriod, period])
 
-  if (loading) {
+  // Switch tab: use cache instantly, then refresh in background
+  const handlePeriodChange = (p: 'today' | 'alltime') => {
+    setPeriod(p)
+    const cached = cache.current[p]
+    if (cached) {
+      setEntries(cached.entries)
+      setPool(cached.pool)
+    }
+    // Background refresh
+    fetchPeriod(p).then(data => {
+      if (data) {
+        setEntries(data.entries)
+        setPool(data.pool)
+      }
+    })
+  }
+
+  if (initialLoading) {
     return (
       <div className="bg-slate-800 rounded-xl p-4 sm:p-6">
         <div className="animate-pulse">
@@ -81,7 +129,7 @@ export function Leaderboard({ gameType, gameTypeName }: LeaderboardProps) {
       {/* Period Tabs */}
       <div className="flex gap-1 mb-4 bg-slate-900/50 rounded-xl p-1 w-fit">
         <button
-          onClick={() => setPeriod('today')}
+          onClick={() => handlePeriodChange('today')}
           className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition ${
             period === 'today'
               ? 'bg-slate-700 text-white'
@@ -91,7 +139,7 @@ export function Leaderboard({ gameType, gameTypeName }: LeaderboardProps) {
           Today
         </button>
         <button
-          onClick={() => setPeriod('alltime')}
+          onClick={() => handlePeriodChange('alltime')}
           className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition ${
             period === 'alltime'
               ? 'bg-slate-700 text-white'
@@ -122,12 +170,6 @@ export function Leaderboard({ gameType, gameTypeName }: LeaderboardProps) {
             </div>
             <div className="text-[10px] text-slate-500">Turns</div>
           </div>
-        </div>
-      )}
-
-      {period === 'today' && (
-        <div className="text-xs text-slate-400 mb-3 p-2 bg-slate-700/30 rounded">
-          <strong>Prizes:</strong> 50% to winner, 30% rebates, 20% sink
         </div>
       )}
 
@@ -169,7 +211,7 @@ export function Leaderboard({ gameType, gameTypeName }: LeaderboardProps) {
                 <div>
                   <div className="font-medium text-white text-sm flex items-center gap-1.5">
                     {entry.username ? (
-                      <Link href={`/player/${entry.username}`} className="hover:text-yellow-400 transition">
+                      <Link href={`/player/${entry.username}`} className="tap-highlight hover:text-yellow-400 transition">
                         {entry.displayName}
                       </Link>
                     ) : (

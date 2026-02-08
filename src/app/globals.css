@@ -22,13 +22,20 @@
   font-family: var(--font-title), serif;
 }
 
+html, body {
+  overflow-x: clip;
+  overscroll-behavior-x: none;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  touch-action: pan-y;
+  -webkit-text-size-adjust: 100%;
 }
 
-/* Pointer cursor for interactive elements */
+/* Pointer cursor and no text selection for interactive elements */
 button,
 a,
 [role="button"],
@@ -36,6 +43,11 @@ input[type="submit"],
 input[type="button"],
 .cursor-pointer {
   cursor: pointer;
+}
+
+button {
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 /* Light mode overrides */
@@ -80,6 +92,10 @@ html.light .border-slate-700\/50 {
   border-color: rgb(226 232 240 / 0.8);
 }
 
+html.light .divide-slate-700 > :not(:first-child) {
+  border-color: #f1f5f9;
+}
+
 html.light .border-slate-600 {
   border-color: #64748b;
 }
@@ -120,6 +136,14 @@ html.light .bg-slate-900\/50 {
   background-color: rgb(241 245 249 / 0.7);
 }
 
+html.light .bg-slate-900\/95 {
+  background-color: rgb(241 245 249 / 0.95);
+}
+
+html.light .text-green-400 {
+  color: #16a34a; /* green-600 — vibrant but readable on white */
+}
+
 /* Ticker animation */
 @keyframes ticker {
   0% {
@@ -131,7 +155,7 @@ html.light .bg-slate-900\/50 {
 }
 
 .animate-ticker {
-  animation: ticker 60s linear infinite;
+  animation: ticker 80s linear infinite;
 }
 
 .animate-ticker:hover,
@@ -172,6 +196,25 @@ html.light .bg-slate-900\/50 {
 
 .animate-pulse-subtle {
   animation: pulse-subtle 2.5s ease-in-out infinite;
+}
+
+/* Tap/press feedback — buttons shrink on press */
+button:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+/* Tap/press feedback — text links get a soft highlight */
+.tap-highlight {
+  transition: background-color 0.15s;
+  border-radius: 0.25rem;
+  padding: 0.125rem 0.375rem;
+  margin: -0.125rem -0.375rem;
+}
+.tap-highlight:active {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+html.light .tap-highlight:active {
+  background-color: rgba(0, 0, 0, 0.08);
 }
 
 /* Sonner toast light mode */

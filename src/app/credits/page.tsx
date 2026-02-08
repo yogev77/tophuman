@@ -31,7 +31,7 @@ const EVENT_TYPE_CONFIG: Record<string, { label: string; icon: typeof Gift; colo
   daily_grant:      { label: 'Daily Credits',    icon: Gift,      colorClass: 'text-green-400' },
   turn_spend:       { label: 'Game Played',      icon: Crosshair, colorClass: 'text-red-400' },
   prize_win:        { label: 'Prize Won',        icon: Trophy,    colorClass: 'text-green-400' },
-  rebate:           { label: 'Rebate',           icon: RotateCw,  colorClass: 'text-green-400' },
+  rebate:           { label: 'Credit Back',       icon: RotateCw,  colorClass: 'text-green-400' },
   referral_bonus:   { label: 'Referral Bonus',   icon: Users,     colorClass: 'text-green-400' },
   admin_grant:      { label: 'Admin Grant',      icon: Shield,    colorClass: 'text-green-400' },
   admin_adjustment: { label: 'Adjustment',       icon: Shield,    colorClass: 'text-green-400' },
@@ -59,8 +59,27 @@ function formatDate(dateStr: string) {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
+const GAME_NAMES: Record<string, string> = {
+  emoji_keypad_sequence: 'Emoji Sequence',
+  image_rotate: 'Image Puzzle',
+  reaction_time: 'Reaction Time',
+  whack_a_mole: 'Whack-a-Mole',
+  typing_speed: 'Typing Speed',
+  mental_math: 'Mental Math',
+  color_match: 'Color Match',
+  visual_diff: 'Spot Difference',
+  audio_pattern: 'Audio Pattern',
+  drag_sort: 'Drag & Sort',
+  follow_me: 'Follow Me',
+  duck_shoot: 'Target Shoot',
+  memory_cards: 'Memory Cards',
+  number_chain: 'Number Chain',
+  gridlock: 'Gridlock',
+}
+
 interface GroupedEntry {
   event_type: string
+  gameTypeId?: string
   totalAmount: number
   count: number
 }
@@ -78,13 +97,17 @@ function groupEntriesByDay(entries: LedgerEntry[]): DayGroup[] {
       dayMap.set(entry.utc_day, new Map())
     }
     const typeMap = dayMap.get(entry.utc_day)!
-    const existing = typeMap.get(entry.event_type)
+    const gameTypeId = (entry.metadata as Record<string, unknown>)?.game_type_id as string | undefined
+    // Group by event_type + gameTypeId so each game appears separately
+    const groupKey = gameTypeId ? `${entry.event_type}:${gameTypeId}` : entry.event_type
+    const existing = typeMap.get(groupKey)
     if (existing) {
       existing.totalAmount += entry.amount
       existing.count += 1
     } else {
-      typeMap.set(entry.event_type, {
+      typeMap.set(groupKey, {
         event_type: entry.event_type,
+        gameTypeId,
         totalAmount: entry.amount,
         count: 1,
       })
@@ -179,19 +202,20 @@ export default function CreditsPage() {
                   {formatDate(day.utc_day)}
                 </div>
                 <div className="bg-slate-800 rounded-xl overflow-hidden divide-y divide-slate-700">
-                  {day.entries.map((grouped) => {
+                  {day.entries.map((grouped, idx) => {
                     const config = getEventConfig(grouped.event_type, grouped.totalAmount)
                     const Icon = config.icon
                     const isPositive = grouped.totalAmount >= 0
+                    const gameName = grouped.gameTypeId ? GAME_NAMES[grouped.gameTypeId] : null
 
                     return (
-                      <div key={grouped.event_type} className="px-4 py-3 flex items-center gap-3">
+                      <div key={`${grouped.event_type}-${grouped.gameTypeId || idx}`} className="px-4 py-3 flex items-center gap-3">
                         <div className={`p-2 rounded-lg bg-slate-700/50 ${config.colorClass}`}>
                           <Icon className="w-4 h-4" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="text-sm text-white font-medium">
-                            {config.label}{grouped.count > 1 ? ` x${grouped.count}` : ''}
+                            {config.label}{gameName ? ` · ${gameName}` : ''}{grouped.count > 1 ? ` x${grouped.count}` : ''}
                           </div>
                         </div>
                         <div className={`text-sm font-semibold tabular-nums ${isPositive ? 'text-green-400' : 'text-red-400'}`}>

@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { Suspense, useState, useEffect, useCallback } from 'react'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import {
   Target,
@@ -29,6 +29,13 @@ import {
   Check,
   X,
   Loader2,
+  History,
+  Gift,
+  Crosshair as CrosshairIcon,
+  RotateCw as RotateCwIcon,
+  Users,
+  Shield,
+  Clock,
 } from 'lucide-react'
 import { CC } from '@/lib/currency'
 import { useCreditsNotification } from '@/components/CreditsNotificationProvider'
@@ -85,7 +92,13 @@ interface PlayerData {
   games: GameStats[]
 }
 
-type PageTab = 'profile' | 'settings'
+type PageTab = 'profile' | 'settings' | 'history'
+
+function formatCompactScore(n: number): string {
+  if (n >= 10000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K'
+  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K'
+  return n.toLocaleString()
+}
 
 function RankBadge({ rank }: { rank: number }) {
   if (rank === 1) {
@@ -138,10 +151,10 @@ function ProfileTab({ data }: { data: PlayerData }) {
           <thead>
             <tr className="border-b border-slate-700">
               <th className="text-left text-sm text-slate-400 font-medium px-4 py-3">Game</th>
-              <th className="text-right text-sm text-slate-400 font-medium px-4 py-3">Score</th>
-              <th className="text-right text-sm text-slate-400 font-medium px-4 py-3">Rank</th>
+              <th className="text-right text-sm text-slate-400 font-medium px-2 py-3">Score</th>
+              <th className="text-right text-sm text-slate-400 font-medium px-2 py-3">Rank</th>
               {mode === 'today' && (
-                <th className="text-right text-sm text-yellow-500 font-medium px-4 py-3"><CC />Pool</th>
+                <th className="text-right text-sm text-yellow-500 font-medium px-4 py-3 whitespace-nowrap"><CC />Pool</th>
               )}
             </tr>
           </thead>
@@ -162,10 +175,10 @@ function ProfileTab({ data }: { data: PlayerData }) {
                       <span className="text-white text-sm font-medium">{game.gameName}</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-right">
-                    <span className="text-green-400 font-bold text-sm">{stats.score.toLocaleString()}</span>
+                  <td className="px-2 py-3 text-right">
+                    <span className="text-green-400 font-bold text-sm">{formatCompactScore(stats.score)}</span>
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-2 py-3 text-right">
                     <RankBadge rank={stats.rank} />
                   </td>
                   {mode === 'today' && 'poolSize' in stats && (
@@ -526,6 +539,11 @@ function SettingsTab() {
         {saving ? 'Saving...' : 'Save Changes'}
       </button>
 
+      <div className="flex items-center justify-between">
+        <label className="text-sm text-slate-400">Theme</label>
+        <ThemeToggle />
+      </div>
+
       <button
         onClick={handleSignOut}
         className="w-full border-2 border-slate-600 hover:border-slate-500 text-slate-400 hover:text-white font-bold py-3 rounded-lg transition"
@@ -536,13 +554,212 @@ function SettingsTab() {
   )
 }
 
-export default function PlayerProfilePage() {
+// Credit History Tab
+const HISTORY_EVENT_CONFIG: Record<string, { label: string; icon: typeof Gift; colorClass: string }> = {
+  daily_grant:      { label: 'Daily Credits',    icon: Gift,         colorClass: 'text-green-400' },
+  turn_spend:       { label: 'Game Played',      icon: CrosshairIcon, colorClass: 'text-red-400' },
+  prize_win:        { label: 'Prize Won',        icon: Trophy,       colorClass: 'text-green-400' },
+  rebate:           { label: 'Credit Back',      icon: RotateCwIcon, colorClass: 'text-green-400' },
+  referral_bonus:   { label: 'Referral Bonus',   icon: Users,        colorClass: 'text-green-400' },
+  admin_grant:      { label: 'Admin Grant',      icon: Shield,       colorClass: 'text-green-400' },
+  admin_adjustment: { label: 'Adjustment',       icon: Shield,       colorClass: 'text-green-400' },
+  expiration:       { label: 'Expired',          icon: Clock,        colorClass: 'text-red-400' },
+}
+
+const HISTORY_GAME_NAMES: Record<string, string> = {
+  emoji_keypad_sequence: 'Emoji Sequence',
+  image_rotate: 'Image Puzzle',
+  reaction_time: 'Reaction Time',
+  whack_a_mole: 'Whack-a-Mole',
+  typing_speed: 'Typing Speed',
+  mental_math: 'Mental Math',
+  color_match: 'Color Match',
+  visual_diff: 'Spot Difference',
+  audio_pattern: 'Audio Pattern',
+  drag_sort: 'Drag & Sort',
+  follow_me: 'Follow Me',
+  duck_shoot: 'Target Shoot',
+  memory_cards: 'Memory Cards',
+  number_chain: 'Number Chain',
+  gridlock: 'Gridlock',
+}
+
+interface LedgerEntry {
+  id: number
+  event_type: string
+  amount: number
+  utc_day: string
+  reference_id: string | null
+  reference_type: string | null
+  metadata: Record<string, unknown> | null
+  created_at: string
+}
+
+interface HistoryGroupedEntry {
+  event_type: string
+  gameTypeId?: string
+  totalAmount: number
+  count: number
+}
+
+function getHistoryEventConfig(eventType: string, amount: number) {
+  const config = HISTORY_EVENT_CONFIG[eventType]
+  if (config) {
+    if (eventType === 'admin_adjustment') {
+      return { ...config, colorClass: amount >= 0 ? 'text-green-400' : 'text-red-400' }
+    }
+    return config
+  }
+  return { label: eventType, icon: Clock, colorClass: amount >= 0 ? 'text-green-400' : 'text-red-400' }
+}
+
+function groupHistoryEntries(entries: LedgerEntry[]): { utc_day: string; entries: HistoryGroupedEntry[] }[] {
+  const dayMap = new Map<string, Map<string, HistoryGroupedEntry>>()
+  for (const entry of entries) {
+    if (!dayMap.has(entry.utc_day)) dayMap.set(entry.utc_day, new Map())
+    const typeMap = dayMap.get(entry.utc_day)!
+    const gameTypeId = (entry.metadata as Record<string, unknown>)?.game_type_id as string | undefined
+    const groupKey = gameTypeId ? `${entry.event_type}:${gameTypeId}` : entry.event_type
+    const existing = typeMap.get(groupKey)
+    if (existing) {
+      existing.totalAmount += entry.amount
+      existing.count += 1
+    } else {
+      typeMap.set(groupKey, { event_type: entry.event_type, gameTypeId, totalAmount: entry.amount, count: 1 })
+    }
+  }
+  const days: { utc_day: string; entries: HistoryGroupedEntry[] }[] = []
+  for (const [utc_day, typeMap] of dayMap) {
+    days.push({ utc_day, entries: Array.from(typeMap.values()) })
+  }
+  return days
+}
+
+function formatHistoryDate(dateStr: string) {
+  const date = new Date(dateStr + 'T00:00:00')
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+const HISTORY_PAGE_SIZE = 50
+
+function HistoryTab() {
+  const [entries, setEntries] = useState<LedgerEntry[]>([])
+  const [total, setTotal] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchHistory = useCallback(async (offset: number, append: boolean) => {
+    try {
+      const res = await fetch(`/api/credits/history?limit=${HISTORY_PAGE_SIZE}&offset=${offset}`)
+      if (!res.ok) {
+        if (res.status === 401) { setError('Please sign in to view credit history.'); return }
+        throw new Error('Failed to fetch history')
+      }
+      const data = await res.json()
+      setEntries(prev => append ? [...prev, ...data.entries] : data.entries)
+      setTotal(data.total)
+    } catch {
+      setError('Failed to load credit history.')
+    }
+  }, [])
+
+  useEffect(() => {
+    setLoading(true)
+    fetchHistory(0, false).finally(() => setLoading(false))
+  }, [fetchHistory])
+
+  const handleLoadMore = async () => {
+    setLoadingMore(true)
+    await fetchHistory(entries.length, true)
+    setLoadingMore(false)
+  }
+
+  const hasMore = entries.length < total
+
+  if (loading) {
+    return (
+      <div className="bg-slate-800 rounded-xl p-8 flex items-center justify-center">
+        <Loader2 className="w-6 h-6 text-slate-400 animate-spin" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return <div className="bg-slate-800 rounded-xl p-6 text-center text-slate-400">{error}</div>
+  }
+
+  if (entries.length === 0) {
+    return <div className="bg-slate-800 rounded-xl p-8 text-center text-slate-400">No transactions yet.</div>
+  }
+
+  return (
+    <>
+      <div className="space-y-4">
+        {groupHistoryEntries(entries).map((day) => (
+          <div key={day.utc_day}>
+            <div className="text-xs text-slate-400 font-medium mb-2 px-1">
+              {formatHistoryDate(day.utc_day)}
+            </div>
+            <div className="bg-slate-800 rounded-xl overflow-hidden divide-y divide-slate-700">
+              {day.entries.map((grouped, idx) => {
+                const config = getHistoryEventConfig(grouped.event_type, grouped.totalAmount)
+                const Icon = config.icon
+                const isPositive = grouped.totalAmount >= 0
+                const gameName = grouped.gameTypeId ? HISTORY_GAME_NAMES[grouped.gameTypeId] : null
+
+                return (
+                  <div key={`${grouped.event_type}-${grouped.gameTypeId || idx}`} className="px-4 py-3 flex items-center gap-3">
+                    <div className={`p-2 rounded-lg bg-slate-700/50 ${config.colorClass}`}>
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm text-white font-medium">
+                        {config.label}{gameName ? ` · ${gameName}` : ''}{grouped.count > 1 ? ` x${grouped.count}` : ''}
+                      </div>
+                    </div>
+                    <div className={`text-sm font-semibold tabular-nums ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
+                      {isPositive ? '+' : ''}{grouped.totalAmount}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {hasMore && (
+        <button
+          onClick={handleLoadMore}
+          disabled={loadingMore}
+          className="w-full mt-4 border-2 border-slate-600 hover:border-slate-500 text-slate-400 hover:text-white font-semibold py-3 rounded-lg transition disabled:opacity-50"
+        >
+          {loadingMore ? (
+            <span className="flex items-center justify-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Loading...
+            </span>
+          ) : (
+            'Load more'
+          )}
+        </button>
+      )}
+    </>
+  )
+}
+
+function PlayerProfileContent() {
   const params = useParams()
+  const searchParams = useSearchParams()
   const username = params.username as string
   const [data, setData] = useState<PlayerData | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
-  const [activeTab, setActiveTab] = useState<PageTab>('profile')
+  const tabParam = searchParams.get('tab')
+  const [activeTab, setActiveTab] = useState<PageTab>(
+    tabParam === 'history' ? 'history' : tabParam === 'settings' ? 'settings' : 'profile'
+  )
   const { username: myUsername } = useCreditsNotification()
 
   const isOwnProfile = myUsername === username
@@ -619,10 +836,9 @@ export default function PlayerProfilePage() {
         </div>
       </div>
 
-      {/* Tab Navigation + Theme Toggle strip */}
+      {/* Tab Navigation */}
       {isOwnProfile && (
-        <div className="flex items-center justify-between bg-slate-800 rounded-xl p-1 mb-8">
-          <div className="flex gap-1">
+        <div className="flex gap-1 bg-slate-800 rounded-xl p-1 mb-8">
             <button
               onClick={() => setActiveTab('profile')}
               className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition ${
@@ -635,6 +851,17 @@ export default function PlayerProfilePage() {
               Profile
             </button>
             <button
+              onClick={() => setActiveTab('history')}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition ${
+                activeTab === 'history'
+                  ? 'bg-yellow-500 text-slate-900'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <History className="w-4 h-4" />
+              Credits
+            </button>
+            <button
               onClick={() => setActiveTab('settings')}
               className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition ${
                 activeTab === 'settings'
@@ -645,16 +872,36 @@ export default function PlayerProfilePage() {
               <Settings className="w-4 h-4" />
               Settings
             </button>
-          </div>
-          <ThemeToggle />
         </div>
       )}
 
       {/* Profile Tab Content */}
       {activeTab === 'profile' && <ProfileTab data={data} />}
 
+      {/* History Tab Content (own profile only) */}
+      {activeTab === 'history' && isOwnProfile && <HistoryTab />}
+
       {/* Settings Tab Content (own profile only) */}
       {activeTab === 'settings' && isOwnProfile && <SettingsTab />}
     </div>
+  )
+}
+
+export default function PlayerProfilePage() {
+  return (
+    <Suspense fallback={
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        <div className="animate-pulse">
+          <div className="h-8 bg-slate-700 rounded w-1/3 mb-8"></div>
+          <div className="space-y-3">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="h-14 bg-slate-700 rounded"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    }>
+      <PlayerProfileContent />
+    </Suspense>
   )
 }

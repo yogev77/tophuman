@@ -7,6 +7,25 @@ import { CC } from '@/lib/currency'
 interface ClaimedItem {
   type: string
   amount: number
+  gameTypeId?: string
+}
+
+const GAME_NAMES: Record<string, string> = {
+  emoji_keypad_sequence: 'Emoji Sequence',
+  image_rotate: 'Image Puzzle',
+  reaction_time: 'Reaction Time',
+  whack_a_mole: 'Whack-a-Mole',
+  typing_speed: 'Typing Speed',
+  mental_math: 'Mental Math',
+  color_match: 'Color Match',
+  visual_diff: 'Spot Difference',
+  audio_pattern: 'Audio Pattern',
+  drag_sort: 'Drag & Sort',
+  follow_me: 'Follow Me',
+  duck_shoot: 'Target Shoot',
+  memory_cards: 'Memory Cards',
+  number_chain: 'Number Chain',
+  gridlock: 'Gridlock',
 }
 
 interface ClaimSuccessModalProps {
@@ -68,7 +87,7 @@ export function ClaimSuccessModal({ isOpen, onClose, amount, newBalance, reason,
       case 'prize_win':
         return { label: '1st Place Prize', icon: <Trophy className="w-4 h-4 text-yellow-400" /> }
       case 'rebate':
-        return { label: 'Participation Rebate', icon: <Coins className="w-4 h-4 text-blue-400" /> }
+        return { label: 'Credit Back', icon: <Coins className="w-4 h-4 text-blue-400" /> }
       case 'daily_grant':
         return { label: 'Daily Claim', icon: <Gift className="w-4 h-4 text-green-400" /> }
       case 'referral_bonus':
@@ -135,11 +154,17 @@ export function ClaimSuccessModal({ isOpen, onClose, amount, newBalance, reason,
             <div className="space-y-2 mb-3">
               {claimedItems.map((item, index) => {
                 const { label, icon } = getItemLabel(item.type)
+                const gameName = item.gameTypeId ? GAME_NAMES[item.gameTypeId] : null
                 return (
                   <div key={index} className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2">
                       {icon}
-                      <span className="text-slate-300">{label}</span>
+                      <div>
+                        <span className="text-slate-300">{label}</span>
+                        {gameName && (
+                          <div className="text-xs text-slate-500">{gameName}</div>
+                        )}
+                      </div>
                     </div>
                     <span className="text-green-400 font-semibold">+{item.amount}</span>
                   </div>

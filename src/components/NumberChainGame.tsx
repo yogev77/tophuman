@@ -5,15 +5,20 @@ import Link from 'next/link'
 import { Hash, Check } from 'lucide-react'
 import { formatTime } from '@/lib/utils'
 import { ShareScore } from './ShareScore'
+import { Spinner } from '@/components/Spinner'
 import { CC } from '@/lib/currency'
 
 type GamePhase = 'idle' | 'loading' | 'play' | 'checking' | 'completed' | 'failed'
 
-interface TurnSpec {
+interface RoundSpec {
   grid: number[]
   chainStart: number
   chainLength: number
   direction: 'forward' | 'backward'
+}
+
+interface TurnSpec {
+  rounds: RoundSpec[]
   timeLimitMs: number
 }
 
@@ -33,6 +38,7 @@ export function NumberChainGame({ onGameComplete }: NumberChainGameProps) {
   const [phase, setPhase] = useState<GamePhase>('idle')
   const [turnToken, setTurnToken] = useState<string | null>(null)
   const [spec, setSpec] = useState<TurnSpec | null>(null)
+  const [currentRound, setCurrentRound] = useState(0)
   const [nextIndex, setNextIndex] = useState(0)
   const [tapped, setTapped] = useState<Set<number>>(new Set())
   const [flashRed, setFlashRed] = useState<number | null>(null)
@@ -44,15 +50,18 @@ export function NumberChainGame({ onGameComplete }: NumberChainGameProps) {
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const completeCalledRef = useRef(false)
 
-  // Build the expected sequence client-side from chainStart + direction + chainLength
+  const round = spec?.rounds[currentRound] ?? null
+  const totalRounds = spec?.rounds.length ?? 2
+
+  // Build the expected sequence for the current round
   const sequence = useMemo(() => {
-    if (!spec) return []
+    if (!round) return []
     const seq: number[] = []
-    for (let i = 0; i < spec.chainLength; i++) {
-      seq.push(spec.direction === 'forward' ? spec.chainStart + i : spec.chainStart - i)
+    for (let i = 0; i < round.chainLength; i++) {
+      seq.push(round.direction === 'forward' ? round.chainStart + i : round.chainStart - i)
     }
     return seq
-  }, [spec])
+  }, [round])
 
   const completeGame = useCallback(async (token?: string) => {
     const finalToken = token || turnToken
@@ -90,6 +99,7 @@ export function NumberChainGame({ onGameComplete }: NumberChainGameProps) {
     setPhase('loading')
     setError(null)
     setResult(null)
+    setCurrentRound(0)
     setNextIndex(0)
     setTapped(new Set())
     setFlashRed(null)
@@ -143,12 +153,12 @@ export function NumberChainGame({ onGameComplete }: NumberChainGameProps) {
   }, [completeGame])
 
   const handleTap = useCallback(async (number: number) => {
-    if (!turnToken || !spec || phase !== 'play') return
+    if (!turnToken || !round || phase !== 'play') return
 
     const expectedNumber = sequence[nextIndex]
 
     if (number === expectedNumber) {
-      const isComplete = nextIndex + 1 >= spec.chainLength
+      const isRoundComplete = nextIndex + 1 >= round.chainLength
 
       // Send tap event
       const tapPromise = fetch('/api/game/turn/event', {
@@ -165,9 +175,16 @@ export function NumberChainGame({ onGameComplete }: NumberChainGameProps) {
       // Update UI immediately
       setTapped(prev => new Set(prev).add(number))
 
-      if (isComplete) {
+      if (isRoundComplete) {
         await tapPromise
-        completeGame()
+        // Check if there are more rounds
+        if (currentRound + 1 < totalRounds) {
+          setCurrentRound(currentRound + 1)
+          setNextIndex(0)
+          setTapped(new Set())
+        } else {
+          completeGame()
+        }
       } else {
         setNextIndex(nextIndex + 1)
       }
@@ -188,7 +205,7 @@ export function NumberChainGame({ onGameComplete }: NumberChainGameProps) {
         }),
       })
     }
-  }, [turnToken, spec, phase, sequence, nextIndex, completeGame])
+  }, [turnToken, round, phase, sequence, nextIndex, currentRound, totalRounds, completeGame])
 
   useEffect(() => {
     return () => {
@@ -197,32 +214,51 @@ export function NumberChainGame({ onGameComplete }: NumberChainGameProps) {
   }, [])
 
   // Instruction text
-  const instructionArrow = spec?.direction === 'forward' ? '↑' : '↓'
+  const instructionArrow = round?.direction === 'forward' ? '↑' : '↓'
   const instructionLabel = useMemo(() => {
-    if (!spec) return ''
-    return spec.direction === 'forward'
-      ? `Count up from ${spec.chainStart}`
-      : `Count down from ${spec.chainStart}`
-  }, [spec])
+    if (!round) return ''
+    return round.direction === 'forward'
+      ? `Count up from ${round.chainStart}`
+      : `Count down from ${round.chainStart}`
+  }, [round])
 
   return (
     <div className="bg-slate-800 rounded-xl p-4 sm:p-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold text-white">Number Chain</h2>
-        {phase === 'play' && (
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-slate-400">{nextIndex}/{spec?.chainLength}</span>
-            <span className={`text-2xl font-mono ${timeLeft < 10000 ? 'text-red-400' : 'text-green-400'}`}>
-              {formatTime(timeLeft)}
-            </span>
-          </div>
+        {phase === 'play' && round && (
+          <>
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-slate-400">
+                Level {currentRound + 1}/{totalRounds} &middot; {nextIndex}/{round.chainLength}
+              </span>
+              <span className={`text-2xl font-mono ${timeLeft < 10000 ? 'text-red-400' : 'text-green-400'}`}>
+                {formatTime(timeLeft)}
+              </span>
+            </div>
+            <div className="flex gap-1.5">
+              {Array.from({ length: totalRounds }).map((_, i) => (
+                <div
+                  key={i}
+                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                    i < currentRound
+                      ? 'bg-green-500 text-white'
+                      : i === currentRound
+                      ? 'bg-yellow-500 text-slate-900'
+                      : 'bg-slate-600 text-slate-400'
+                  }`}
+                >
+                  {i + 1}
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
 
       {/* Instruction banner */}
-      {phase === 'play' && spec && (
+      {phase === 'play' && round && (
         <div className="text-center mb-4">
-          <span className={`text-lg font-bold ${spec?.direction === 'forward' ? 'text-green-400' : 'text-red-400'}`}>
+          <span className={`text-lg font-bold ${round.direction === 'forward' ? 'text-green-400' : 'text-red-400'}`}>
             {instructionArrow} {instructionLabel}
           </span>
         </div>
@@ -231,7 +267,7 @@ export function NumberChainGame({ onGameComplete }: NumberChainGameProps) {
       {phase === 'idle' && (
         <div className="text-center py-12">
           <p className="text-slate-300 mb-6">
-            Find and tap 10 numbers in order — count up or down through the grid as fast as you can!
+            Two levels — count up in one, count down in the other. Find and tap each number in order!
           </p>
           <button
             onClick={startGame}
@@ -244,24 +280,24 @@ export function NumberChainGame({ onGameComplete }: NumberChainGameProps) {
 
       {phase === 'loading' && (
         <div className="text-center py-12">
-          <div className="animate-spin w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <div className="mx-auto mb-4"><Spinner /></div>
           <p className="text-slate-300">Scattering numbers...</p>
         </div>
       )}
 
-      {phase === 'play' && spec && (
+      {phase === 'play' && round && (
         <div
           className="grid gap-2 max-w-sm mx-auto"
           style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}
         >
-          {spec.grid.map((num, cellIdx) => {
+          {round.grid.map((num, cellIdx) => {
             const isTapped = tapped.has(num)
             const isNext = num === sequence[nextIndex]
             const isFlashRed = flashRed === num
 
             return (
               <button
-                key={cellIdx}
+                key={`${currentRound}-${cellIdx}`}
                 onClick={() => handleTap(num)}
                 disabled={isTapped}
                 className={`aspect-square rounded-full flex items-center justify-center font-bold text-lg transition-all duration-150 ${
@@ -283,7 +319,7 @@ export function NumberChainGame({ onGameComplete }: NumberChainGameProps) {
 
       {phase === 'checking' && (
         <div className="text-center py-12">
-          <div className="animate-spin w-12 h-12 border-4 border-yellow-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <div className="mx-auto mb-4"><Spinner /></div>
           <p className="text-slate-300">Calculating score...</p>
         </div>
       )}
@@ -333,7 +369,7 @@ export function NumberChainGame({ onGameComplete }: NumberChainGameProps) {
           </h3>
           <p className="text-slate-300 mb-6">
             {result?.reason === 'incomplete'
-              ? `Tapped ${nextIndex} of ${spec?.chainLength ?? 10} numbers before time ran out.`
+              ? `Completed ${currentRound} of ${totalRounds} levels before time ran out.`
               : 'Better luck next time!'}
           </p>
           <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto">

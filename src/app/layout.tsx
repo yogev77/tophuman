@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Recursive } from 'next/font/google'
 import './globals.css'
 import { Header } from '@/components/Header'
@@ -13,6 +13,13 @@ const recursive = Recursive({
   weight: ['400', '700', '800', '900'],
 })
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+}
+
 export const metadata: Metadata = {
   title: 'Podium Arena',
   description: 'Every entry grows the prize pool. Rise to the top when the day closes and claim your share.',
@@ -22,11 +29,13 @@ export const metadata: Metadata = {
     description: 'New Champions. Every Day. Play skill games, top the leaderboard, and claim your share of the pool.',
     siteName: 'Podium Arena',
     type: 'website',
+    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: 'Podium Arena - Daily Skill Games' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Podium Arena',
     description: 'New Champions. Every Day. Play skill games, top the leaderboard, and claim your share of the pool.',
+    images: ['/opengraph-image'],
   },
 }
 

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
 import { Trophy } from 'lucide-react'
+import { Spinner } from '@/components/Spinner'
 
 function WelcomeContent() {
   const router = useRouter()
@@ -57,7 +58,7 @@ function WelcomeContent() {
         <h2 className="text-2xl font-bold text-white mb-4">Welcome to Podium Arena!</h2>
         <p className="text-slate-300 mb-4">Your email has been verified.</p>
         <div className="flex items-center justify-center gap-2 text-blue-400">
-          <div className="animate-spin w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full"></div>
+          <Spinner size="sm" />
           <span>{status}</span>
         </div>
       </div>
@@ -69,7 +70,7 @@ export default function WelcomePage() {
   return (
     <Suspense fallback={
       <div className="min-h-[80vh] flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
+        <Spinner size="md" />
       </div>
     }>
       <WelcomeContent />

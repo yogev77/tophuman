@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { Crosshair } from 'lucide-react'
 import { ShareScore } from './ShareScore'
+import { Spinner } from '@/components/Spinner'
 import { CC } from '@/lib/currency'
 
 type GamePhase = 'idle' | 'loading' | 'playing' | 'checking' | 'completed' | 'failed'
@@ -507,7 +508,7 @@ export function DuckShootGame({ onGameComplete }: DuckShootGameProps) {
 
       {phase === 'loading' && (
         <div className="text-center py-12">
-          <div className="animate-spin w-10 h-10 border-2 border-black border-t-transparent rounded-full mx-auto mb-4"></div>
+          <div className="mx-auto mb-4"><Spinner size="md" /></div>
           <p className="text-slate-400 text-sm">Loading...</p>
         </div>
       )}
@@ -543,7 +544,7 @@ export function DuckShootGame({ onGameComplete }: DuckShootGameProps) {
 
       {phase === 'checking' && (
         <div className="text-center py-12">
-          <div className="animate-spin w-10 h-10 border-2 border-black border-t-transparent rounded-full mx-auto mb-4"></div>
+          <div className="mx-auto mb-4"><Spinner size="md" /></div>
           <p className="text-slate-400 text-sm">Calculating...</p>
         </div>
       )}

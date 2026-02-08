@@ -144,7 +144,7 @@ async function settleDay(supabase: any, utcDay: string) {
   // Get winner (highest score in this cycle, unflagged only)
   let winnersQuery = supabase
     .from('game_turns')
-    .select('user_id, score, completed_at')
+    .select('user_id, score, completed_at, game_type_id')
     .eq('utc_day', utcDay)
     .eq('status', 'completed')
     .eq('flagged', false)
@@ -169,7 +169,7 @@ async function settleDay(supabase: any, utcDay: string) {
   // Get all participants except winner (this cycle only)
   let participantsQuery = supabase
     .from('game_turns')
-    .select('user_id')
+    .select('user_id, game_type_id')
     .eq('utc_day', utcDay)
     .eq('status', 'completed')
     .neq('user_id', winner.user_id)
@@ -182,10 +182,13 @@ async function settleDay(supabase: any, utcDay: string) {
 
   const { data: participants } = await participantsQuery
 
-  // Count turns per participant
+  // Count turns per participant (total and per game)
   const turnCounts: Record<string, number> = {}
+  const turnCountsByGame: Record<string, Record<string, number>> = {}
   for (const p of participants || []) {
     turnCounts[p.user_id] = (turnCounts[p.user_id] || 0) + 1
+    if (!turnCountsByGame[p.user_id]) turnCountsByGame[p.user_id] = {}
+    turnCountsByGame[p.user_id][p.game_type_id] = (turnCountsByGame[p.user_id][p.game_type_id] || 0) + 1
   }
 
   // Calculate distribution (total = number of turns in this cycle)
@@ -250,33 +253,73 @@ async function settleDay(supabase: any, utcDay: string) {
   }
 
   // Create pending claims (users must claim their winnings)
-  // Winner prize
+  // Winner prize — one claim per winning game
   const { error: winnerClaimError } = await supabase.from('pending_claims').insert({
     user_id: winner.user_id,
     claim_type: 'prize_win',
     amount: winnerAmount,
     settlement_id: settlement.id,
     utc_day: utcDay,
-    metadata: { rank: 1 },
+    metadata: { rank: 1, game_type_id: winner.game_type_id },
   })
 
   if (winnerClaimError) {
     console.error('Failed to create winner claim:', winnerClaimError)
   }
 
-  // Rebates
+  // Rebates — one claim per user-game pair
   for (const r of rebates) {
-    if (r.amount > 0) {
+    if (r.amount <= 0) continue
+    const userGames = turnCountsByGame[r.userId] || {}
+    const gameEntries = Object.entries(userGames)
+
+    if (gameEntries.length <= 1) {
+      // Single game — just use the full rebate amount
+      const gameId = gameEntries[0]?.[0] || 'unknown'
       const { error: rebateError } = await supabase.from('pending_claims').insert({
         user_id: r.userId,
         claim_type: 'rebate',
         amount: r.amount,
         settlement_id: settlement.id,
         utc_day: utcDay,
-        metadata: { turns: r.weight },
+        metadata: { turns: r.weight, game_type_id: gameId },
       })
       if (rebateError) {
         console.error('Failed to create rebate claim:', rebateError)
+      }
+    } else {
+      // Multiple games — split proportionally, remainder goes to game with most turns
+      const totalTurns = gameEntries.reduce((sum, [, count]) => sum + count, 0)
+      // Sort by turns descending so the first entry (most turns) gets rounding remainder
+      const sorted = [...gameEntries].sort((a, b) => b[1] - a[1])
+
+      // Compute amounts for all but the first (most-played) game
+      let distributed = 0
+      const gameAmounts: { gameId: string; amount: number; turns: number }[] = []
+      for (let i = 1; i < sorted.length; i++) {
+        const [gameId, gameTurns] = sorted[i]
+        const amount = Math.floor((r.amount * gameTurns) / totalTurns)
+        distributed += amount
+        if (amount > 0) gameAmounts.push({ gameId, amount, turns: gameTurns })
+      }
+      // First game gets the remainder
+      const remainderAmount = r.amount - distributed
+      if (remainderAmount > 0) {
+        gameAmounts.unshift({ gameId: sorted[0][0], amount: remainderAmount, turns: sorted[0][1] })
+      }
+
+      for (const ga of gameAmounts) {
+        const { error: rebateError } = await supabase.from('pending_claims').insert({
+          user_id: r.userId,
+          claim_type: 'rebate',
+          amount: ga.amount,
+          settlement_id: settlement.id,
+          utc_day: utcDay,
+          metadata: { turns: ga.turns, game_type_id: ga.gameId },
+        })
+        if (rebateError) {
+          console.error('Failed to create rebate claim:', rebateError)
+        }
       }
     }
   }

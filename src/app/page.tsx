@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useAuth } from '@/hooks/useAuth'
+import { useCreditsNotification } from '@/components/CreditsNotificationProvider'
+import { useTheme } from '@/hooks/useTheme'
 import Link from 'next/link'
 import {
   Target,
@@ -30,6 +32,8 @@ import {
   Gamepad2,
   Trophy,
   TrendingUp,
+  Sun,
+  Moon,
 } from 'lucide-react'
 import { C, CC } from '@/lib/currency'
 
@@ -168,12 +172,12 @@ function TopPlayersTicker({ games }: { games: GameInfo[] }) {
 
     return (
       <div key={game.id} className="flex items-center gap-2 px-4 whitespace-nowrap">
-        <div className={`p-1.5 rounded ${iconColors.bg}`}>
+        <Link href={`/game?type=${game.id}`} className={`p-1.5 rounded ${iconColors.bg} hover:opacity-80 transition`}>
           <Icon className={`w-4 h-4 ${iconColors.icon}`} />
-        </div>
+        </Link>
         <Crown className="w-3 h-3 text-yellow-400" />
         {game.todayStats.topPlayerUsername ? (
-          <Link href={`/player/${game.todayStats.topPlayerUsername}`} className="text-white font-medium hover:text-yellow-400 transition">
+          <Link href={`/player/${game.todayStats.topPlayerUsername}`} className="tap-highlight text-white font-medium hover:text-yellow-400 transition">
             {game.todayStats.topPlayerName}
           </Link>
         ) : (
@@ -251,7 +255,7 @@ function GameTile({ game, msUntilSettlement }: { game: GameInfo; msUntilSettleme
             {game.todayStats.topPlayerUsername ? (
               <Link
                 href={`/player/${game.todayStats.topPlayerUsername}`}
-                className="text-xs text-white font-medium truncate max-w-[120px] hover:text-yellow-400 transition"
+                className="tap-highlight text-xs text-white font-medium truncate max-w-[120px] hover:text-yellow-400 transition"
                 onClick={(e) => e.stopPropagation()}
               >
                 {game.todayStats.topPlayerName}
@@ -290,11 +294,16 @@ function GameTile({ game, msUntilSettlement }: { game: GameInfo; msUntilSettleme
 }
 
 export default function HomePage() {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
+  const { balance, displayName, username: profileUsername, loading: creditsLoading, isCounterAnimating, hasUnseenNotification } = useCreditsNotification()
+  const { theme, toggleTheme } = useTheme()
+  const userName = displayName || (user?.email ? user.email.split('@')[0] : '?')
   const [data, setData] = useState<GamesData | null>(null)
   const [loading, setLoading] = useState(true)
   const [timeLeft, setTimeLeft] = useState(0)
   const [showSharePopup, setShowSharePopup] = useState(false)
+  const [isSticky, setIsSticky] = useState(false)
+  const stickySentinelRef = useRef<HTMLDivElement>(null)
   const [copied, setCopied] = useState(false)
   const [topPlayersAllTime, setTopPlayersAllTime] = useState<TopPlayerEntry[]>([])
   const [topPlayersToday, setTopPlayersToday] = useState<TopPlayerEntry[]>([])
@@ -383,6 +392,18 @@ export default function HomePage() {
     return () => clearInterval(interval)
   }, [timeLeft])
 
+  // Detect when sticky bar becomes stuck (sentinel scrolls out of view)
+  useEffect(() => {
+    const sentinel = stickySentinelRef.current
+    if (!sentinel) return
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsSticky(!entry.isIntersecting),
+      { threshold: 0 }
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [])
+
   const playableGames = useMemo(() => {
     const arr = data?.games.filter(g => g.isPlayable) || []
     for (let i = arr.length - 1; i > 0; i--) {
@@ -451,31 +472,96 @@ export default function HomePage() {
       {/* Top Players Ticker */}
       {data && <TopPlayersTicker games={data.games} />}
 
+      {/* Sentinel for sticky detection */}
+      <div ref={stickySentinelRef} className="h-0" />
+
       {/* Sticky Site Tab Controller */}
-      <div className="sticky top-0 z-30 -mx-4 px-4 py-2 bg-slate-900/95 backdrop-blur-sm flex justify-center">
-        <div className="flex gap-1 bg-slate-800 rounded-xl p-1 w-full md:w-1/2">
-          <button
-            onClick={() => setSiteTab('games')}
-            className={`flex-1 flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition ${
-              siteTab === 'games'
-                ? 'bg-yellow-500 text-slate-900'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <Gamepad2 className="w-4 h-4" />
-            Games
-          </button>
-          <button
-            onClick={() => setSiteTab('topCharts')}
-            className={`flex-1 flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition ${
-              siteTab === 'topCharts'
-                ? 'bg-yellow-500 text-slate-900'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <Trophy className="w-4 h-4" />
-            Top Charts
-          </button>
+      <div className="sticky top-0 z-30 -mx-4 px-4 py-2 bg-slate-900/95 backdrop-blur-sm">
+        <div className="relative flex items-center justify-center">
+          {/* Logo - absolutely positioned left, visible when stuck */}
+          <Link href="/" className={`absolute left-0 hidden items-center gap-2 text-lg font-bold text-white font-title transition-opacity duration-200 ${isSticky ? 'xl:flex opacity-100' : 'xl:hidden opacity-0'}`}>
+            <Trophy className="w-5 h-5 text-yellow-400" />
+            Podium Arena
+          </Link>
+
+          {/* Tabs */}
+          <div className="flex gap-1 bg-slate-800 rounded-xl p-1 w-full md:w-1/2">
+            <button
+              onClick={() => setSiteTab('games')}
+              className={`flex-1 flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition ${
+                siteTab === 'games'
+                  ? 'bg-yellow-500 text-slate-900'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Gamepad2 className="w-4 h-4" />
+              Games
+            </button>
+            <button
+              onClick={() => setSiteTab('topCharts')}
+              className={`flex-1 flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition ${
+                siteTab === 'topCharts'
+                  ? 'bg-yellow-500 text-slate-900'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Trophy className="w-4 h-4" />
+              Top Charts
+            </button>
+          </div>
+
+          {/* Header elements - absolutely positioned right, visible when stuck */}
+          <div className={`absolute right-0 hidden items-center gap-3 transition-opacity duration-200 ${isSticky ? 'xl:flex opacity-100' : 'xl:hidden opacity-0'}`}>
+            {!authLoading && user ? (
+              <>
+                {!creditsLoading && (
+                  <span className={`relative text-yellow-400 font-semibold text-sm ${isCounterAnimating ? 'credit-counter-animate' : ''}`}>
+                    <CC />{balance} Credits
+                    {hasUnseenNotification && (
+                      <span className="absolute -top-1 -right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                    )}
+                  </span>
+                )}
+                <Link
+                  href={profileUsername ? `/player/${profileUsername}` : '/profile'}
+                  className="tap-highlight text-slate-400 hover:text-white text-sm transition"
+                >
+                  {userName}
+                </Link>
+                <button
+                  onClick={toggleTheme}
+                  className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 transition"
+                  aria-label="Toggle theme"
+                >
+                  {theme === 'dark' ? (
+                    <Sun className="w-5 h-5 text-yellow-400" />
+                  ) : (
+                    <Moon className="w-5 h-5 text-slate-600" />
+                  )}
+                </button>
+              </>
+            ) : !authLoading ? (
+              <>
+                <Link
+                  href="/auth/signup"
+                  className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 transition text-slate-400 hover:text-white text-sm font-medium"
+                >
+                  Connect
+                </Link>
+                <button
+                  onClick={toggleTheme}
+                  className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 transition"
+                  aria-label="Toggle theme"
+                >
+                  {theme === 'dark' ? (
+                    <Sun className="w-5 h-5 text-yellow-400" />
+                  ) : (
+                    <Moon className="w-5 h-5 text-slate-600" />
+                  )}
+                </button>
+              </>
+            ) : null}
+          </div>
         </div>
       </div>
 
@@ -589,16 +675,16 @@ export default function HomePage() {
                     return (
                       <tr key={entry.gameId} className={i < entries.length - 1 ? 'border-b border-slate-700/50' : ''}>
                         <td className="px-3 sm:px-4 py-3">
-                          <div className="flex items-center gap-2 sm:gap-3">
+                          <Link href={`/game?type=${entry.gameId}`} className="tap-highlight flex items-center gap-2 sm:gap-3 hover:opacity-80 transition">
                             <div className={`p-1.5 rounded-lg shrink-0 ${colors.bg}`}>
                               <Icon className={`w-4 h-4 ${colors.icon}`} />
                             </div>
-                            <span className="text-white text-sm font-medium leading-tight">{entry.gameName}</span>
-                          </div>
+                            <span className="text-white text-sm font-medium leading-tight hover:text-yellow-400 transition">{entry.gameName}</span>
+                          </Link>
                         </td>
                         <td className="px-3 sm:px-4 py-3">
                           {entry.playerUsername ? (
-                            <Link href={`/player/${entry.playerUsername}`} className="text-slate-500 text-sm hover:text-yellow-400 transition">
+                            <Link href={`/player/${entry.playerUsername}`} className="tap-highlight text-slate-500 text-sm hover:text-yellow-400 transition">
                               {entry.playerName}
                             </Link>
                           ) : (

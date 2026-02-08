@@ -45,6 +45,7 @@ import {
   Share2,
   Copy,
   Check,
+  RefreshCw,
 } from 'lucide-react'
 import { C, CC } from '@/lib/currency'
 
@@ -278,6 +279,8 @@ function GamePageContent() {
   const [poolSize, setPoolSize] = useState<number | null>(null)
   const [msUntilSettlement, setMsUntilSettlement] = useState(0)
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const gameContainerRef = useRef<HTMLDivElement>(null)
+  const [gameKey, setGameKey] = useState(0)
 
   const fetchPoolSize = useCallback(async () => {
     try {
@@ -306,6 +309,18 @@ function GamePageContent() {
   const handleGameComplete = () => {
     refreshBalance()
     fetchPoolSize()
+  }
+
+  // Auto-start game after restart (gameKey > 0 means it's a restart, not initial mount)
+  useEffect(() => {
+    if (gameKey > 0 && gameContainerRef.current) {
+      const btn = gameContainerRef.current.querySelector('button')
+      if (btn instanceof HTMLButtonElement) btn.click()
+    }
+  }, [gameKey])
+
+  const handleRestart = () => {
+    setGameKey(k => k + 1)
   }
 
   if (authLoading) {
@@ -379,10 +394,20 @@ function GamePageContent() {
           <div className={`p-3 ${iconColors.bg} rounded-xl`}>
             <GameIcon className={`w-10 h-10 ${iconColors.icon}`} />
           </div>
-          <div>
+          <div className="min-w-0">
             <h1 className="text-2xl font-bold text-white font-title">{config.name}</h1>
             <p className="text-slate-400 text-sm">{config.description}</p>
           </div>
+          {/* Restart button - hidden, will redesign later */}
+          {false && <button
+            onClick={handleRestart}
+            disabled={creditsLoading || (balance < 1 && !dailyGrantAvailable)}
+            className="ml-auto flex items-center gap-2.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-white font-bold py-2.5 px-4 rounded-lg transition shrink-0 text-base"
+            title="Restart game"
+          >
+            <RefreshCw className="w-5 h-5" />
+            {C}1
+          </button>}
         </div>
       </div>
 
@@ -391,18 +416,25 @@ function GamePageContent() {
           {!creditsLoading && balance < 1 && !dailyGrantAvailable ? (
             <OutOfCreditsView referralCode={referralCode} />
           ) : (balance >= 1 || dailyGrantAvailable) ? (
-            <GameComponent onGameComplete={handleGameComplete} />
+            <div ref={gameContainerRef}>
+              <GameComponent key={gameKey} onGameComplete={handleGameComplete} />
+            </div>
           ) : null}
           {poolSize !== null && poolSize > 0 && (
-            <div className="bg-slate-800 rounded-xl mt-3 py-4 px-6 flex items-center justify-between">
-              <p className="text-xl font-bold text-yellow-400 font-title">
-                Pool: {poolSize.toLocaleString()} <CC />Credits
-              </p>
-              <div className="text-right">
-                <div className="text-xs text-slate-400">Settlement in</div>
+            <div className="bg-slate-800 rounded-xl mt-3 py-4 px-6 flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-xl font-bold text-yellow-400 font-title">
+                  Pool: {poolSize.toLocaleString()} <CC />Credits
+                </p>
+                <div className="text-xs text-slate-400 mt-1">
+                  50% Winner &ndash; 30% Back &ndash; 20% Treasury
+                </div>
+              </div>
+              <div className="text-right shrink-0 pt-1.5">
                 <div className="text-sm font-mono text-yellow-400">
                   {formatCountdown(msUntilSettlement)}
                 </div>
+                <div className="text-xs text-slate-400">till settlement</div>
               </div>
             </div>
           )}

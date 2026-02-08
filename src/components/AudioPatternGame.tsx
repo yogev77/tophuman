@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { Music } from 'lucide-react'
 import { ShareScore } from './ShareScore'
+import { Spinner } from '@/components/Spinner'
 import { CC } from '@/lib/currency'
 
 type GamePhase = 'idle' | 'loading' | 'countdown' | 'listen' | 'play' | 'checking' | 'completed' | 'failed'
@@ -263,7 +264,6 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
   return (
     <div className="bg-slate-800 rounded-xl p-4 sm:p-6">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold text-white">Audio Pattern</h2>
         {(phase === 'play' || phase === 'listen') && spec && (
           <div className="flex items-center gap-4">
             <span className="text-slate-400">Level {currentLevel - 2}</span>
@@ -290,7 +290,7 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
 
       {phase === 'loading' && (
         <div className="text-center py-12">
-          <div className="animate-spin w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <div className="mx-auto mb-4"><Spinner /></div>
           <p className="text-slate-300">Preparing game...</p>
         </div>
       )}
@@ -356,7 +356,7 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
 
       {phase === 'checking' && (
         <div className="text-center py-12">
-          <div className="animate-spin w-12 h-12 border-4 border-yellow-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <div className="mx-auto mb-4"><Spinner /></div>
           <p className="text-slate-300">Checking pattern...</p>
         </div>
       )}

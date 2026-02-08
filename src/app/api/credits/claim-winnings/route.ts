@@ -56,15 +56,17 @@ export async function POST() {
     }
 
     // Process each claim
-    const claimedItems: { type: string; amount: number }[] = []
+    const claimedItems: { type: string; amount: number; gameTypeId?: string }[] = []
     const failedClaims: { type: string; amount: number; error: string }[] = []
     let totalClaimed = 0
     const today = new Date().toISOString().split('T')[0]
 
     for (const claim of pendingClaims) {
       const eventType = EVENT_TYPE_MAP[claim.claim_type] || claim.claim_type
+      const gameTypeId = (claim.metadata as Record<string, unknown>)?.game_type_id as string | undefined
 
-      // Insert ledger entry
+      // Insert ledger entry with game_type_id in metadata
+      const ledgerMetadata = gameTypeId ? { game_type_id: gameTypeId } : undefined
       const { data: ledgerEntry, error: ledgerError } = await supabase
         .from('credit_ledger')
         .insert({
@@ -74,6 +76,7 @@ export async function POST() {
           utc_day: today,
           reference_id: claim.settlement_id,
           reference_type: 'settlement',
+          ...(ledgerMetadata && { metadata: ledgerMetadata }),
         })
         .select('id')
         .single()
@@ -100,6 +103,7 @@ export async function POST() {
       claimedItems.push({
         type: claim.claim_type,
         amount: claim.amount,
+        ...(gameTypeId && { gameTypeId }),
       })
       totalClaimed += claim.amount
     }

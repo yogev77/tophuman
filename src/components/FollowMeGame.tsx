@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { Pencil } from 'lucide-react'
 import { ShareScore } from './ShareScore'
+import { Spinner } from '@/components/Spinner'
 import { CC } from '@/lib/currency'
 import { useTheme } from '@/hooks/useTheme'
 
@@ -62,7 +63,7 @@ export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
     if (!ctx) return
 
     // Clear canvas
-    ctx.fillStyle = '#1e293b' // slate-800
+    ctx.fillStyle = light ? '#ffffff' : '#1e293b'
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
     // Get the current round's path
@@ -119,7 +120,7 @@ export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
       }
       ctx.stroke()
     }
-  }, [spec, userPath, currentRound])
+  }, [spec, userPath, currentRound, light])
 
   useEffect(() => {
     drawCanvas()
@@ -350,7 +351,6 @@ export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
   return (
     <div className="bg-slate-800 rounded-xl p-4 sm:p-6">
       <div className="flex items-center justify-between mb-4 sm:mb-6">
-        <h2 className="text-xl font-bold text-white">Follow Me</h2>
         {(phase === 'ready' || phase === 'draw') && spec && (
           <span className={`text-2xl font-mono ${timeLeft < 10000 ? 'text-red-400' : 'text-green-400'}`}>
             {Math.ceil(timeLeft / 1000)}s
@@ -375,7 +375,7 @@ export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
 
       {phase === 'loading' && (
         <div className="text-center py-12">
-          <div className="animate-spin w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <div className="mx-auto mb-4"><Spinner /></div>
           <p className="text-slate-300">Generating path...</p>
         </div>
       )}
@@ -444,7 +444,7 @@ export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
 
       {phase === 'checking' && (
         <div className="text-center py-12">
-          <div className="animate-spin w-12 h-12 border-4 border-yellow-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <div className="mx-auto mb-4"><Spinner /></div>
           <p className="text-slate-300">Calculating accuracy...</p>
         </div>
       )}
