@@ -626,5 +626,42 @@ All 26 files that display the currency symbol import from this module. To change
 **Files modified:**
 - `src/app/player/[username]/page.tsx` — ThemeToggle component in header, removed from SettingsTab, yellow tab styles
 
+### Feb 8, 2026
+
+**Security Hardening v0.2 (see `/Users/yogevchelli/Desktop/podiumarena-security-audit.txt`):**
+
+All items from two full security audits addressed. Key changes:
+- **CSP updated**: Added `*.podiumarena.com` to `connect-src` for Supabase custom domain
+- **Hash chain soft check**: Event hash chain verification changed from hard 400 reject to soft flag in `fraud_signals` — concurrent drag events legitimately break the chain
+- All other security fixes detailed in MEMORY.md
+
+**Game improvements:**
+
+- **Emoji Keypad**: 2-level system (Level 1: 3 symbols, Level 2: 5 symbols). Flash one-by-one at 1400ms (was 700ms). Server validates 8 total taps (3+5) per round. `max_mistakes` increased to 2. Server time limit 90s (flash overhead); client shows 60s timer. `levels: number[]` field added to `TurnSpec`.
+- **Audio Pattern**: Server time limit increased from 30s to 120s (countdowns + listen phases were eating into it, causing 400 errors). Scoring still uses 30s reference. Each tone now gets distinct press/release animation with 100ms gap between tones (fixes same-button-repeated not animating).
+- **Visual Diff**: Auto-submits after 5th click (no manual submit needed)
+- **Typing Speed**: Replaced pangram bank with 20 natural sentences of consistent difficulty (~47-56 chars, common words)
+- **Follow Me**: Level dots moved from below canvas to top row (centered, with timer on left)
+- **Drag Sort**: Fixed — was getting 400 from hash chain (see above)
+
+**UI changes:**
+- Game page: `select-none` added to prevent text/emoji selection/copying
+- Home stats strip: removed mobile divider between Playing/Settlement
+- `scaleIn` CSS keyframe animation added to `globals.css` for emoji flash
+
+**Files modified:**
+- `next.config.ts` — CSP connect-src updated
+- `src/app/api/game/turn/complete/route.ts` — Hash chain soft check
+- `src/app/game/page.tsx` — select-none
+- `src/app/globals.css` — scaleIn animation
+- `src/app/page.tsx` — mobile divider hidden
+- `src/components/AudioPatternGame.tsx` — tone gap animation, time limit fix
+- `src/components/EmojiKeypadGame.tsx` — 2-level system, slow flash
+- `src/components/FollowMeGame.tsx` — level dots to top row
+- `src/components/VisualDiffGame.tsx` — auto-submit on 5th click
+- `src/lib/game/audio-pattern.ts` — time limit 120s, scoring ref 30s
+- `src/lib/game/emoji-keypad.ts` — levels system, validation, time limit 90s
+- `src/lib/game/typing-speed.ts` — new sentence bank
+
 ---
-*Last updated: Feb 7, 2026*
+*Last updated: Feb 8, 2026*

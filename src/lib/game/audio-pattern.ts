@@ -36,7 +36,7 @@ export interface AudioPatternResult {
 export const DEFAULT_AUDIO_PATTERN_CONFIG: AudioPatternConfig = {
   num_tones: 15, // Max sequence length (for progressive levels)
   num_buttons: 4,
-  time_limit_seconds: 30,
+  time_limit_seconds: 120, // generous for countdowns + listen phases; client timer is separate
   tone_duration_ms: 300,
 }
 
@@ -180,7 +180,7 @@ export function validateAudioPatternTurn(
   const partialTaps = Math.max(0, correctTaps - tapsInCompletedLevels)
   const baseScore = levelsCompleted * 2000 + partialTaps * 400
 
-  const maxTimeMs = spec.timeLimitMs
+  const maxTimeMs = 30000 // gameplay reference time (server timeLimitMs is higher to allow countdowns)
   const speed = Math.sqrt(maxTimeMs / Math.max(totalTimeMs, 2000))
   const score = Math.round(baseScore * speed)
 

@@ -82,16 +82,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to get events' }, { status: 500 })
     }
 
-    // Verify event hash chain integrity
+    // Verify event hash chain integrity (soft check — flag, don't reject)
+    // Concurrent events (e.g. rapid drag swaps) can break the chain legitimately
+    let hashChainBroken = false
     if (events && events.length > 0) {
       for (let i = 0; i < events.length; i++) {
         if (i === 0) {
           if (events[i].prev_hash !== null) {
-            return NextResponse.json({ error: 'Event integrity violation' }, { status: 400 })
+            hashChainBroken = true
+            break
           }
         } else {
           if (events[i].prev_hash !== events[i - 1].event_hash) {
-            return NextResponse.json({ error: 'Event integrity violation' }, { status: 400 })
+            hashChainBroken = true
+            break
           }
         }
       }
@@ -204,7 +208,7 @@ export async function POST(request: NextRequest) {
         completion_time_ms: result.completionTimeMs ?? null,
         penalties: penalties,
         flagged: result.flag ?? false,
-        fraud_signals: result.flag ? { reason: result.reason } : null,
+        fraud_signals: result.flag ? { reason: result.reason, hashChainBroken } : hashChainBroken ? { hashChainBroken } : null,
       })
       .eq('id', turn.id)
 

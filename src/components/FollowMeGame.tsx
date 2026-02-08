@@ -352,9 +352,30 @@ export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
     <div className="bg-slate-800 rounded-xl p-4 sm:p-6">
       <div className="flex items-center justify-between mb-4 sm:mb-6">
         {(phase === 'ready' || phase === 'draw') && spec && (
-          <span className={`text-2xl font-mono ${timeLeft < 10000 ? 'text-red-400' : 'text-green-400'}`}>
-            {Math.ceil(timeLeft / 1000)}s
-          </span>
+          <>
+            <span className={`text-2xl font-mono ${timeLeft < 10000 ? 'text-red-400' : 'text-green-400'}`}>
+              {Math.ceil(timeLeft / 1000)}s
+            </span>
+            <div className="flex gap-2">
+              {Array.from({ length: TOTAL_ROUNDS }).map((_, i) => (
+                <div
+                  key={i}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                    i + 1 < currentRound
+                      ? 'bg-green-500 text-white'
+                      : i + 1 === currentRound
+                      ? 'bg-yellow-500 text-slate-900'
+                      : light
+                      ? 'bg-slate-200 text-slate-500'
+                      : 'bg-slate-600 text-slate-400'
+                  }`}
+                >
+                  {i + 1}
+                </div>
+              ))}
+            </div>
+            <div className="w-[52px]" />
+          </>
         )}
       </div>
 
@@ -382,24 +403,6 @@ export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
 
       {(phase === 'ready' || phase === 'draw') && spec && (
         <div className="text-center">
-          <div className="flex justify-center gap-2 mb-3">
-            {Array.from({ length: TOTAL_ROUNDS }).map((_, i) => (
-              <div
-                key={i}
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                  i + 1 < currentRound
-                    ? 'bg-green-500 text-white'
-                    : i + 1 === currentRound
-                    ? 'bg-yellow-500 text-slate-900'
-                    : light
-                    ? 'bg-slate-200 text-slate-500'
-                    : 'bg-slate-600 text-slate-400'
-                }`}
-              >
-                {i + 1}
-              </div>
-            ))}
-          </div>
           <p className={`text-lg mb-4 ${phase === 'ready' ? 'text-yellow-400' : 'text-green-400'}`}>
             {phase === 'ready'
               ? `Line ${currentRound}/${TOTAL_ROUNDS}: Start from the green dot!`

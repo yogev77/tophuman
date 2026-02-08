@@ -154,8 +154,10 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
       setActiveButton(buttonIndex)
       playTone(gameSpec.frequencies[buttonIndex], gameSpec.toneDurationMs)
 
-      await new Promise(resolve => setTimeout(resolve, gameSpec.toneDurationMs + 150))
+      await new Promise(resolve => setTimeout(resolve, gameSpec.toneDurationMs + 50))
       setActiveButton(null)
+      // Gap between tones so repeated same-button presses animate individually
+      await new Promise(resolve => setTimeout(resolve, 100))
     }
     setPlayingIndex(-1)
   }

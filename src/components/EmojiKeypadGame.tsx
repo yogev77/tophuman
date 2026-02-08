@@ -17,6 +17,7 @@ interface TurnSpec {
   timeLimitMs: number
   penaltyMs: number
   maxMistakes: number
+  levels?: number[]
 }
 
 interface GameResult {
@@ -40,25 +41,55 @@ export function EmojiKeypadGame({ onGameComplete }: EmojiKeypadGameProps) {
   const [timeLeft, setTimeLeft] = useState(0)
   const [result, setResult] = useState<GameResult | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [memorizeTimeLeft, setMemorizeTimeLeft] = useState(3)
+  const [flashIndex, setFlashIndex] = useState(-1)
+  const [currentLevel, setCurrentLevel] = useState(0) // index into levels array
+  const [flashTotal, setFlashTotal] = useState(0) // how many symbols being flashed this level
 
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const memorizeTimerRef = useRef<NodeJS.Timeout | null>(null)
   const tapQueueRef = useRef<{ index: number; timestamp: number }[]>([])
   const processingQueueRef = useRef(false)
   const userInputRef = useRef<number[]>([])
+  const currentLevelRef = useRef(0)
+  const turnTokenRef = useRef<string | null>(null)
+  const specRef = useRef<TurnSpec | null>(null)
+
+  const getLevels = (s: TurnSpec): number[] => s.levels || [s.sequence.length]
+
+  const flashSequence = (gameSpec: TurnSpec, count: number): Promise<void> => {
+    return new Promise((resolve) => {
+      setPhase('memorize')
+      setFlashIndex(0)
+      setFlashTotal(count)
+
+      let idx = 0
+      memorizeTimerRef.current = setInterval(() => {
+        idx++
+        if (idx >= count) {
+          if (memorizeTimerRef.current) clearInterval(memorizeTimerRef.current)
+          setTimeout(() => {
+            setFlashIndex(-1)
+            resolve()
+          }, 600)
+        } else {
+          setFlashIndex(idx)
+        }
+      }, 1400)
+    })
+  }
 
   const startGame = useCallback(async () => {
     setPhase('loading')
     setError(null)
     setUserInput([])
     setResult(null)
+    setCurrentLevel(0)
+    currentLevelRef.current = 0
     tapQueueRef.current = []
     processingQueueRef.current = false
     userInputRef.current = []
 
     try {
-      // Create turn
       const createRes = await fetch('/api/game/turn/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -71,66 +102,48 @@ export function EmojiKeypadGame({ onGameComplete }: EmojiKeypadGameProps) {
       const turnData = await createRes.json()
 
       setTurnToken(turnData.turnToken)
+      turnTokenRef.current = turnData.turnToken
       setSpec(turnData.spec)
-      setTimeLeft(turnData.spec.timeLimitMs)
+      specRef.current = turnData.spec
 
-      // Show memorize phase
-      setPhase('memorize')
-      setMemorizeTimeLeft(3)
+      const levels = getLevels(turnData.spec)
 
-      // Start memorize countdown
-      let memorizeCount = 3
-      memorizeTimerRef.current = setInterval(() => {
-        memorizeCount--
-        setMemorizeTimeLeft(memorizeCount)
-        if (memorizeCount <= 0) {
-          if (memorizeTimerRef.current) clearInterval(memorizeTimerRef.current)
-          startPlayPhase(turnData.turnToken, turnData.spec.timeLimitMs)
-        }
-      }, 1000)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error')
-      setPhase('idle')
-    }
-  }, [])
+      // Flash level 1 symbols
+      await flashSequence(turnData.spec, levels[0])
 
-  const startPlayPhase = async (token: string, timeLimitMs: number) => {
-    try {
-      // Start turn on server
+      // Start turn on server (timer begins here)
       const startRes = await fetch('/api/game/turn/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ turnToken: token }),
+        body: JSON.stringify({ turnToken: turnData.turnToken }),
       })
 
       if (!startRes.ok) {
-        const data = await startRes.json()
-        throw new Error(data.error || 'Failed to start turn')
+        throw new Error('Failed to start turn')
       }
 
       setPhase('play')
 
-      // Start timer
+      // Start client timer (60s gameplay)
       const startTime = Date.now()
       timerRef.current = setInterval(() => {
         const elapsed = Date.now() - startTime
-        const remaining = timeLimitMs - elapsed
+        const remaining = 60000 - elapsed
         setTimeLeft(Math.max(0, remaining))
 
         if (remaining <= 0) {
           if (timerRef.current) clearInterval(timerRef.current)
-          handleTimeout(token)
+          handleTimeout(turnData.turnToken)
         }
       }, 100)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error')
       setPhase('idle')
     }
-  }
+  }, [])
 
-  // Process tap queue in background
   const processQueue = async () => {
-    if (processingQueueRef.current || !turnToken) return
+    if (processingQueueRef.current || !turnTokenRef.current) return
     processingQueueRef.current = true
 
     while (tapQueueRef.current.length > 0) {
@@ -142,7 +155,7 @@ export function EmojiKeypadGame({ onGameComplete }: EmojiKeypadGameProps) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            turnToken,
+            turnToken: turnTokenRef.current,
             eventType: 'tap',
             tapIndex: tap.index,
             clientTimestampMs: tap.timestamp,
@@ -156,36 +169,70 @@ export function EmojiKeypadGame({ onGameComplete }: EmojiKeypadGameProps) {
     processingQueueRef.current = false
   }
 
+  const advanceToNextLevel = async () => {
+    const gameSpec = specRef.current
+    if (!gameSpec) return
+
+    const levels = getLevels(gameSpec)
+    const nextLevel = currentLevelRef.current + 1
+
+    if (nextLevel >= levels.length) {
+      // All levels done
+      completeGame()
+      return
+    }
+
+    // Send level_complete event
+    await fetch('/api/game/turn/event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        turnToken: turnTokenRef.current,
+        eventType: 'level_complete',
+        level: currentLevelRef.current + 1,
+        clientTimestampMs: Date.now(),
+      }),
+    })
+
+    setCurrentLevel(nextLevel)
+    currentLevelRef.current = nextLevel
+    setUserInput([])
+    userInputRef.current = []
+
+    // Flash next level's symbols
+    await flashSequence(gameSpec, levels[nextLevel])
+
+    setPhase('play')
+  }
+
   const handleTap = (index: number) => {
-    if (phase !== 'play' || !spec || !turnToken) return
+    if (phase !== 'play' || !specRef.current || !turnTokenRef.current) return
 
-    // Check if we've already reached the sequence length
-    if (userInputRef.current.length >= spec.sequence.length) return
+    const gameSpec = specRef.current
+    const levels = getLevels(gameSpec)
+    const currentLevelSize = levels[currentLevelRef.current]
 
-    // Update UI immediately
+    if (userInputRef.current.length >= currentLevelSize) return
+
     const newInput = [...userInputRef.current, index]
     userInputRef.current = newInput
     setUserInput(newInput)
 
-    // Queue the tap for server
     tapQueueRef.current.push({ index, timestamp: Date.now() })
     processQueue()
 
-    // Auto-submit when sequence length is reached
-    if (newInput.length >= spec.sequence.length) {
-      // Wait a moment for queue to flush, then complete
+    // Auto-advance when this level's taps are complete
+    if (newInput.length >= currentLevelSize) {
       setTimeout(() => {
-        completeGame()
+        advanceToNextLevel()
       }, 100)
     }
   }
-
 
   const completeGame = async () => {
     if (timerRef.current) clearInterval(timerRef.current)
     setPhase('checking')
 
-    // Wait for queue to finish processing
     while (tapQueueRef.current.length > 0 || processingQueueRef.current) {
       await new Promise(resolve => setTimeout(resolve, 50))
     }
@@ -194,7 +241,7 @@ export function EmojiKeypadGame({ onGameComplete }: EmojiKeypadGameProps) {
       const completeRes = await fetch('/api/game/turn/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ turnToken }),
+        body: JSON.stringify({ turnToken: turnTokenRef.current }),
       })
 
       const data = await completeRes.json()
@@ -230,7 +277,6 @@ export function EmojiKeypadGame({ onGameComplete }: EmojiKeypadGameProps) {
     }
   }
 
-  // Cleanup timers
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current)
@@ -239,14 +285,37 @@ export function EmojiKeypadGame({ onGameComplete }: EmojiKeypadGameProps) {
   }, [])
 
   const cols = spec ? Math.ceil(Math.sqrt(spec.keypad.length)) : 3
+  const levels = spec ? getLevels(spec) : [5]
+  const currentLevelSize = levels[currentLevel] || 5
 
   return (
     <div className="bg-slate-800 rounded-xl p-4 sm:p-6">
       <div className="flex items-center justify-between mb-4 sm:mb-6">
         {phase === 'play' && (
-          <div className={`text-2xl font-mono ${timeLeft < 5000 ? 'text-red-400' : 'text-green-400'}`}>
-            {formatTime(timeLeft)}
-          </div>
+          <>
+            <div className={`text-2xl font-mono ${timeLeft < 5000 ? 'text-red-400' : 'text-green-400'}`}>
+              {formatTime(timeLeft)}
+            </div>
+            {levels.length > 1 && (
+              <div className="flex gap-2">
+                {levels.map((_, i) => (
+                  <div
+                    key={i}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                      i < currentLevel
+                        ? 'bg-green-500 text-white'
+                        : i === currentLevel
+                        ? 'bg-yellow-500 text-slate-900'
+                        : 'bg-slate-600 text-slate-400'
+                    }`}
+                  >
+                    {i + 1}
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="w-[52px]" />
+          </>
         )}
       </div>
 
@@ -271,29 +340,39 @@ export function EmojiKeypadGame({ onGameComplete }: EmojiKeypadGameProps) {
         </div>
       )}
 
-      {phase === 'memorize' && spec && (
+      {phase === 'memorize' && spec && flashIndex >= 0 && (
         <div className="text-center py-8 px-2">
-          <p className="text-slate-300 mb-2">Memorize this sequence!</p>
-          <p className="text-slate-500 text-sm mb-4">You&apos;ll need to find and tap these in order</p>
-          <div className="flex justify-center gap-2 sm:gap-3 mb-6 flex-wrap max-w-full">
-            {spec.sequence.map((emoji, i) => (
+          <p className="text-slate-300 mb-2">
+            {levels.length > 1 ? `Level ${currentLevel + 1}: Memorize ${flashTotal} emojis!` : 'Memorize this sequence!'}
+          </p>
+          <p className="text-slate-500 text-sm mb-6">You&apos;ll need to find and tap these in order</p>
+          <div
+            key={`${currentLevel}-${flashIndex}`}
+            className="w-24 h-24 sm:w-28 sm:h-28 mx-auto bg-slate-700 rounded-2xl flex items-center justify-center text-5xl sm:text-6xl animate-[scaleIn_0.3s_ease-out]"
+          >
+            {spec.sequence[flashIndex]}
+          </div>
+          <div className="flex justify-center gap-2 mt-6">
+            {Array.from({ length: flashTotal }).map((_, i) => (
               <div
                 key={i}
-                className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 bg-slate-700 rounded-xl flex items-center justify-center text-2xl sm:text-3xl animate-pulse"
-              >
-                {emoji}
-              </div>
+                className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                  i < flashIndex ? 'bg-yellow-500' : i === flashIndex ? 'bg-yellow-400 scale-125' : 'bg-slate-600'
+                }`}
+              />
             ))}
           </div>
-          <div className="text-4xl font-bold text-yellow-400">{memorizeTimeLeft}</div>
+          <p className="text-slate-500 text-sm mt-3">{flashIndex + 1} of {flashTotal}</p>
         </div>
       )}
 
       {phase === 'play' && spec && (
         <div className="px-2">
-          {/* User input display */}
           <div className="mb-4 sm:mb-6">
-            <p className="text-slate-400 text-sm text-center mb-2">Find and tap the emojis in order! ({userInput.length}/{spec.sequence.length})</p>
+            <p className="text-slate-400 text-sm text-center mb-2">
+              {levels.length > 1 ? `Level ${currentLevel + 1}: ` : ''}
+              Find and tap the emojis in order! ({userInput.length}/{currentLevelSize})
+            </p>
             <div className="flex justify-center gap-1.5 sm:gap-2 min-h-[48px] sm:min-h-[56px] flex-wrap">
               {userInput.length === 0 ? (
                 <div className="text-slate-500 italic text-sm sm:text-base">Tap the first emoji from the sequence...</div>
@@ -310,7 +389,6 @@ export function EmojiKeypadGame({ onGameComplete }: EmojiKeypadGameProps) {
             </div>
           </div>
 
-          {/* Keypad */}
           <div
             className="grid gap-2 sm:gap-3 max-w-sm sm:max-w-md mx-auto"
             style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}

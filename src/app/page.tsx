@@ -454,7 +454,7 @@ export default function HomePage() {
               <div className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">{data.pool.uniquePlayers}</div>
               <div className="text-xs text-slate-500 dark:text-slate-400">Playing</div>
             </div>
-            <div className="h-8 w-px bg-slate-300 dark:bg-slate-600"></div>
+            <div className="h-8 w-px bg-slate-300 dark:bg-slate-600 hidden sm:block"></div>
             <div className="flex-1 text-center">
               <div className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-400">{formatTimeLeft(timeLeft)}</div>
               <div className="text-xs text-slate-500 dark:text-slate-400">Until Settlement</div>

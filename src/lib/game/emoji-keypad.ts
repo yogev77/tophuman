@@ -16,6 +16,7 @@ export interface TurnSpec {
   timeLimitMs: number
   penaltyMs: number
   maxMistakes: number
+  levels: number[] // taps required per level, e.g. [3, 5]
 }
 
 export interface TapEvent {
@@ -106,6 +107,7 @@ export function generateTurnSpec(userId: string, config: GameConfig): TurnSpec {
     timeLimitMs: config.time_limit_seconds * 1000,
     penaltyMs: config.mistake_penalty_ms,
     maxMistakes: config.max_mistakes,
+    levels: [3, config.sequence_length], // Level 1: 3 symbols, Level 2: all
   }
 }
 
@@ -118,6 +120,7 @@ export function getClientSpec(spec: TurnSpec): Partial<TurnSpec> {
     timeLimitMs: spec.timeLimitMs,
     penaltyMs: spec.penaltyMs,
     maxMistakes: spec.maxMistakes,
+    levels: spec.levels,
   }
 }
 
@@ -132,6 +135,9 @@ export function validateTurn(
   spec: TurnSpec,
   events: StoredEvent[]
 ): ValidationResult {
+  const levels = spec.levels || [spec.sequence.length]
+  const totalExpectedTaps = levels.reduce((a, b) => a + b, 0)
+
   const tapEvents = events.filter(e => e.eventType === 'tap')
   const startEvent = events.find(e => e.eventType === 'start')
 
@@ -139,28 +145,31 @@ export function validateTurn(
     return { valid: false, reason: 'no_start_event' }
   }
 
-  // User must submit exactly sequence.length taps
-  if (tapEvents.length !== spec.sequence.length) {
+  if (tapEvents.length !== totalExpectedTaps) {
     return { valid: false, reason: 'incomplete' }
   }
 
-  // Compare position by position
+  // Validate taps per level
   let mistakes = 0
   let penaltyTime = 0
+  let tapOffset = 0
 
-  for (let i = 0; i < spec.sequence.length; i++) {
-    const tap = tapEvents[i]
-    if (tap.tapIndex === undefined) {
-      return { valid: false, reason: 'invalid_tap' }
+  for (const levelSize of levels) {
+    for (let i = 0; i < levelSize; i++) {
+      const tap = tapEvents[tapOffset + i]
+      if (tap.tapIndex === undefined) {
+        return { valid: false, reason: 'invalid_tap' }
+      }
+
+      const tappedEmoji = spec.keypad[tap.tapIndex]
+      const expectedEmoji = spec.sequence[i] // each level replays from start of sequence
+
+      if (tappedEmoji !== expectedEmoji) {
+        mistakes++
+        penaltyTime += spec.penaltyMs
+      }
     }
-
-    const tappedEmoji = spec.keypad[tap.tapIndex]
-    const expectedEmoji = spec.sequence[i]
-
-    if (tappedEmoji !== expectedEmoji) {
-      mistakes++
-      penaltyTime += spec.penaltyMs
-    }
+    tapOffset += levelSize
   }
 
   if (mistakes > spec.maxMistakes) {
@@ -173,7 +182,8 @@ export function validateTurn(
     lastTap.serverTimestamp.getTime() - startEvent.serverTimestamp.getTime()
   const totalTimeMs = completionTimeMs + penaltyTime
 
-  if (totalTimeMs > spec.timeLimitMs) {
+  // Use 60s as gameplay reference (server limit is higher for flash overhead)
+  if (totalTimeMs > 60000) {
     return { valid: false, reason: 'timeout' }
   }
 
@@ -246,8 +256,10 @@ function validateTimingPlausibility(events: StoredEvent[]): { valid: boolean; si
 }
 
 function calculateScore(timeMs: number, mistakes: number, spec: TurnSpec): number {
-  const maxTimeMs = spec.timeLimitMs
-  const quality = Math.max(0, 7000 - mistakes * 2000)
+  const maxTimeMs = 60000 // gameplay reference (not server timeLimitMs which is inflated)
+  const levels = spec.levels || [spec.sequence.length]
+  const totalTaps = levels.reduce((a, b) => a + b, 0)
+  const quality = Math.max(0, totalTaps * 875 - mistakes * 2000) // 8 taps * 875 = 7000 base
   const speed = Math.sqrt(maxTimeMs / Math.max(timeMs, 2000))
   return Math.round(quality * speed)
 }
@@ -255,7 +267,7 @@ function calculateScore(timeMs: number, mistakes: number, spec: TurnSpec): numbe
 export const DEFAULT_CONFIG: GameConfig = {
   sequence_length: 5,
   keypad_size: 12,
-  time_limit_seconds: 30,
+  time_limit_seconds: 90, // generous for flash phases; client manages gameplay timer
   mistake_penalty_ms: 2000,
-  max_mistakes: 1,
+  max_mistakes: 2, // across both levels
 }

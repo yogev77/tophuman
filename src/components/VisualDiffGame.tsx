@@ -132,7 +132,13 @@ export function VisualDiffGame({ onGameComplete }: VisualDiffGameProps) {
       }),
     })
 
-    setFoundCount(prev => prev + 1)
+    const newCount = foundCount + 1
+    setFoundCount(newCount)
+
+    // Auto-submit when all differences have been marked
+    if (newCount >= spec.numDifferences) {
+      completeGame()
+    }
   }
 
   const completeGame = async (token?: string) => {

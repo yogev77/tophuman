@@ -381,7 +381,7 @@ function GamePageContent() {
   const GameComponent = config.component
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 overflow-x-hidden">
+    <div className="max-w-6xl mx-auto px-4 py-8 overflow-x-hidden select-none">
       {/* Game Header */}
       <div className="mb-6">
         <div className="flex items-center gap-3">
