@@ -109,7 +109,7 @@ export function validateAudioPatternTurn(
   }
 
   // Check timing for bot detection
-  const times = taps.map(t => t.clientTimestampMs || 0).filter(t => t > 0)
+  const times = taps.map(t => new Date(t.serverTimestamp).getTime()).filter(t => t > 0)
   if (times.length >= 3) {
     const intervals: number[] = []
     for (let i = 1; i < times.length; i++) {
@@ -163,8 +163,10 @@ export function validateAudioPatternTurn(
   }
 
   // Calculate total time taken
-  const startTime = events.find(e => e.eventType === 'tap')?.clientTimestampMs || 0
-  const endTime = events[events.length - 1]?.clientTimestampMs || startTime
+  const firstTap = events.find(e => e.eventType === 'tap')
+  const startTime = firstTap ? new Date(firstTap.serverTimestamp).getTime() : 0
+  const lastEvent = events[events.length - 1]
+  const endTime = lastEvent ? new Date(lastEvent.serverTimestamp).getTime() : startTime
   const totalTimeMs = endTime - startTime
 
   // Must have at least 1 correct tap

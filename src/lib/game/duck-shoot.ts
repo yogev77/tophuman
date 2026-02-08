@@ -145,7 +145,7 @@ export function validateDuckShootTurn(
   }
 
   // Check timing for bot detection
-  const times = shoots.map(s => s.clientTimestampMs || 0).filter(t => t > 0)
+  const times = shoots.map(s => new Date(s.serverTimestamp).getTime()).filter(t => t > 0)
   if (times.length >= 5) {
     const intervals: number[] = []
     for (let i = 1; i < times.length; i++) {
@@ -211,7 +211,7 @@ export function validateDuckShootTurn(
   }
 
   // Calculate time taken (from first to last shot)
-  const shotTimes = shoots.map(s => s.clientTimestampMs || 0).filter(t => t > 0)
+  const shotTimes = shoots.map(s => new Date(s.serverTimestamp).getTime()).filter(t => t > 0)
   const timeTakenMs = shotTimes.length >= 2
     ? shotTimes[shotTimes.length - 1] - shotTimes[0]
     : maxTimeMs

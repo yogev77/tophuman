@@ -98,7 +98,7 @@ export function validateColorMatchTurn(
   }
 
   // Check timing for bot detection
-  const times = submissions.map(s => s.clientTimestampMs || 0).filter(t => t > 0)
+  const times = submissions.map(s => new Date(s.serverTimestamp).getTime()).filter(t => t > 0)
   if (times.length >= 3) {
     const intervals: number[] = []
     for (let i = 1; i < times.length; i++) {
@@ -147,7 +147,7 @@ export function validateColorMatchTurn(
   }
 
   // Calculate time taken
-  const allTimes = events.map(e => e.clientTimestampMs || 0).filter(t => t > 0)
+  const allTimes = events.map(e => new Date(e.serverTimestamp).getTime()).filter(t => t > 0)
   const totalTimeMs = allTimes.length >= 2
     ? allTimes[allTimes.length - 1] - allTimes[0]
     : spec.timeLimitMs

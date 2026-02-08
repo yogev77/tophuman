@@ -166,7 +166,7 @@ export function validateVisualDiffTurn(
   const clicks = events.filter(e => e.eventType === 'click')
 
   // Check timing for bot detection
-  const times = clicks.map(c => c.clientTimestampMs || 0).filter(t => t > 0)
+  const times = clicks.map(c => new Date(c.serverTimestamp).getTime()).filter(t => t > 0)
   if (times.length >= 3) {
     const intervals: number[] = []
     for (let i = 1; i < times.length; i++) {
@@ -222,7 +222,7 @@ export function validateVisualDiffTurn(
   }
 
   // Calculate time taken (from first to last event)
-  const allTimes = events.map(e => e.clientTimestampMs || 0).filter(t => t > 0)
+  const allTimes = events.map(e => new Date(e.serverTimestamp).getTime()).filter(t => t > 0)
   const timeTakenMs = allTimes.length >= 2
     ? allTimes[allTimes.length - 1] - allTimes[0]
     : spec.timeLimitMs

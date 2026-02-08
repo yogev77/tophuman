@@ -147,8 +147,8 @@ export function validateWhackAMoleTurn(
     // Only count as hit if it's a mole (type 0), not a bomb
     if (hit.cellIndex === expectedCell && type === 0) {
       validHits.push(hit.moleId)
-      if (hit.clientTimestampMs) {
-        hitTimings.push(hit.clientTimestampMs)
+      if (hit.serverTimestamp) {
+        hitTimings.push(new Date(hit.serverTimestamp).getTime())
       }
     }
   }
@@ -212,8 +212,8 @@ function calculateWhackAMoleScore(hits: number, misses: number, bombHits: number
 
   // effectiveTime = timestamp of last hit event (rewards finishing hits early)
   const hitEvents = events.filter(e => e.eventType === 'hit')
-  const hitTimes = hitEvents.map(e => e.clientTimestampMs || 0).filter(t => t > 0)
-  const allTimes = events.map(e => e.clientTimestampMs || 0).filter(t => t > 0)
+  const hitTimes = hitEvents.map(e => new Date(e.serverTimestamp).getTime()).filter(t => t > 0)
+  const allTimes = events.map(e => new Date(e.serverTimestamp).getTime()).filter(t => t > 0)
   const startTime = allTimes.length > 0 ? Math.min(...allTimes) : 0
   const lastHitTime = hitTimes.length > 0 ? Math.max(...hitTimes) : startTime
   const effectiveTimeMs = lastHitTime - startTime
