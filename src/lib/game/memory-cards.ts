@@ -114,7 +114,15 @@ export function validateMemoryCardsTurn(
   events: MemoryCardsEvent[]
 ): MemoryCardsResult {
   const matchAttempts = events.filter(e => e.eventType === 'match_attempt')
-  const successfulMatches = matchAttempts.filter(e => e.matched === true)
+  // Validate matches server-side (don't trust client's matched field)
+  const successfulMatches = matchAttempts.filter(e => {
+    if (e.card1 === undefined || e.card2 === undefined || e.card1 === e.card2) return false
+    return spec.rounds.some(round =>
+      e.card1! < round.cards.length &&
+      e.card2! < round.cards.length &&
+      round.cards[e.card1!] === round.cards[e.card2!]
+    )
+  })
   const roundCompletes = events.filter(e => e.eventType === 'round_complete')
 
   const totalPairs = spec.rounds.reduce((sum, r) => sum + r.numPairs, 0)
@@ -125,7 +133,7 @@ export function validateMemoryCardsTurn(
 
   // Anti-cheat: check flip timing
   const flips = events.filter(e => e.eventType === 'flip')
-  const flipTimes = flips.map(e => e.clientTimestampMs || 0).filter(t => t > 0)
+  const flipTimes = flips.map(e => new Date(e.serverTimestamp).getTime()).filter(t => t > 0)
 
   if (flipTimes.length >= 4) {
     const intervals: number[] = []
@@ -141,8 +149,8 @@ export function validateMemoryCardsTurn(
     }
   }
 
-  // Calculate time
-  const allTimes = events.map(e => e.clientTimestampMs || 0).filter(t => t > 0)
+  // Calculate time (server-authoritative)
+  const allTimes = events.map(e => new Date(e.serverTimestamp).getTime()).filter(t => t > 0)
   const totalTimeMs = allTimes.length >= 2
     ? allTimes[allTimes.length - 1] - allTimes[0]
     : spec.timeLimitMs

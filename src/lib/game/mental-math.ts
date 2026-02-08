@@ -136,8 +136,8 @@ export function validateMentalMathTurn(
       if (event.userAnswer === problem.answer) {
         correct++
       }
-      if (event.clientTimestampMs) {
-        answerTimes.push(event.clientTimestampMs)
+      if (event.serverTimestamp) {
+        answerTimes.push(new Date(event.serverTimestamp).getTime())
       }
     }
   }

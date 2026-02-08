@@ -152,7 +152,7 @@ export function validateNumberChainTurn(
   // Sort taps by client timestamp
   const taps = events
     .filter(e => e.eventType === 'tap')
-    .sort((a, b) => (a.clientTimestampMs || 0) - (b.clientTimestampMs || 0))
+    .sort((a, b) => new Date(a.serverTimestamp).getTime() - new Date(b.serverTimestamp).getTime())
 
   // Build full expected sequence across all rounds
   const fullSequence: number[] = []
@@ -173,8 +173,8 @@ export function validateNumberChainTurn(
     }
   }
 
-  // Anti-cheat: check tap timing
-  const tapTimes = taps.map(e => e.clientTimestampMs || 0).filter(t => t > 0)
+  // Anti-cheat: check tap timing (server-authoritative)
+  const tapTimes = taps.map(e => new Date(e.serverTimestamp).getTime()).filter(t => t > 0)
 
   if (tapTimes.length >= 5) {
     const intervals: number[] = []

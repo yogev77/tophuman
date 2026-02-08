@@ -107,14 +107,20 @@ export async function POST(request: Request) {
 
     const today = new Date().toISOString().split('T')[0]
 
-    // Mark current user as referred and store normalized email
-    await serviceSupabase
+    // Atomically mark current user as referred (only if not already set)
+    const { data: updatedRows, error: updateError } = await serviceSupabase
       .from('profiles')
       .update({
         referred_by: referrer.user_id,
         normalized_email: normalizedEmail,
       })
       .eq('user_id', currentProfile.user_id)
+      .is('referred_by', null)
+      .select('user_id')
+
+    if (updateError || !updatedRows || updatedRows.length === 0) {
+      return NextResponse.json({ error: 'Already used a referral' }, { status: 400 })
+    }
 
     // Grant 100 credits to referrer
     // TODO: Consider deferring this until referred user plays N games

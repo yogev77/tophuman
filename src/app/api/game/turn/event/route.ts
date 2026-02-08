@@ -70,6 +70,11 @@ export async function POST(request: NextRequest) {
 
     const eventIndex = (count ?? 0)
 
+    // Max event cap: prevent flooding (500 events per turn)
+    if (eventIndex >= 500) {
+      return NextResponse.json({ error: 'Too many events' }, { status: 429 })
+    }
+
     // Get previous hash for chain
     const { data: prevEvent } = await supabase
       .from('turn_events')
@@ -104,6 +109,11 @@ export async function POST(request: NextRequest) {
       event_hash: eventHash,
     })
 
+    if (eventError) {
+      console.error('Event insert error:', eventError)
+      return NextResponse.json({ error: 'Failed to record event' }, { status: 500 })
+    }
+
     // Special handling for reaction time - return delay for request_signal
     if (eventType === 'request_signal') {
       const spec = turn.spec as { delays?: number[] }
@@ -115,11 +125,6 @@ export async function POST(request: NextRequest) {
         delay,
         serverTimestamp: serverTimestamp.toISOString(),
       })
-    }
-
-    if (eventError) {
-      console.error('Event insert error:', eventError)
-      return NextResponse.json({ error: 'Failed to record event' }, { status: 500 })
     }
 
     return NextResponse.json({

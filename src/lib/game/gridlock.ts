@@ -475,7 +475,7 @@ export function validateGridlockTurn(
   }
 
   // Anti-cheat: check move timing
-  const moveTimes = moves.map(e => e.clientTimestampMs || 0).filter(t => t > 0)
+  const moveTimes = moves.map(e => new Date(e.serverTimestamp).getTime()).filter(t => t > 0)
   if (moveTimes.length >= 5) {
     const intervals: number[] = []
     for (let i = 1; i < moveTimes.length; i++) {
@@ -491,14 +491,16 @@ export function validateGridlockTurn(
   const roundScores: number[] = []
   for (let i = 0; i < roundCompletes.length && i < spec.rounds.length; i++) {
     const rc = roundCompletes[i]
-    const actualMoves = rc.moves || 1
+    // Count moves server-side instead of trusting client's moves field
+    const roundMoves = moves.filter(m => m.round === i + 1 || (m.round === undefined && i === 0))
+    const actualMoves = Math.max(roundMoves.length, 1)
     const optimalMoves = spec.rounds[i].optimalMoves
     const efficiency = Math.min(1, optimalMoves / actualMoves)
     roundScores.push(Math.round(3000 * efficiency))
   }
 
-  // Time from first event to last round_complete
-  const allTimes = events.map(e => e.clientTimestampMs || 0).filter(t => t > 0)
+  // Time from first event to last round_complete (server-authoritative)
+  const allTimes = events.map(e => new Date(e.serverTimestamp).getTime()).filter(t => t > 0)
   const totalTimeMs = allTimes.length >= 2
     ? allTimes[allTimes.length - 1] - allTimes[0]
     : spec.timeLimitMs

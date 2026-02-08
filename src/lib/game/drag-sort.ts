@@ -217,7 +217,7 @@ export function validateDragSortTurn(
 
   // Check timing for bot detection
   if (swapEvents.length >= 3) {
-    const times = swapEvents.map(s => s.clientTimestampMs || 0).filter(t => t > 0)
+    const times = swapEvents.map(s => new Date(s.serverTimestamp).getTime()).filter(t => t > 0)
     if (times.length >= 3) {
       const intervals: number[] = []
       for (let i = 1; i < times.length; i++) {
@@ -292,8 +292,8 @@ export function validateDragSortTurn(
 
   const accuracy = correctPositions / totalItems
 
-  // Calculate time taken for speed component
-  const times = events.map(e => e.clientTimestampMs || 0).filter(t => t > 0)
+  // Calculate time taken for speed component (server-authoritative)
+  const times = events.map(e => new Date(e.serverTimestamp).getTime()).filter(t => t > 0)
   const timeTakenMs = times.length >= 2 ? times[times.length - 1] - times[0] : spec.timeLimitMs
 
   const quality = (correctPositions / totalItems) * 7000

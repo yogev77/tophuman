@@ -18,6 +18,21 @@ const VALID_GAME_TYPES = [
 
 export async function GET() {
   try {
+    // Require admin auth for game settings
+    const authClient = await createClient()
+    const { data: { user }, error: authError } = await authClient.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const { data: adminCheck } = await authClient
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', user.id)
+      .single()
+    if (!adminCheck?.is_admin) {
+      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+    }
+
     const supabase = await createServiceClient()
 
     // Get all game type settings
@@ -107,7 +122,7 @@ export async function POST(request: NextRequest) {
 
     if (upsertError) {
       console.error('Upsert error:', upsertError)
-      return NextResponse.json({ error: 'Failed to update setting: ' + upsertError.message }, { status: 500 })
+      return NextResponse.json({ error: 'Failed to update setting' }, { status: 500 })
     }
 
     return NextResponse.json({

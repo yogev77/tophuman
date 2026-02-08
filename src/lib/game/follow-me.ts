@@ -235,7 +235,7 @@ export function validateFollowMeTurn(
   // Collect per-round paths from round_complete events + draw_complete for last round
   const roundEvents = events
     .filter(e => e.eventType === 'round_complete')
-    .sort((a, b) => (a.clientTimestampMs || 0) - (b.clientTimestampMs || 0))
+    .sort((a, b) => new Date(a.serverTimestamp).getTime() - new Date(b.serverTimestamp).getTime())
 
   const drawEvent = events.find(e => e.eventType === 'draw_complete')
 
@@ -258,7 +258,7 @@ export function validateFollowMeTurn(
     }
 
     const startEvent = events.find(e => e.eventType === 'draw_start')
-    const timeTakenMs = (drawEvent.clientTimestampMs || 0) - (startEvent?.clientTimestampMs || 0)
+    const timeTakenMs = new Date(drawEvent.serverTimestamp).getTime() - (startEvent ? new Date(startEvent.serverTimestamp).getTime() : 0)
     const speed = Math.sqrt(spec.timeLimitMs / Math.max(timeTakenMs, 2000))
     const score = Math.round((Math.pow(result.accuracy, 1.15) * 4000 + result.coverage * 3000) * speed)
 
@@ -272,8 +272,8 @@ export function validateFollowMeTurn(
   // Calculate time taken
   const startEvent = events.find(e => e.eventType === 'draw_start')
   const lastEvent = drawEvent || roundEvents[roundEvents.length - 1]
-  const startTime = startEvent?.clientTimestampMs || 0
-  const endTime = lastEvent?.clientTimestampMs || 0
+  const startTime = startEvent ? new Date(startEvent.serverTimestamp).getTime() : 0
+  const endTime = lastEvent ? new Date(lastEvent.serverTimestamp).getTime() : 0
   const timeTakenMs = endTime - startTime
 
   if (timeTakenMs < 500 && userRoundPaths.flat().length > 20) {

@@ -210,7 +210,7 @@ export function validateDuckShootTurn(
             const distance = Math.sqrt(dx * dx + dy * dy)
             totalAccuracy += Math.max(0, 1 - distance / (spec.duckSize / 2))
           } else {
-            totalAccuracy += 0.3 // Fallback if position data missing
+            // No fallback — missing position data gets zero accuracy
           }
         }
       }

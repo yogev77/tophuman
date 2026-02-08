@@ -46,7 +46,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <body className={`${recursive.className} ${recursive.variable} bg-slate-900 dark:bg-slate-900 light:bg-slate-100 min-h-screen transition-colors`}>
+      <body className={`${recursive.className} ${recursive.variable} bg-slate-100 dark:bg-slate-900 min-h-screen transition-colors`}>
         <ThemeProvider>
           <CreditsNotificationProvider>
             <Header />

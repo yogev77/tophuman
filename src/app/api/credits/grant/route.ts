@@ -3,11 +3,9 @@ import { NextResponse } from 'next/server'
 
 export async function POST() {
   try {
-    console.log('Grant API: Starting')
     const supabase = await createClient()
 
     const { data: { user }, error: authError } = await supabase.auth.getUser()
-    console.log('Grant API: Auth result', { userId: user?.id, authError: authError?.message })
 
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -19,14 +17,11 @@ export async function POST() {
     }
 
     // Get user's profile
-    console.log('Grant API: Fetching profile for user', user.id)
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('user_id, banned_at')
       .eq('id', user.id)
       .single()
-
-    console.log('Grant API: Profile result', { profile, profileError: profileError?.message })
 
     if (profileError || !profile) {
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
@@ -37,12 +32,9 @@ export async function POST() {
     }
 
     // Grant daily credits
-    console.log('Grant API: Calling grant_daily_credits for', profile.user_id)
     const { data: granted, error: grantError } = await supabase.rpc('grant_daily_credits', {
       p_user_id: profile.user_id,
     })
-
-    console.log('Grant API: Grant result', { granted, grantError: grantError?.message, grantErrorDetails: grantError })
 
     if (grantError) {
       console.error('Grant error:', grantError)
@@ -58,7 +50,6 @@ export async function POST() {
       p_user_id: profile.user_id,
     })
 
-    console.log('Grant API: Success, new balance', balance)
     return NextResponse.json({
       success: true,
       granted: 10,
