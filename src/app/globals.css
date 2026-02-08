@@ -76,6 +76,10 @@ html.light .bg-slate-700\/50 {
   background-color: rgb(203 213 225 / 0.5);
 }
 
+html.light .bg-slate-600 {
+  background-color: #e2e8f0; /* slate-200 — matches light bg */
+}
+
 html.light .bg-slate-600\/30 {
   background-color: rgb(71 85 105 / 0.3);
 }

@@ -118,15 +118,15 @@ function abbreviateNumber(n: number): string {
 }
 
 function formatTimeLeft(ms: number): string {
-  if (ms <= 0) return 'Settlement in progress'
+  if (ms <= 0) return 'Settling...'
 
   const hours = Math.floor(ms / (1000 * 60 * 60))
   const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60))
 
   if (hours > 0) {
-    return `${hours}h ${minutes}m left`
+    return `${hours}h ${minutes}m`
   }
-  return `${minutes}m left`
+  return `${minutes}m`
 }
 
 function formatOpensAt(opensAt: string): string {
@@ -443,28 +443,26 @@ export default function HomePage() {
 
       {/* Pool Info Bar */}
       {data && (
-        <div className="bg-slate-800 rounded-xl p-4 mb-4">
-          <div className="flex flex-wrap items-center justify-center gap-6 text-center">
-            <div>
-              <div className="text-2xl font-bold text-yellow-400">
-                {data.pool.totalCredits} <CC />Credits
-              </div>
-              <div className="text-sm text-slate-400">Total Across All Games</div>
+        <div className="bg-slate-800 rounded-xl px-4 sm:px-5 py-3 sm:py-4 mb-4">
+          <div className="flex items-center justify-around sm:justify-between">
+            <div className="flex-1 text-center hidden sm:block">
+              <div className="text-2xl font-bold text-yellow-400"><CC />{data.pool.totalCredits} Credit Pool</div>
+              <div className="text-xs text-slate-400">Across All Games Today</div>
             </div>
             <div className="h-8 w-px bg-slate-600 hidden sm:block"></div>
-            <div>
-              <div className="text-2xl font-bold text-white">
-                {data.pool.uniquePlayers}
-              </div>
-              <div className="text-sm text-slate-400">Total Players</div>
+            <div className="flex-1 text-center">
+              <div className="text-xl sm:text-2xl font-bold text-white">{data.pool.uniquePlayers}</div>
+              <div className="text-xs text-slate-400">Playing</div>
             </div>
-            <div className="h-8 w-px bg-slate-600 hidden sm:block"></div>
-            <div>
-              <div className="text-2xl font-bold text-green-400">
-                {formatTimeLeft(timeLeft)}
-              </div>
-              <div className="text-sm text-slate-400">Until Settlement</div>
+            <div className="h-8 w-px bg-slate-600"></div>
+            <div className="flex-1 text-center">
+              <div className="text-xl sm:text-2xl font-bold text-green-400">{formatTimeLeft(timeLeft)}</div>
+              <div className="text-xs text-slate-400">Until Settlement</div>
             </div>
+          </div>
+          <div className="sm:hidden mt-2 pt-2 border-t border-slate-700 text-center">
+            <div className="text-xl font-bold text-yellow-400"><CC />{data.pool.totalCredits} Credit Pool</div>
+            <div className="text-xs text-slate-400">Across All Games Today</div>
           </div>
         </div>
       )}
