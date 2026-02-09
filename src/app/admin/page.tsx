@@ -126,6 +126,21 @@ interface TreasurySnapshot {
   created_at: string
 }
 
+const GAME_ICON_COLORS: Record<string, { bg: string; icon: string }> = {
+  emoji_keypad: { bg: 'bg-rose-500/20', icon: 'text-rose-400' },
+  image_rotate: { bg: 'bg-sky-500/20', icon: 'text-sky-400' },
+  reaction_time: { bg: 'bg-amber-500/20', icon: 'text-amber-400' },
+  whack_a_mole: { bg: 'bg-green-500/20', icon: 'text-green-400' },
+  typing_speed: { bg: 'bg-violet-500/20', icon: 'text-violet-400' },
+  mental_math: { bg: 'bg-orange-500/20', icon: 'text-orange-400' },
+  color_match: { bg: 'bg-pink-500/20', icon: 'text-pink-400' },
+  visual_diff: { bg: 'bg-teal-500/20', icon: 'text-teal-400' },
+  audio_pattern: { bg: 'bg-indigo-500/20', icon: 'text-indigo-400' },
+  drag_sort: { bg: 'bg-lime-500/20', icon: 'text-lime-400' },
+  follow_me: { bg: 'bg-cyan-500/20', icon: 'text-cyan-400' },
+  duck_shoot: { bg: 'bg-emerald-500/20', icon: 'text-emerald-400' },
+}
+
 const GAME_OPTIONS: GameOption[] = [
   { id: 'emoji_keypad', icon: Target, name: 'Emoji Keypad', desc: 'Memorize & tap sequence' },
   { id: 'image_rotate', icon: RotateCw, name: 'Image Rotate', desc: 'Rotate tiles to restore' },
@@ -648,8 +663,8 @@ export default function AdminPage() {
                   >
                     <div className="flex items-center gap-4">
                       {/* Icon and Info */}
-                      <div className="p-2 bg-slate-600/50 rounded-lg">
-                        <Icon className={`w-5 h-5 ${setting.isActive ? 'text-green-400' : 'text-slate-400'}`} />
+                      <div className={`p-2 rounded-lg ${GAME_ICON_COLORS[game.id]?.bg || 'bg-slate-600/50'}`}>
+                        <Icon className={`w-5 h-5 ${GAME_ICON_COLORS[game.id]?.icon || 'text-slate-400'}`} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="font-bold text-white">{game.name}</div>
@@ -771,124 +786,6 @@ export default function AdminPage() {
             )}
           </div>
 
-          {/* Manual Settlement */}
-          <div className="bg-slate-800 rounded-xl p-6 mb-8">
-            <h2 className="text-xl font-bold text-white mb-4">Manual Settlement</h2>
-
-            {/* Quick action: Settle Yesterday */}
-            <div className="mb-4">
-              <button
-                onClick={() => {
-                  const y = new Date()
-                  y.setUTCDate(y.getUTCDate() - 1)
-                  triggerSettlement(y.toISOString().split('T')[0])
-                }}
-                disabled={settling}
-                className="bg-yellow-500 hover:bg-yellow-400 disabled:bg-slate-600 text-slate-900 font-bold py-2 px-6 rounded-lg transition"
-              >
-                {settling ? 'Settling...' : 'Settle Yesterday'}
-              </button>
-              <span className="text-slate-400 text-sm ml-3">Most common action</span>
-            </div>
-
-            <div className="flex gap-4 items-end">
-              <div>
-                <label className="block text-sm text-slate-300 mb-2">Or pick a specific day</label>
-                <input
-                  type="date"
-                  value={settleDay}
-                  onChange={(e) => setSettleDay(e.target.value)}
-                  className="bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-white"
-                />
-              </div>
-              <button
-                onClick={() => triggerSettlement()}
-                disabled={settling || !settleDay}
-                className="bg-orange-600 hover:bg-orange-500 disabled:bg-slate-600 text-white font-bold py-2 px-6 rounded-lg transition"
-              >
-                {settling ? 'Settling...' : 'Trigger Settlement'}
-              </button>
-            </div>
-            <p className="text-slate-400 text-sm mt-2">
-              Settlement runs automatically at midnight UTC via Vercel Cron.
-            </p>
-
-            {/* Inline Settlement Result */}
-            {settleResult && (
-              <div className={`mt-4 p-4 rounded-lg text-sm ${
-                settleResult.success
-                  ? 'bg-green-500/20 border border-green-500/30'
-                  : 'bg-red-500/20 border border-red-500/30'
-              }`}>
-                <div className={settleResult.success ? 'text-green-400' : 'text-red-400'}>
-                  {settleResult.message}
-                </div>
-                {settleResult.settlement && (
-                  <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <div>
-                      <div className="text-slate-400 text-xs">Winner Prize</div>
-                      <div className="text-yellow-400 font-bold">{settleResult.settlement.winnerAmount}</div>
-                    </div>
-                    <div>
-                      <div className="text-slate-400 text-xs">Credit Back</div>
-                      <div className="text-blue-400 font-bold">{settleResult.settlement.rebateTotal}</div>
-                    </div>
-                    <div>
-                      <div className="text-slate-400 text-xs">Treasury</div>
-                      <div className="text-orange-400 font-bold">{settleResult.settlement.sinkAmount}</div>
-                    </div>
-                    <div>
-                      <div className="text-slate-400 text-xs">Participants</div>
-                      <div className="text-white font-bold">{settleResult.settlement.participantCount}</div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Recent Settlements */}
-          <div className="bg-slate-800 rounded-xl p-6">
-            <h2 className="text-xl font-bold text-white mb-4">Recent Settlements</h2>
-            {settlements.length === 0 ? (
-              <p className="text-slate-400">No settlements yet.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="text-left text-slate-400 text-sm">
-                      <th className="pb-3">Date</th>
-                      <th className="pb-3">Status</th>
-                      <th className="pb-3">Pool</th>
-                      <th className="pb-3">Winner</th>
-                      <th className="pb-3">Prize</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {settlements.map((s) => (
-                      <tr key={s.id} className="border-t border-slate-700">
-                        <td className="py-3 text-white">{s.utc_day}</td>
-                        <td className="py-3">
-                          <span className={`px-2 py-1 rounded text-xs ${
-                            s.status === 'completed' ? 'bg-green-500/20 text-green-400' :
-                            s.status === 'processing' ? 'bg-yellow-500/20 text-yellow-400' :
-                            'bg-slate-500/20 text-slate-400'
-                          }`}>
-                            {s.status}
-                          </span>
-                        </td>
-                        <td className="py-3 text-yellow-400">{s.pool_total}</td>
-                        <td className="py-3 text-slate-300 font-mono text-sm">
-                          {s.winner_user_id ? s.winner_user_id.slice(0, 12) + '...' : '-'}
-                        </td>
-                        <td className="py-3 text-green-400">{s.winner_amount ?? '-'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
         </>
       )}
 
@@ -972,8 +869,8 @@ export default function AdminPage() {
                         <tr className="text-left text-slate-400 text-sm">
                           <th className="pb-3">Date</th>
                           <th className="pb-3">Type</th>
-                          <th className="pb-3 text-right">Amount</th>
-                          <th className="pb-3">Reference</th>
+                          <th className="pb-3 text-right pr-4">Amount</th>
+                          <th className="pb-3 pl-4">Reference</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -990,10 +887,10 @@ export default function AdminPage() {
                                   {style.label}
                                 </span>
                               </td>
-                              <td className={`py-3 text-right font-mono text-sm ${entry.amount >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                              <td className={`py-3 text-right pr-4 font-mono text-sm ${entry.amount >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                                 {entry.amount >= 0 ? '+' : ''}{entry.amount}
                               </td>
-                              <td className="py-3 text-slate-400 text-sm font-mono">
+                              <td className="py-3 pl-4 text-slate-400 text-sm font-mono">
                                 {entry.reference_id ? `${entry.reference_type || ''}:${entry.reference_id.slice(0, 8)}...` : '-'}
                               </td>
                             </tr>
@@ -1051,20 +948,20 @@ export default function AdminPage() {
                     <thead>
                       <tr className="text-left text-slate-400 text-sm">
                         <th className="pb-3">Date</th>
-                        <th className="pb-3 text-right">Balance</th>
-                        <th className="pb-3">Treasury User</th>
-                        <th className="pb-3">Notes</th>
-                        <th className="pb-3">Recorded At</th>
+                        <th className="pb-3 text-right pr-4">Balance</th>
+                        <th className="pb-3 pl-4">Treasury User</th>
+                        <th className="pb-3 pl-4">Notes</th>
+                        <th className="pb-3 pl-4">Recorded At</th>
                       </tr>
                     </thead>
                     <tbody>
                       {snapshots.map((s) => (
                         <tr key={s.id} className="border-t border-slate-700">
                           <td className="py-3 text-white">{s.utc_day}</td>
-                          <td className="py-3 text-right font-mono text-yellow-400">{s.balance.toLocaleString()}</td>
-                          <td className="py-3 text-slate-300 text-sm">{s.treasury_username || s.treasury_user_id.slice(0, 12) + '...'}</td>
-                          <td className="py-3 text-slate-400 text-sm">{s.notes || '-'}</td>
-                          <td className="py-3 text-slate-400 text-sm">
+                          <td className="py-3 text-right pr-4 font-mono text-yellow-400">{s.balance.toLocaleString()}</td>
+                          <td className="py-3 pl-4 text-slate-300 text-sm">{s.treasury_username || s.treasury_user_id.slice(0, 12) + '...'}</td>
+                          <td className="py-3 pl-4 text-slate-400 text-sm">{s.notes || '-'}</td>
+                          <td className="py-3 pl-4 text-slate-400 text-sm">
                             {new Date(s.created_at).toLocaleDateString()}{' '}
                             <span className="text-slate-500">{new Date(s.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                           </td>
@@ -1219,6 +1116,83 @@ export default function AdminPage() {
               </>
             )}
           </div>
+
+          {/* Manual Settlement */}
+          <div className="bg-slate-800 rounded-xl p-6 mb-8">
+            <h2 className="text-xl font-bold text-white mb-4">Manual Settlement</h2>
+
+            {/* Quick action: Settle Yesterday */}
+            <div className="mb-4">
+              <button
+                onClick={() => {
+                  const y = new Date()
+                  y.setUTCDate(y.getUTCDate() - 1)
+                  triggerSettlement(y.toISOString().split('T')[0])
+                }}
+                disabled={settling}
+                className="bg-yellow-500 hover:bg-yellow-400 disabled:bg-slate-600 text-slate-900 font-bold py-2 px-6 rounded-lg transition"
+              >
+                {settling ? 'Settling...' : 'Settle Yesterday'}
+              </button>
+              <span className="text-slate-400 text-sm ml-3">Most common action</span>
+            </div>
+
+            <div className="flex gap-4 items-end">
+              <div>
+                <label className="block text-sm text-slate-300 mb-2">Or pick a specific day</label>
+                <input
+                  type="date"
+                  value={settleDay}
+                  onChange={(e) => setSettleDay(e.target.value)}
+                  className="bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-white"
+                />
+              </div>
+              <button
+                onClick={() => triggerSettlement()}
+                disabled={settling || !settleDay}
+                className="bg-orange-600 hover:bg-orange-500 disabled:bg-slate-600 text-white font-bold py-2 px-6 rounded-lg transition"
+              >
+                {settling ? 'Settling...' : 'Trigger Settlement'}
+              </button>
+            </div>
+            <p className="text-slate-400 text-sm mt-2">
+              Settlement runs automatically at midnight UTC via Vercel Cron.
+            </p>
+
+            {/* Inline Settlement Result */}
+            {settleResult && (
+              <div className={`mt-4 p-4 rounded-lg text-sm ${
+                settleResult.success
+                  ? 'bg-green-500/20 border border-green-500/30'
+                  : 'bg-red-500/20 border border-red-500/30'
+              }`}>
+                <div className={settleResult.success ? 'text-green-400' : 'text-red-400'}>
+                  {settleResult.message}
+                </div>
+                {settleResult.settlement && (
+                  <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div>
+                      <div className="text-slate-400 text-xs">Winner Prize</div>
+                      <div className="text-yellow-400 font-bold">{settleResult.settlement.winnerAmount}</div>
+                    </div>
+                    <div>
+                      <div className="text-slate-400 text-xs">Credit Back</div>
+                      <div className="text-blue-400 font-bold">{settleResult.settlement.rebateTotal}</div>
+                    </div>
+                    <div>
+                      <div className="text-slate-400 text-xs">Treasury</div>
+                      <div className="text-orange-400 font-bold">{settleResult.settlement.sinkAmount}</div>
+                    </div>
+                    <div>
+                      <div className="text-slate-400 text-xs">Participants</div>
+                      <div className="text-white font-bold">{settleResult.settlement.participantCount}</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
         </>
       )}
     </div>
