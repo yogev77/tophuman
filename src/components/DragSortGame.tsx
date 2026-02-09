@@ -299,15 +299,15 @@ export function DragSortGame({ onGameComplete }: DragSortGameProps) {
     // For multi-round, check current round's sort type
     if (spec.rounds && spec.rounds.length > 0 && currentRound <= spec.rounds.length) {
       const roundSpec = spec.rounds[currentRound - 1]
-      if (roundSpec.sortType === 'numbers') return 'Sort numbers from smallest to largest'
-      if (roundSpec.sortType === 'alphabet') return 'Sort letters alphabetically (A-Z)'
+      if (roundSpec.sortType === 'numbers') return 'Smallest → Largest'
+      if (roundSpec.sortType === 'alphabet') return 'A → Z'
     }
 
     switch (spec.sortType) {
-      case 'numbers': return 'Sort from smallest to largest'
-      case 'alphabet': return 'Sort alphabetically (A-Z)'
-      case 'dates': return 'Sort chronologically'
-      case 'mixed': return currentRound === 1 ? 'Sort numbers from smallest to largest' : 'Sort letters alphabetically (A-Z)'
+      case 'numbers': return 'Smallest → Largest'
+      case 'alphabet': return 'A → Z'
+      case 'dates': return 'Earliest → Latest'
+      case 'mixed': return currentRound === 1 ? 'Smallest → Largest' : 'A → Z'
       default: return 'Sort in order'
     }
   }
@@ -316,9 +316,32 @@ export function DragSortGame({ onGameComplete }: DragSortGameProps) {
     <div className="bg-slate-800 rounded-xl p-4 sm:p-6">
       <div className="flex items-center justify-between mb-6">
         {phase === 'play' && (
-          <span className={`text-2xl font-mono ${timeLeft < 10000 ? 'text-red-400' : 'text-green-400'}`}>
-            {formatTime(timeLeft)}
-          </span>
+          <>
+            <span className={`text-2xl font-mono ${timeLeft < 10000 ? 'text-red-400' : 'text-green-400'}`}>
+              {formatTime(timeLeft)}
+            </span>
+            {totalRounds > 1 && (
+              <div className="flex justify-center gap-2">
+                {Array.from({ length: totalRounds }).map((_, i) => (
+                  <div
+                    key={i}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                      i + 1 < currentRound
+                        ? 'bg-green-500 text-white'
+                        : i + 1 === currentRound
+                        ? 'bg-yellow-500 text-slate-900'
+                        : light
+                        ? 'bg-slate-200 text-slate-500'
+                        : 'bg-slate-600 text-slate-400'
+                    }`}
+                  >
+                    {i + 1}
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="w-16" />
+          </>
         )}
       </div>
 
@@ -345,28 +368,7 @@ export function DragSortGame({ onGameComplete }: DragSortGameProps) {
 
       {phase === 'play' && spec && (
         <div>
-          {totalRounds > 1 && (
-            <div className="flex justify-center gap-2 mb-3">
-              {Array.from({ length: totalRounds }).map((_, i) => (
-                <div
-                  key={i}
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                    i + 1 < currentRound
-                      ? 'bg-green-500 text-white'
-                      : i + 1 === currentRound
-                      ? 'bg-yellow-500 text-slate-900'
-                      : light
-                      ? 'bg-slate-200 text-slate-500'
-                      : 'bg-slate-600 text-slate-400'
-                  }`}
-                >
-                  {i + 1}
-                </div>
-              ))}
-            </div>
-          )}
           <p className="text-slate-400 text-sm text-center mb-4">
-            {totalRounds > 1 && `Round ${currentRound}/${totalRounds}: `}
             {getSortHint()}
           </p>
 
@@ -442,30 +444,25 @@ export function DragSortGame({ onGameComplete }: DragSortGameProps) {
             <GripVertical className="w-10 h-10 text-lime-400" />
           </div>
           <h3 className="text-2xl font-bold text-green-400 mb-4">Perfectly Sorted!</h3>
-          <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto mb-6">
-            <div className="bg-slate-700 rounded-lg p-4">
-              <div className="text-3xl font-bold text-white">{result.score?.toLocaleString()}</div>
-              <div className="text-sm text-slate-400">Score</div>
+          <div className="bg-slate-900/50 rounded-lg max-w-xs mx-auto mb-6">
+            <div className="grid grid-cols-2 text-center divide-x divide-slate-600/50">
+              <div className="py-4 px-2">
+                <div className="text-2xl font-bold text-white">{result.score?.toLocaleString()}</div>
+                <div className="text-[10px] text-slate-400">Score</div>
+              </div>
+              <div className="py-4 px-2">
+                <div className="text-2xl font-bold text-white">#{result.rank}</div>
+                <div className="text-[10px] text-slate-400">Rank</div>
+              </div>
             </div>
-            <div className="bg-slate-700 rounded-lg p-4">
-              <div className="text-3xl font-bold text-white">#{result.rank}</div>
-              <div className="text-sm text-slate-400">Rank</div>
-            </div>
-            <div className="bg-slate-700 rounded-lg p-4 col-span-2">
-              <div className="text-xl font-bold text-white">{result.correctPositions}/{result.total}</div>
-              <div className="text-sm text-slate-400">Correct Positions</div>
+            <div className="border-t border-slate-600/50 text-center py-3">
+              <div className="text-base font-bold text-white">{result.correctPositions}/{result.total}</div>
+              <div className="text-[10px] text-slate-400">Correct</div>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto">
-            <button
-              onClick={startGame}
-              className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg transition"
-            >
-              Play Again
-            </button>
-            <Link href="/" className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 px-8 rounded-lg transition text-center">
-              New Game
-            </Link>
+          <div className="grid grid-cols-2 gap-3 max-w-xs mx-auto">
+            <button onClick={startGame} className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 rounded-lg transition">Play Again</button>
+            <Link href="/" className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 rounded-lg transition text-center">New Game</Link>
           </div>
           <ShareScore gameName="Drag Sort" score={result.score || 0} rank={result.rank} />
         </div>
@@ -482,16 +479,9 @@ export function DragSortGame({ onGameComplete }: DragSortGameProps) {
               ? `Got ${result.correctPositions}/${result.total} in correct position.`
               : 'Better luck next time!'}
           </p>
-          <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto">
-            <button
-              onClick={startGame}
-              className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg transition"
-            >
-              Try Again
-            </button>
-            <Link href="/" className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 px-8 rounded-lg transition text-center">
-              New Game
-            </Link>
+          <div className="grid grid-cols-2 gap-3 max-w-xs mx-auto">
+            <button onClick={startGame} className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 rounded-lg transition">Try Again</button>
+            <Link href="/" className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 rounded-lg transition text-center">New Game</Link>
           </div>
         </div>
       )}

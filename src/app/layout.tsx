@@ -22,7 +22,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: 'Podium Arena',
-  description: 'Every entry grows the prize pool. Rise to the top when the day closes and claim your share.',
+  description: 'Top the charts. Take your share.',
   metadataBase: new URL('https://podiumarena.com'),
   openGraph: {
     title: 'Podium Arena',

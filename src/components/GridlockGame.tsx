@@ -645,26 +645,21 @@ export function GridlockGame({ onGameComplete }: GridlockGameProps) {
             <ParkingSquare className="w-10 h-10 text-blue-400" />
           </div>
           <h3 className="text-2xl font-bold text-green-500 mb-4">Puzzle Solved!</h3>
-          <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto mb-6">
-            <div className={`rounded-lg p-4 ${light ? 'bg-slate-100' : 'bg-slate-700'}`}>
-              <div className={`text-3xl font-bold ${light ? 'text-slate-900' : 'text-white'}`}>{result.score?.toLocaleString()}</div>
-              <div className={`text-sm ${light ? 'text-slate-500' : 'text-slate-400'}`}>Score</div>
-            </div>
-            <div className={`rounded-lg p-4 ${light ? 'bg-slate-100' : 'bg-slate-700'}`}>
-              <div className={`text-3xl font-bold ${light ? 'text-slate-900' : 'text-white'}`}>#{result.rank}</div>
-              <div className={`text-sm ${light ? 'text-slate-500' : 'text-slate-400'}`}>Rank</div>
+          <div className="bg-slate-900/50 rounded-lg max-w-xs mx-auto mb-6">
+            <div className="grid grid-cols-2 text-center divide-x divide-slate-600/50">
+              <div className="py-4 px-2">
+                <div className="text-2xl font-bold text-white">{result.score?.toLocaleString()}</div>
+                <div className="text-[10px] text-slate-400">Score</div>
+              </div>
+              <div className="py-4 px-2">
+                <div className="text-2xl font-bold text-white">#{result.rank}</div>
+                <div className="text-[10px] text-slate-400">Rank</div>
+              </div>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto">
-            <button
-              onClick={startGame}
-              className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg transition"
-            >
-              Play Again
-            </button>
-            <Link href="/" className={`font-bold py-3 px-8 rounded-lg transition ${light ? 'bg-slate-200 hover:bg-slate-300 text-slate-700' : 'bg-slate-600 hover:bg-slate-500 text-white'}`}>
-              New Game
-            </Link>
+          <div className="grid grid-cols-2 gap-3 max-w-xs mx-auto">
+            <button onClick={startGame} className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 rounded-lg transition">Play Again</button>
+            <Link href="/" className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 rounded-lg transition text-center">New Game</Link>
           </div>
           <ShareScore gameName="Gridlock" score={result.score || 0} rank={result.rank} />
         </div>
@@ -683,16 +678,9 @@ export function GridlockGame({ onGameComplete }: GridlockGameProps) {
               ? 'Could not complete any rounds in time.'
               : 'Better luck next time!'}
           </p>
-          <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto">
-            <button
-              onClick={startGame}
-              className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg transition"
-            >
-              Try Again
-            </button>
-            <Link href="/" className={`font-bold py-3 px-8 rounded-lg transition ${light ? 'bg-slate-200 hover:bg-slate-300 text-slate-700' : 'bg-slate-600 hover:bg-slate-500 text-white'}`}>
-              New Game
-            </Link>
+          <div className="grid grid-cols-2 gap-3 max-w-xs mx-auto">
+            <button onClick={startGame} className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 rounded-lg transition">Try Again</button>
+            <Link href="/" className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 rounded-lg transition text-center">New Game</Link>
           </div>
         </div>
       )}

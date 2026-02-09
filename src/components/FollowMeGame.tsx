@@ -458,36 +458,36 @@ export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
             <Pencil className="w-10 h-10 text-cyan-400" />
           </div>
           <h3 className="text-2xl font-bold text-green-400 mb-4">Great Tracing!</h3>
-          <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto mb-6">
-            <div className="bg-slate-700 rounded-lg p-4">
-              <div className="text-3xl font-bold text-white">{result.score?.toLocaleString()}</div>
-              <div className="text-sm text-slate-400">Score</div>
-            </div>
-            <div className="bg-slate-700 rounded-lg p-4">
-              <div className="text-3xl font-bold text-white">#{result.rank}</div>
-              <div className="text-sm text-slate-400">Rank</div>
-            </div>
-            <div className="bg-slate-700 rounded-lg p-4">
-              <div className="text-xl font-bold text-white">
-                {result.accuracy ? Math.round(result.accuracy * 100) : 0}%
+          <div className="bg-slate-900/50 rounded-lg max-w-xs mx-auto mb-6">
+            <div className="grid grid-cols-2 text-center divide-x divide-slate-600/50">
+              <div className="py-4 px-2">
+                <div className="text-2xl font-bold text-white">{result.score?.toLocaleString()}</div>
+                <div className="text-[10px] text-slate-400">Score</div>
               </div>
-              <div className="text-sm text-slate-400">Accuracy</div>
-            </div>
-            <div className="bg-slate-700 rounded-lg p-4">
-              <div className="text-xl font-bold text-white">
-                {result.coverage ? Math.round(result.coverage * 100) : 0}%
+              <div className="py-4 px-2">
+                <div className="text-2xl font-bold text-white">#{result.rank}</div>
+                <div className="text-[10px] text-slate-400">Rank</div>
               </div>
-              <div className="text-sm text-slate-400">Coverage</div>
+            </div>
+            <div className="grid grid-cols-2 text-center divide-x divide-slate-600/50 border-t border-slate-600/50">
+              <div className="py-3 px-2">
+                <div className="text-base font-bold text-white">{result.accuracy ? Math.round(result.accuracy * 100) : 0}%</div>
+                <div className="text-[10px] text-slate-400">Accuracy</div>
+              </div>
+              <div className="py-3 px-2">
+                <div className="text-base font-bold text-white">{result.coverage ? Math.round(result.coverage * 100) : 0}%</div>
+                <div className="text-[10px] text-slate-400">Coverage</div>
+              </div>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto">
+          <div className="grid grid-cols-2 gap-3 max-w-xs mx-auto">
             <button
               onClick={startGame}
-              className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg transition"
+              className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 rounded-lg transition"
             >
               Play Again
             </button>
-            <Link href="/" className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 px-8 rounded-lg transition text-center">
+            <Link href="/" className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 rounded-lg transition text-center">
               New Game
             </Link>
           </div>
@@ -510,14 +510,14 @@ export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
               ? 'That was too fast to be human!'
               : 'Try to trace more accurately!'}
           </p>
-          <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto">
+          <div className="grid grid-cols-2 gap-3 max-w-xs mx-auto">
             <button
               onClick={startGame}
-              className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg transition"
+              className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 rounded-lg transition"
             >
               Try Again
             </button>
-            <Link href="/" className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 px-8 rounded-lg transition text-center">
+            <Link href="/" className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 rounded-lg transition text-center">
               New Game
             </Link>
           </div>

@@ -279,7 +279,7 @@ function GameTile({ game, msUntilSettlement }: { game: GameInfo; msUntilSettleme
     return (
       <Link
         href={`/game?type=${game.id}`}
-        className="block bg-slate-800 rounded-xl p-4 transition hover:scale-[1.02] cursor-pointer"
+        className="block bg-slate-800 rounded-xl p-4 transition-transform duration-150 hover:scale-[1.03] active:scale-[0.97] cursor-pointer"
       >
         {content}
       </Link>
@@ -437,7 +437,7 @@ export default function HomePage() {
           New Champions. Every Day.
         </h1>
         <p className="text-xl text-slate-300">
-          Every entry grows the prize pool. Rise to the top when the day closes and claim your share.
+          Top the charts. Take your share.
         </p>
       </div>
 

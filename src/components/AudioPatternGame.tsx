@@ -49,6 +49,8 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
   const audioContextRef = useRef<AudioContext | null>(null)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const gameStartTimeRef = useRef<number>(0)
+  const completingRef = useRef(false)
+  const turnTokenRef = useRef<string | null>(null)
 
   const playTone = useCallback((frequency: number, duration: number) => {
     if (!audioContextRef.current) {
@@ -88,6 +90,7 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
     setPlayingIndex(-1)
     setCurrentLevel(3)
     setTimeLeft(30000)
+    completingRef.current = false
 
     // Clear any existing timer
     if (timerRef.current) clearInterval(timerRef.current)
@@ -105,6 +108,7 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
       const turnData = await createRes.json()
 
       setTurnToken(turnData.turnToken)
+      turnTokenRef.current = turnData.turnToken
       setSpec(turnData.spec)
 
       // Start turn on server
@@ -123,7 +127,7 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
 
       gameStartTimeRef.current = Date.now()
 
-      // Start 30 second timer
+      // Start 30 second timer (uses refs to avoid stale closures)
       timerRef.current = setInterval(() => {
         const elapsed = Date.now() - gameStartTimeRef.current
         const remaining = 30000 - elapsed
@@ -131,7 +135,22 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
 
         if (remaining <= 0) {
           if (timerRef.current) clearInterval(timerRef.current)
-          completeGame()
+          // Use ref directly — closure from useCallback would have stale turnToken
+          const token = turnTokenRef.current
+          if (!token || completingRef.current) return
+          completingRef.current = true
+          setPhase('checking')
+          fetch('/api/game/turn/complete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ turnToken: token }),
+          })
+            .then(res => res.json())
+            .then(data => {
+              setResult(data)
+              setPhase(data.valid ? 'completed' : 'failed')
+            })
+            .catch(() => setPhase('failed'))
         }
       }, 100)
 
@@ -222,7 +241,8 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
   }
 
   const completeGame = async () => {
-    if (!turnToken) return
+    if (!turnToken || completingRef.current) return
+    completingRef.current = true
 
     // Stop timer
     if (timerRef.current) {
@@ -371,32 +391,25 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
           <h3 className={`text-2xl font-bold mb-4 ${result.correct && result.correct >= (result.total || 0) ? 'text-green-400' : 'text-yellow-400'}`}>
             {result.correct && result.correct >= (result.total || 0) ? 'Perfect Pattern!' : `Level ${(result.correct || 0) + 1} reached!`}
           </h3>
-          <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto mb-6">
-            <div className="bg-slate-700 rounded-lg p-4">
-              <div className="text-3xl font-bold text-white">{result.score?.toLocaleString()}</div>
-              <div className="text-sm text-slate-400">Score</div>
-            </div>
-            <div className="bg-slate-700 rounded-lg p-4">
-              <div className="text-3xl font-bold text-white">#{result.rank}</div>
-              <div className="text-sm text-slate-400">Rank</div>
-            </div>
-            {(result.correct ?? 0) > 0 && (
-              <div className="bg-slate-700 rounded-lg p-4 col-span-2">
-                <div className="text-xl font-bold text-white">{result.correct} {result.correct === 1 ? 'level' : 'levels'}</div>
-                <div className="text-sm text-slate-400">Completed</div>
+          <div className="bg-slate-900/50 rounded-lg max-w-xs mx-auto mb-6">
+            <div className="grid grid-cols-2 text-center divide-x divide-slate-600/50">
+              <div className="py-4 px-2">
+                <div className="text-2xl font-bold text-white">{result.score?.toLocaleString()}</div>
+                <div className="text-[10px] text-slate-400">Score</div>
               </div>
-            )}
+              <div className="py-4 px-2">
+                <div className="text-2xl font-bold text-white">#{result.rank}</div>
+                <div className="text-[10px] text-slate-400">Rank</div>
+              </div>
+            </div>
+            <div className="border-t border-slate-600/50 text-center py-3">
+              <div className="text-base font-bold text-white">{result.correct} {result.correct === 1 ? 'level' : 'levels'}</div>
+              <div className="text-[10px] text-slate-400">Levels</div>
+            </div>
           </div>
-          <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto">
-            <button
-              onClick={startGame}
-              className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg transition"
-            >
-              Play Again
-            </button>
-            <Link href="/" className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 px-8 rounded-lg transition text-center">
-              New Game
-            </Link>
+          <div className="grid grid-cols-2 gap-3 max-w-xs mx-auto">
+            <button onClick={startGame} className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 rounded-lg transition">Play Again</button>
+            <Link href="/" className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 rounded-lg transition text-center">New Game</Link>
           </div>
           <ShareScore gameName="Audio Pattern" score={result.score || 0} rank={result.rank} />
         </div>
@@ -411,16 +424,9 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
           <p className="text-slate-300 mb-6">
             Complete at least a few correct taps to earn points. Listen carefully and try again!
           </p>
-          <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto">
-            <button
-              onClick={startGame}
-              className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg transition"
-            >
-              Try Again
-            </button>
-            <Link href="/" className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 px-8 rounded-lg transition text-center">
-              New Game
-            </Link>
+          <div className="grid grid-cols-2 gap-3 max-w-xs mx-auto">
+            <button onClick={startGame} className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 rounded-lg transition">Try Again</button>
+            <Link href="/" className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 rounded-lg transition text-center">New Game</Link>
           </div>
         </div>
       )}
