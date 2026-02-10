@@ -7,6 +7,7 @@ import { ShareScore } from './ShareScore'
 import { Spinner } from '@/components/Spinner'
 import { CC } from '@/lib/currency'
 import { GameThumbnail } from '@/components/GameThumbnail'
+import { useSound } from '@/hooks/useSound'
 
 type GamePhase = 'idle' | 'loading' | 'waiting' | 'signal' | 'feedback' | 'checking' | 'completed' | 'failed'
 
@@ -48,6 +49,7 @@ interface ReactionTimeGameProps {
 }
 
 export function ReactionTimeGame({ onGameComplete }: ReactionTimeGameProps) {
+  const { play } = useSound()
   const [phase, setPhase] = useState<GamePhase>('idle')
   const [turnToken, setTurnToken] = useState<string | null>(null)
   const [spec, setSpec] = useState<TurnSpec | null>(null)
@@ -150,6 +152,7 @@ export function ReactionTimeGame({ onGameComplete }: ReactionTimeGameProps) {
 
   const showSignal = (gameSpec: TurnSpec, round: number, roundSpec: RoundSpec) => {
     signalTimeRef.current = Date.now()
+    play('tick')
     setCurrentColor(roundSpec.color)
     setCurrentShouldTap(roundSpec.shouldTap)
     setPhase('signal')
@@ -201,6 +204,7 @@ export function ReactionTimeGame({ onGameComplete }: ReactionTimeGameProps) {
 
     // Determine if correct
     const correct = (roundSpec.shouldTap && tapped) || (!roundSpec.shouldTap && !tapped)
+    play(correct ? 'hit' : 'miss')
 
     // Show feedback
     if (tapped) {

@@ -8,6 +8,7 @@ import { ShareScore } from './ShareScore'
 import { Spinner } from '@/components/Spinner'
 import { CC } from '@/lib/currency'
 import { GameThumbnail } from '@/components/GameThumbnail'
+import { useSound } from '@/hooks/useSound'
 
 type GamePhase = 'idle' | 'loading' | 'play' | 'checking' | 'completed' | 'failed'
 
@@ -37,6 +38,7 @@ interface MentalMathGameProps {
 }
 
 export function MentalMathGame({ onGameComplete }: MentalMathGameProps) {
+  const { play } = useSound()
   const [phase, setPhase] = useState<GamePhase>('idle')
   const [turnToken, setTurnToken] = useState<string | null>(null)
   const [spec, setSpec] = useState<TurnSpec | null>(null)
@@ -113,6 +115,11 @@ export function MentalMathGame({ onGameComplete }: MentalMathGameProps) {
 
     const answer = parseInt(userAnswer, 10)
     if (isNaN(answer)) return
+
+    // Quick client-side check for sound feedback
+    const prob = spec.problems[currentProblem]
+    const expected = prob.operation === '+' ? prob.a + prob.b : prob.operation === '-' ? prob.a - prob.b : prob.a * prob.b
+    play(answer === expected ? 'hit' : 'miss')
 
     // Record answer locally
     const newAnswers = [...answers]

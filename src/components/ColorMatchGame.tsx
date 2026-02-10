@@ -8,6 +8,7 @@ import { ShareScore } from './ShareScore'
 import { Spinner } from '@/components/Spinner'
 import { CC } from '@/lib/currency'
 import { GameThumbnail } from '@/components/GameThumbnail'
+import { useSound } from '@/hooks/useSound'
 
 type GamePhase = 'idle' | 'loading' | 'play' | 'checking' | 'completed' | 'failed'
 
@@ -200,6 +201,7 @@ function ColorPicker({ color, onChange }: {
 }
 
 export function ColorMatchGame({ onGameComplete }: ColorMatchGameProps) {
+  const { play } = useSound()
   const [phase, setPhase] = useState<GamePhase>('idle')
   const [turnToken, setTurnToken] = useState<string | null>(null)
   const [spec, setSpec] = useState<TurnSpec | null>(null)
@@ -268,6 +270,7 @@ export function ColorMatchGame({ onGameComplete }: ColorMatchGameProps) {
 
   const submitColor = async () => {
     if (!turnToken || !spec || submitting) return
+    play('drop')
     setSubmitting(true)
 
     try {
@@ -288,6 +291,7 @@ export function ColorMatchGame({ onGameComplete }: ColorMatchGameProps) {
 
       // Move to next round or complete
       if (currentRound + 1 >= spec.targetColors.length) {
+        play('success')
         completeGame()
       } else {
         setCurrentRound(currentRound + 1)

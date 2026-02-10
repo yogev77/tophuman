@@ -9,6 +9,7 @@ import { Spinner } from '@/components/Spinner'
 import { CC } from '@/lib/currency'
 import { GameThumbnail } from '@/components/GameThumbnail'
 import { useTheme } from '@/hooks/useTheme'
+import { useSound } from '@/hooks/useSound'
 
 type GamePhase = 'idle' | 'loading' | 'play' | 'checking' | 'completed' | 'failed'
 
@@ -41,6 +42,7 @@ interface DragSortGameProps {
 export function DragSortGame({ onGameComplete }: DragSortGameProps) {
   const { theme } = useTheme()
   const light = theme === 'light'
+  const { play } = useSound()
   const [phase, setPhase] = useState<GamePhase>('idle')
   const [turnToken, setTurnToken] = useState<string | null>(null)
   const [spec, setSpec] = useState<TurnSpec | null>(null)
@@ -223,6 +225,7 @@ export function DragSortGame({ onGameComplete }: DragSortGameProps) {
 
   // Desktop drag handlers
   const handleDragStart = (index: number) => {
+    play('tap')
     setDraggingIndex(index)
   }
 
@@ -235,6 +238,7 @@ export function DragSortGame({ onGameComplete }: DragSortGameProps) {
   }
 
   const handleDragEnd = () => {
+    play('drop')
     setDraggingIndex(null)
   }
 
@@ -407,6 +411,7 @@ export function DragSortGame({ onGameComplete }: DragSortGameProps) {
           <button
             onClick={() => {
               if (submitting) return
+              play('success')
               setSubmitting(true)
               if (totalRounds > 1) {
                 submitRound().finally(() => setSubmitting(false))

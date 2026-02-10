@@ -7,6 +7,7 @@ import { ShareScore } from './ShareScore'
 import { Spinner } from '@/components/Spinner'
 import { CC } from '@/lib/currency'
 import { GameThumbnail } from '@/components/GameThumbnail'
+import { useSound } from '@/hooks/useSound'
 
 type GamePhase = 'idle' | 'loading' | 'countdown' | 'listen' | 'play' | 'checking' | 'completed' | 'failed'
 
@@ -35,6 +36,7 @@ const BUTTON_COLORS = ['bg-red-500', 'bg-green-500', 'bg-blue-500', 'bg-yellow-5
 const BUTTON_ACTIVE_COLORS = ['bg-red-300', 'bg-green-300', 'bg-blue-300', 'bg-yellow-300']
 
 export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
+  const { enabled: soundEnabled } = useSound()
   const [phase, setPhase] = useState<GamePhase>('idle')
   const [turnToken, setTurnToken] = useState<string | null>(null)
   const [spec, setSpec] = useState<TurnSpec | null>(null)
@@ -54,6 +56,7 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
   const turnTokenRef = useRef<string | null>(null)
 
   const playTone = useCallback((frequency: number, duration: number) => {
+    if (!soundEnabled) return
     if (!audioContextRef.current) {
       audioContextRef.current = new AudioContext()
     }
@@ -73,7 +76,7 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
 
     oscillator.start(ctx.currentTime)
     oscillator.stop(ctx.currentTime + duration / 1000)
-  }, [])
+  }, [soundEnabled])
 
   const runCountdown = useCallback(async () => {
     setPhase('countdown')
@@ -303,9 +306,15 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
           <p className="text-slate-300 mb-6">
             Listen and repeat! Start with 3 tones, each level adds one more. 30 seconds - go fast!
           </p>
+          {!soundEnabled && (
+            <div className="mb-4 p-3 bg-yellow-500/20 border border-yellow-500/30 rounded-lg text-yellow-400 text-sm">
+              Sounds are off. Enable sounds in Settings to play this game.
+            </div>
+          )}
           <button
             onClick={startGame}
-            className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg text-lg transition"
+            disabled={!soundEnabled}
+            className="bg-yellow-500 hover:bg-yellow-400 disabled:bg-yellow-500/30 disabled:text-slate-900/50 text-slate-900 font-bold py-3 px-8 rounded-lg text-lg transition"
           >
             Start Game (1 <CC />Credit)
           </button>

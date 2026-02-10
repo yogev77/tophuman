@@ -8,6 +8,7 @@ import { ShareScore } from './ShareScore'
 import { Spinner } from '@/components/Spinner'
 import { CC } from '@/lib/currency'
 import { GameThumbnail } from '@/components/GameThumbnail'
+import { useSound } from '@/hooks/useSound'
 
 type GamePhase = 'idle' | 'loading' | 'play' | 'checking' | 'completed' | 'failed'
 
@@ -31,6 +32,7 @@ interface TypingSpeedGameProps {
 }
 
 export function TypingSpeedGame({ onGameComplete }: TypingSpeedGameProps) {
+  const { play } = useSound()
   const [phase, setPhase] = useState<GamePhase>('idle')
   const [turnToken, setTurnToken] = useState<string | null>(null)
   const [spec, setSpec] = useState<TurnSpec | null>(null)
@@ -132,6 +134,7 @@ export function TypingSpeedGame({ onGameComplete }: TypingSpeedGameProps) {
 
   const submitResult = async () => {
     if (!turnToken || !spec) return
+    play('success')
 
     if (timerRef.current) {
       clearInterval(timerRef.current)

@@ -8,6 +8,7 @@ import { Spinner } from '@/components/Spinner'
 import { CC } from '@/lib/currency'
 import { GameThumbnail } from '@/components/GameThumbnail'
 import { useTheme } from '@/hooks/useTheme'
+import { useSound } from '@/hooks/useSound'
 
 type GamePhase = 'idle' | 'loading' | 'ready' | 'draw' | 'checking' | 'completed' | 'failed'
 
@@ -40,6 +41,7 @@ const TOTAL_ROUNDS = 3
 export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
   const { theme } = useTheme()
   const light = theme === 'light'
+  const { play } = useSound()
   const [phase, setPhase] = useState<GamePhase>('idle')
   const [turnToken, setTurnToken] = useState<string | null>(null)
   const [spec, setSpec] = useState<TurnSpec | null>(null)
@@ -228,6 +230,7 @@ export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
 
     setIsDrawing(true)
     setUserPath([point])
+    play('tap')
 
     if (phase === 'ready') {
       setPhase('draw')
@@ -265,6 +268,7 @@ export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
 
     if (phase === 'draw' && userPath.length > 10) {
       // Save this round's path
+      play('success')
       setAllPaths(prev => [...prev, userPath])
 
       if (currentRound < TOTAL_ROUNDS) {

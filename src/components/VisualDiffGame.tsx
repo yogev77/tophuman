@@ -8,6 +8,7 @@ import { ShareScore } from './ShareScore'
 import { Spinner } from '@/components/Spinner'
 import { CC } from '@/lib/currency'
 import { GameThumbnail } from '@/components/GameThumbnail'
+import { useSound } from '@/hooks/useSound'
 
 type GamePhase = 'idle' | 'loading' | 'play' | 'checking' | 'completed' | 'failed'
 
@@ -42,6 +43,7 @@ interface VisualDiffGameProps {
 }
 
 export function VisualDiffGame({ onGameComplete }: VisualDiffGameProps) {
+  const { play } = useSound()
   const [phase, setPhase] = useState<GamePhase>('idle')
   const [turnToken, setTurnToken] = useState<string | null>(null)
   const [spec, setSpec] = useState<TurnSpec | null>(null)
@@ -117,6 +119,7 @@ export function VisualDiffGame({ onGameComplete }: VisualDiffGameProps) {
     const x = (e.clientX - rect.left) * scaleX
     const y = (e.clientY - rect.top) * scaleY
 
+    play('hit')
     setClicks(prev => [...prev, { x, y, side }])
 
     // Send click event
@@ -138,6 +141,7 @@ export function VisualDiffGame({ onGameComplete }: VisualDiffGameProps) {
 
     // Auto-submit when all differences have been marked
     if (newCount >= spec.numDifferences) {
+      play('success')
       completeGame()
     }
   }

@@ -7,6 +7,7 @@ import { ShareScore } from './ShareScore'
 import { Spinner } from '@/components/Spinner'
 import { CC } from '@/lib/currency'
 import { GameThumbnail } from '@/components/GameThumbnail'
+import { useSound } from '@/hooks/useSound'
 
 type GamePhase = 'idle' | 'loading' | 'playing' | 'checking' | 'completed' | 'failed'
 
@@ -113,6 +114,7 @@ function drawGun(ctx: CanvasRenderingContext2D, cx: number, bottomY: number) {
 }
 
 export function DuckShootGame({ onGameComplete }: DuckShootGameProps) {
+  const { play } = useSound()
   const [phase, setPhase] = useState<GamePhase>('idle')
   const [turnToken, setTurnToken] = useState<string | null>(null)
   const [spec, setSpec] = useState<TurnSpec | null>(null)
@@ -359,6 +361,7 @@ export function DuckShootGame({ onGameComplete }: DuckShootGameProps) {
 
     const newShots = shots + 1
     setShots(newShots)
+    play('tap')
 
     const cannonX = canvas.width / 2
 
@@ -381,11 +384,13 @@ export function DuckShootGame({ onGameComplete }: DuckShootGameProps) {
         hitAccuracy = Math.max(0, 1 - (distanceFromCenter / maxDistance))
 
         if (duck.spawn.isDecoy) {
+          play('miss')
           setPenalties(prev => prev + 1)
           setActiveDucks(prev =>
             prev.map(d => (d.index === duck.index ? { ...d, decoyHit: true } : d))
           )
         } else {
+          play('hit')
           setHits(prev => prev + 1)
           setActiveDucks(prev =>
             prev.map(d => (d.index === duck.index ? { ...d, hit: true } : d))

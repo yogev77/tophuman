@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { ParkingSquare } from 'lucide-react'
 import { formatTime } from '@/lib/utils'
 import { useTheme } from '@/hooks/useTheme'
+import { useSound } from '@/hooks/useSound'
 import { ShareScore } from './ShareScore'
 import { Spinner } from '@/components/Spinner'
 import { CC } from '@/lib/currency'
@@ -49,6 +50,7 @@ interface GridlockGameProps {
 export function GridlockGame({ onGameComplete }: GridlockGameProps) {
   const { theme } = useTheme()
   const light = theme === 'light'
+  const { play } = useSound()
   const [phase, setPhase] = useState<GamePhase>('idle')
   const [turnToken, setTurnToken] = useState<string | null>(null)
   const [spec, setSpec] = useState<TurnSpec | null>(null)
@@ -191,6 +193,7 @@ export function GridlockGame({ onGameComplete }: GridlockGameProps) {
 
     if (!canMovePiece(piece, dr, dc)) return
 
+    play('drop')
     const newPieces = pieces.map(p =>
       p.id === pieceId ? { ...p, row: p.row + dr, col: p.col + dc } : p
     )
@@ -218,6 +221,7 @@ export function GridlockGame({ onGameComplete }: GridlockGameProps) {
     const target = newPieces.find(p => p.isTarget)
     if (target && target.row === spec.exitRow && target.col >= spec.gridSize - 2) {
       // Round complete!
+      play('success')
       const newRoundMoves = [...roundMoves, newMoveCount]
       setRoundMoves(newRoundMoves)
 

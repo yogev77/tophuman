@@ -9,6 +9,7 @@ import { Spinner } from '@/components/Spinner'
 import { CC } from '@/lib/currency'
 import { GameThumbnail } from '@/components/GameThumbnail'
 import { useTheme } from '@/hooks/useTheme'
+import { useSound } from '@/hooks/useSound'
 
 type GamePhase = 'idle' | 'loading' | 'play' | 'round_complete' | 'checking' | 'completed' | 'failed'
 
@@ -38,6 +39,7 @@ interface MemoryCardsGameProps {
 export function MemoryCardsGame({ onGameComplete }: MemoryCardsGameProps) {
   const { theme } = useTheme()
   const light = theme === 'light'
+  const { play } = useSound()
   const [phase, setPhase] = useState<GamePhase>('idle')
   const [turnToken, setTurnToken] = useState<string | null>(null)
   const [spec, setSpec] = useState<TurnSpec | null>(null)
@@ -168,6 +170,7 @@ export function MemoryCardsGame({ onGameComplete }: MemoryCardsGameProps) {
       }),
     })
 
+    play('tap')
     const newFlipped = [...flipped]
     newFlipped[index] = true
     setFlipped(newFlipped)
@@ -197,6 +200,7 @@ export function MemoryCardsGame({ onGameComplete }: MemoryCardsGameProps) {
       })
 
       if (isMatch) {
+        play('hit')
         const newMatched = [...matched]
         newMatched[first] = true
         newMatched[second] = true
@@ -242,6 +246,7 @@ export function MemoryCardsGame({ onGameComplete }: MemoryCardsGameProps) {
           }
         }
       } else {
+        play('miss')
         // Flip back after delay
         setTimeout(() => {
           const resetFlipped = [...newFlipped]

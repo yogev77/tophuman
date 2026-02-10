@@ -9,6 +9,7 @@ import { ShareScore } from './ShareScore'
 import { Spinner } from '@/components/Spinner'
 import { CC } from '@/lib/currency'
 import { GameThumbnail } from '@/components/GameThumbnail'
+import { useSound } from '@/hooks/useSound'
 
 type GamePhase = 'idle' | 'loading' | 'play' | 'checking' | 'completed' | 'failed'
 
@@ -34,6 +35,7 @@ interface ImageRotateGameProps {
 }
 
 export function ImageRotateGame({ onGameComplete }: ImageRotateGameProps) {
+  const { play } = useSound()
   const [phase, setPhase] = useState<GamePhase>('idle')
   const [turnToken, setTurnToken] = useState<string | null>(null)
   const [spec, setSpec] = useState<TurnSpec | null>(null)
@@ -137,6 +139,7 @@ export function ImageRotateGame({ onGameComplete }: ImageRotateGameProps) {
 
   const handleRotate = (tileIndex: number) => {
     if (phase !== 'play' || !spec || !turnToken) return
+    play('tap')
 
     // Update local state immediately for responsiveness
     const newRotations = [...rotationsRef.current]
@@ -150,6 +153,7 @@ export function ImageRotateGame({ onGameComplete }: ImageRotateGameProps) {
 
     // Check if puzzle is solved (all rotations are 0)
     if (newRotations.every(r => r === 0)) {
+      play('success')
       // Stop timer immediately
       if (timerRef.current) {
         clearInterval(timerRef.current)

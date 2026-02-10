@@ -36,10 +36,13 @@ import {
   Users,
   Shield,
   Clock,
+  Volume2,
+  VolumeX,
 } from 'lucide-react'
 import { CC } from '@/lib/currency'
 import { useCreditsNotification } from '@/components/CreditsNotificationProvider'
 import { useTheme } from '@/hooks/useTheme'
+import { useSound } from '@/hooks/useSound'
 import { createClient } from '@/lib/supabase/client'
 
 const GAME_ICONS: Record<string, LucideIcon> = {
@@ -125,6 +128,23 @@ function ThemeToggle() {
         <Sun className="w-5 h-5 text-yellow-400" />
       ) : (
         <Moon className="w-5 h-5 text-slate-400" />
+      )}
+    </button>
+  )
+}
+
+function SoundsToggle() {
+  const { enabled, toggleSounds } = useSound()
+  return (
+    <button
+      onClick={toggleSounds}
+      className="p-2.5 rounded-lg hover:bg-slate-700 transition"
+      title={enabled ? 'Mute sounds' : 'Enable sounds'}
+    >
+      {enabled ? (
+        <Volume2 className="w-5 h-5 text-yellow-400" />
+      ) : (
+        <VolumeX className="w-5 h-5 text-slate-400" />
       )}
     </button>
   )
@@ -542,6 +562,11 @@ function SettingsTab() {
       <div className="flex items-center justify-between">
         <label className="text-sm text-slate-400">Theme</label>
         <ThemeToggle />
+      </div>
+
+      <div className="flex items-center justify-between">
+        <label className="text-sm text-slate-400">Sounds</label>
+        <SoundsToggle />
       </div>
 
       <button

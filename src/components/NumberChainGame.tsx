@@ -8,6 +8,7 @@ import { ShareScore } from './ShareScore'
 import { Spinner } from '@/components/Spinner'
 import { CC } from '@/lib/currency'
 import { GameThumbnail } from '@/components/GameThumbnail'
+import { useSound } from '@/hooks/useSound'
 
 type GamePhase = 'idle' | 'loading' | 'play' | 'checking' | 'completed' | 'failed'
 
@@ -36,6 +37,7 @@ interface NumberChainGameProps {
 }
 
 export function NumberChainGame({ onGameComplete }: NumberChainGameProps) {
+  const { play } = useSound()
   const [phase, setPhase] = useState<GamePhase>('idle')
   const [turnToken, setTurnToken] = useState<string | null>(null)
   const [spec, setSpec] = useState<TurnSpec | null>(null)
@@ -159,6 +161,7 @@ export function NumberChainGame({ onGameComplete }: NumberChainGameProps) {
     const expectedNumber = sequence[nextIndex]
 
     if (number === expectedNumber) {
+      play('tap')
       const isRoundComplete = nextIndex + 1 >= round.chainLength
 
       // Send tap event
@@ -191,6 +194,7 @@ export function NumberChainGame({ onGameComplete }: NumberChainGameProps) {
       }
     } else {
       // Wrong tap
+      play('miss')
       setFlashRed(number)
       setMistakes(m => m + 1)
       setTimeout(() => setFlashRed(null), 300)

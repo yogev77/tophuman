@@ -8,6 +8,7 @@ import { ShareScore } from './ShareScore'
 import { Spinner } from '@/components/Spinner'
 import { CC } from '@/lib/currency'
 import { GameThumbnail } from '@/components/GameThumbnail'
+import { useSound } from '@/hooks/useSound'
 
 type GamePhase = 'idle' | 'loading' | 'play' | 'checking' | 'completed' | 'failed'
 
@@ -35,6 +36,7 @@ interface WhackAMoleGameProps {
 }
 
 export function WhackAMoleGame({ onGameComplete }: WhackAMoleGameProps) {
+  const { play } = useSound()
   const [phase, setPhase] = useState<GamePhase>('idle')
   const [turnToken, setTurnToken] = useState<string | null>(null)
   const [spec, setSpec] = useState<TurnSpec | null>(null)
@@ -172,6 +174,7 @@ export function WhackAMoleGame({ onGameComplete }: WhackAMoleGameProps) {
 
       if (hitEntityType === 0) {
         // Hit a mole - good!
+        play('hit')
         hitsRef.current += 1
         setHits(hitsRef.current)
 
@@ -193,6 +196,7 @@ export function WhackAMoleGame({ onGameComplete }: WhackAMoleGameProps) {
         }
       } else {
         // Hit a bomb - bad!
+        play('miss')
         setBombHits(b => b + 1)
         await fetch('/api/game/turn/event', {
           method: 'POST',

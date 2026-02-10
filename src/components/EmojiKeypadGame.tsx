@@ -8,6 +8,7 @@ import { ShareScore } from './ShareScore'
 import { Spinner } from '@/components/Spinner'
 import { CC } from '@/lib/currency'
 import { GameThumbnail } from '@/components/GameThumbnail'
+import { useSound } from '@/hooks/useSound'
 
 type GamePhase = 'idle' | 'loading' | 'memorize' | 'play' | 'checking' | 'completed' | 'failed'
 
@@ -35,6 +36,7 @@ interface EmojiKeypadGameProps {
 }
 
 export function EmojiKeypadGame({ onGameComplete }: EmojiKeypadGameProps) {
+  const { play } = useSound()
   const [phase, setPhase] = useState<GamePhase>('idle')
   const [turnToken, setTurnToken] = useState<string | null>(null)
   const [spec, setSpec] = useState<TurnSpec | null>(null)
@@ -208,6 +210,7 @@ export function EmojiKeypadGame({ onGameComplete }: EmojiKeypadGameProps) {
 
   const handleTap = (index: number) => {
     if (phase !== 'play' || !specRef.current || !turnTokenRef.current) return
+    play('tap')
 
     const gameSpec = specRef.current
     const levels = getLevels(gameSpec)
@@ -224,6 +227,7 @@ export function EmojiKeypadGame({ onGameComplete }: EmojiKeypadGameProps) {
 
     // Auto-advance when this level's taps are complete
     if (newInput.length >= currentLevelSize) {
+      play('success')
       setTimeout(() => {
         advanceToNextLevel()
       }, 100)
