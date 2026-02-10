@@ -7,6 +7,7 @@ import { formatTime } from '@/lib/utils'
 import { ShareScore } from './ShareScore'
 import { Spinner } from '@/components/Spinner'
 import { CC } from '@/lib/currency'
+import { GameThumbnail } from '@/components/GameThumbnail'
 import { useTheme } from '@/hooks/useTheme'
 
 type GamePhase = 'idle' | 'loading' | 'play' | 'checking' | 'completed' | 'failed'
@@ -346,7 +347,8 @@ export function DragSortGame({ onGameComplete }: DragSortGameProps) {
       </div>
 
       {phase === 'idle' && (
-        <div className="text-center py-12">
+        <div className="text-center pb-6">
+          <div className="mb-4 max-w-sm mx-auto"><GameThumbnail gameId="drag_sort" isPlayable={true} /></div>
           <p className="text-slate-300 mb-6">
             Drag and drop items to sort them in the correct order!
           </p>

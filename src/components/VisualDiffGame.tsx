@@ -7,6 +7,7 @@ import { formatTime } from '@/lib/utils'
 import { ShareScore } from './ShareScore'
 import { Spinner } from '@/components/Spinner'
 import { CC } from '@/lib/currency'
+import { GameThumbnail } from '@/components/GameThumbnail'
 
 type GamePhase = 'idle' | 'loading' | 'play' | 'checking' | 'completed' | 'failed'
 
@@ -247,7 +248,8 @@ export function VisualDiffGame({ onGameComplete }: VisualDiffGameProps) {
       )}
 
       {phase === 'idle' && (
-        <div className="text-center py-12">
+        <div className="text-center pb-6">
+          <div className="mb-4 max-w-sm mx-auto"><GameThumbnail gameId="visual_diff" isPlayable={true} /></div>
           <p className="text-slate-300 mb-6">
             Find the differences between the two images! Click on the differences you spot.
           </p>

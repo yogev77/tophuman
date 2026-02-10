@@ -8,6 +8,7 @@ import { useTheme } from '@/hooks/useTheme'
 import { ShareScore } from './ShareScore'
 import { Spinner } from '@/components/Spinner'
 import { CC } from '@/lib/currency'
+import { GameThumbnail } from '@/components/GameThumbnail'
 
 type GamePhase = 'idle' | 'loading' | 'play' | 'round_complete' | 'checking' | 'completed' | 'failed'
 
@@ -496,7 +497,8 @@ export function GridlockGame({ onGameComplete }: GridlockGameProps) {
       </div>
 
       {phase === 'idle' && (
-        <div className="text-center py-12">
+        <div className="text-center pb-6">
+          <div className="mb-4 max-w-sm mx-auto"><GameThumbnail gameId="gridlock" isPlayable={true} /></div>
           <p className={`mb-6 ${light ? 'text-slate-600' : 'text-slate-300'}`}>
             Slide blocks to free the red piece! 3 rounds of increasing difficulty.
           </p>

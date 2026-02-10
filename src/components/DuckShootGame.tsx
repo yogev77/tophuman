@@ -6,6 +6,7 @@ import { Crosshair } from 'lucide-react'
 import { ShareScore } from './ShareScore'
 import { Spinner } from '@/components/Spinner'
 import { CC } from '@/lib/currency'
+import { GameThumbnail } from '@/components/GameThumbnail'
 
 type GamePhase = 'idle' | 'loading' | 'playing' | 'checking' | 'completed' | 'failed'
 
@@ -496,7 +497,8 @@ export function DuckShootGame({ onGameComplete }: DuckShootGameProps) {
       )}
 
       {phase === 'idle' && (
-        <div className="text-center py-12">
+        <div className="text-center pb-6">
+          <div className="mb-4 max-w-sm mx-auto"><GameThumbnail gameId="duck_shoot" isPlayable={true} /></div>
           <button
             onClick={startGame}
             className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg text-lg transition"

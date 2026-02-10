@@ -8,6 +8,7 @@ import Image from 'next/image'
 import { ShareScore } from './ShareScore'
 import { Spinner } from '@/components/Spinner'
 import { CC } from '@/lib/currency'
+import { GameThumbnail } from '@/components/GameThumbnail'
 
 type GamePhase = 'idle' | 'loading' | 'play' | 'checking' | 'completed' | 'failed'
 
@@ -233,7 +234,8 @@ export function ImageRotateGame({ onGameComplete }: ImageRotateGameProps) {
       </div>
 
       {phase === 'idle' && (
-        <div className="text-center py-12">
+        <div className="text-center pb-6">
+          <div className="mb-4 max-w-sm mx-auto"><GameThumbnail gameId="image_rotate" isPlayable={true} /></div>
           <p className="text-slate-300 mb-6">
             Rotate the scrambled tiles to restore the image! Click a tile to rotate it 90 degrees.
           </p>

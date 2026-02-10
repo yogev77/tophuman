@@ -6,6 +6,7 @@ import { Zap } from 'lucide-react'
 import { ShareScore } from './ShareScore'
 import { Spinner } from '@/components/Spinner'
 import { CC } from '@/lib/currency'
+import { GameThumbnail } from '@/components/GameThumbnail'
 
 type GamePhase = 'idle' | 'loading' | 'waiting' | 'signal' | 'feedback' | 'checking' | 'completed' | 'failed'
 
@@ -307,7 +308,8 @@ export function ReactionTimeGame({ onGameComplete }: ReactionTimeGameProps) {
       </div>
 
       {phase === 'idle' && (
-        <div className="text-center py-8 sm:py-12">
+        <div className="text-center pb-6">
+          <div className="mb-4 max-w-sm mx-auto"><GameThumbnail gameId="reaction_time" isPlayable={true} /></div>
           <p className="text-slate-300 mb-4 sm:mb-6 px-2">
             Tap when you see <span className="text-green-400 font-bold">&quot;Tap!&quot;</span> but
             hold back when you see <span className="text-red-400 font-bold">&quot;Don&apos;t Tap!&quot;</span>

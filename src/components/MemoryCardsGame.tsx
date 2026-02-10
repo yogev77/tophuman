@@ -7,6 +7,7 @@ import { formatTime } from '@/lib/utils'
 import { ShareScore } from './ShareScore'
 import { Spinner } from '@/components/Spinner'
 import { CC } from '@/lib/currency'
+import { GameThumbnail } from '@/components/GameThumbnail'
 import { useTheme } from '@/hooks/useTheme'
 
 type GamePhase = 'idle' | 'loading' | 'play' | 'round_complete' | 'checking' | 'completed' | 'failed'
@@ -277,7 +278,8 @@ export function MemoryCardsGame({ onGameComplete }: MemoryCardsGameProps) {
       </div>
 
       {phase === 'idle' && (
-        <div className="text-center py-12">
+        <div className="text-center pb-6">
+          <div className="mb-4 max-w-sm mx-auto"><GameThumbnail gameId="memory_cards" isPlayable={true} /></div>
           <p className={`mb-6 ${light ? 'text-slate-600' : 'text-slate-300'}`}>
             Flip cards to find matching pairs!
           </p>

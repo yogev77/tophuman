@@ -36,6 +36,7 @@ import {
   Moon,
 } from 'lucide-react'
 import { C, CC } from '@/lib/currency'
+import { GameThumbnail } from '@/components/GameThumbnail'
 
 const GAME_ICONS: Record<string, LucideIcon> = {
   emoji_keypad: Target,
@@ -216,7 +217,7 @@ function GameTile({ game, msUntilSettlement }: { game: GameInfo; msUntilSettleme
           {formatTimeLeft(msUntilSettlement)}
         </span>
       )}
-      <div className="flex items-start gap-3 mb-6">
+      <div className="flex items-start gap-3 mb-3">
         <div className={`p-4 rounded-lg shrink-0 ${isPlayable ? iconColors.bg : 'bg-slate-600/30'}`}>
           <Icon className={`w-7 h-7 ${isPlayable ? iconColors.icon : 'text-slate-500'}`} />
         </div>
@@ -226,6 +227,10 @@ function GameTile({ game, msUntilSettlement }: { game: GameInfo; msUntilSettleme
           </h3>
           <p className="text-xs text-slate-400 leading-normal mt-0.5 line-clamp-2">{game.description}</p>
         </div>
+      </div>
+
+      <div className="mb-3">
+        <GameThumbnail gameId={game.id} isPlayable={isPlayable} />
       </div>
 
       <div className="grid grid-cols-3 text-center bg-slate-900/50 rounded-t-lg">

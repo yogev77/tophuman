@@ -7,6 +7,7 @@ import { formatTime } from '@/lib/utils'
 import { ShareScore } from './ShareScore'
 import { Spinner } from '@/components/Spinner'
 import { CC } from '@/lib/currency'
+import { GameThumbnail } from '@/components/GameThumbnail'
 
 type GamePhase = 'idle' | 'loading' | 'play' | 'checking' | 'completed' | 'failed'
 
@@ -353,7 +354,8 @@ export function ColorMatchGame({ onGameComplete }: ColorMatchGameProps) {
       </div>
 
       {phase === 'idle' && (
-        <div className="text-center py-12">
+        <div className="text-center pb-6">
+          <div className="mb-4 max-w-sm mx-auto"><GameThumbnail gameId="color_match" isPlayable={true} /></div>
           <p className="text-slate-300 mb-6">
             Drag on the color picker to match the target color. Get as close as you can!
           </p>

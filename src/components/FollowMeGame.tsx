@@ -6,6 +6,7 @@ import { Pencil } from 'lucide-react'
 import { ShareScore } from './ShareScore'
 import { Spinner } from '@/components/Spinner'
 import { CC } from '@/lib/currency'
+import { GameThumbnail } from '@/components/GameThumbnail'
 import { useTheme } from '@/hooks/useTheme'
 
 type GamePhase = 'idle' | 'loading' | 'ready' | 'draw' | 'checking' | 'completed' | 'failed'
@@ -380,7 +381,8 @@ export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
       </div>
 
       {phase === 'idle' && (
-        <div className="text-center py-12">
+        <div className="text-center pb-6">
+          <div className="mb-4 max-w-sm mx-auto"><GameThumbnail gameId="follow_me" isPlayable={true} /></div>
           <p className="text-slate-300 mb-6">
             Trace {TOTAL_ROUNDS} different paths! Start from the green dot and follow the blue line.
             Speed and accuracy both count toward your score.
