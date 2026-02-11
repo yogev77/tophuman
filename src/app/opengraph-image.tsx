@@ -2,7 +2,7 @@ import { ImageResponse } from 'next/og'
 
 export const runtime = 'edge'
 
-export const alt = 'Podium Arena - Daily Skill Games'
+export const alt = 'Podium Arena - Daily Mind Competitions'
 export const size = {
   width: 1200,
   height: 630,
@@ -61,12 +61,12 @@ export default async function Image() {
         <div
           style={{
             color: '#94a3b8',
-            fontSize: 32,
+            fontSize: 36,
             marginTop: 20,
             textAlign: 'center',
           }}
         >
-          New Champions. Every Day.
+          Daily Mind Competitions.
         </div>
 
         {/* Description */}
@@ -79,7 +79,7 @@ export default async function Image() {
             maxWidth: 800,
           }}
         >
-          Play skill games, top the leaderboard, and claim your share of the pool
+          Every credit grows the pool. Climb the charts. Claim your share.
         </div>
       </div>
     ),

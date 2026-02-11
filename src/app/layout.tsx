@@ -23,19 +23,19 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: 'Podium Arena',
-  description: 'Top the charts. Take your share.',
+  description: 'Every credit grows the pool. Climb the charts. Claim your share.',
   metadataBase: new URL('https://podiumarena.com'),
   openGraph: {
     title: 'Podium Arena',
-    description: 'New Champions. Every Day. Play skill games, top the leaderboard, and claim your share of the pool.',
+    description: 'Daily Mind Competitions. Every credit grows the pool. Climb the charts. Claim your share.',
     siteName: 'Podium Arena',
     type: 'website',
-    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: 'Podium Arena - Daily Skill Games' }],
+    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: 'Podium Arena - Daily Mind Competitions' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Podium Arena',
-    description: 'New Champions. Every Day. Play skill games, top the leaderboard, and claim your share of the pool.',
+    description: 'Daily Mind Competitions. Every credit grows the pool. Climb the charts. Claim your share.',
     images: ['/opengraph-image'],
   },
 }
