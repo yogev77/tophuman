@@ -32,6 +32,9 @@ function renderGame(gameId: string) {
     case 'number_chain': return <NumberChain />
     case 'image_rotate': return <ImageRotate />
     case 'gridlock': return <Gridlock />
+    case 'reaction_bars': return <ReactionBars />
+    case 'image_puzzle': return <ImagePuzzle />
+    case 'draw_me': return <DrawMe />
     default: return <DefaultThumb />
   }
 }
@@ -477,6 +480,101 @@ function Gridlock() {
       <rect x="336" y="62" width="14" height="36" rx="2" className="fill-blue-100 dark:fill-blue-900/20" />
       {/* Arrow pointing to exit */}
       <polygon points="355,80 370,80 362,70" transform="rotate(90 362 80)" className="fill-green-400/60" />
+    </>
+  )
+}
+
+/* ─── Reaction Bars ─── */
+function ReactionBars() {
+  const colors = ['fill-red-400', 'fill-blue-400', 'fill-amber-400']
+  const widths = [65, 45, 75] // visual widths (%)
+  const targets = [50, 60, 40] // target positions (%)
+  return (
+    <>
+      <rect width="480" height="200" rx="8" className="fill-purple-100 dark:fill-purple-900/20" />
+      {/* 3 horizontal bars */}
+      {[0, 1, 2].map(i => {
+        const y = 30 + i * 55
+        const barWidth = widths[i] * 3.2
+        const targetX = 60 + targets[i] * 3.2
+        return (
+          <g key={i}>
+            {/* Bar track */}
+            <rect x="60" y={y} width="320" height="32" rx="6" className="fill-slate-300/50 dark:fill-slate-600/30" />
+            {/* Bar fill */}
+            <rect x="60" y={y} width={barWidth} height="32" rx="6" className={colors[i]} opacity={0.7} />
+            {/* Target marker (dashed line) */}
+            <line x1={targetX} y1={y - 4} x2={targetX} y2={y + 36} strokeWidth="2" strokeDasharray="4 3" className="stroke-white/80" />
+            {/* Small dot at target */}
+            <circle cx={targetX} cy={y + 16} r="4" className="fill-white/90" />
+          </g>
+        )
+      })}
+      {/* Gauge icon hint */}
+      <circle cx="430" cy="100" r="25" fill="none" strokeWidth="3" className="stroke-purple-400/50" />
+      <line x1="430" y1="100" x2="445" y2="85" strokeWidth="3" strokeLinecap="round" className="stroke-purple-500" />
+    </>
+  )
+}
+
+/* ─── Image Puzzle ─── */
+function ImagePuzzle() {
+  const placed = [0, 4, 8] // diagonal preplaced
+  return (
+    <>
+      <rect width="480" height="200" rx="8" className="fill-yellow-100 dark:fill-yellow-900/20" />
+      {/* 3x3 grid */}
+      {[0, 1, 2].map(row =>
+        [0, 1, 2].map(col => {
+          const idx = row * 3 + col
+          const x = 165 + col * 54
+          const y = 17 + row * 56
+          const isPlaced = placed.includes(idx)
+          return (
+            <g key={`${row}-${col}`}>
+              <rect
+                x={x} y={y} width="48" height="50" rx="6"
+                className={isPlaced ? 'fill-yellow-300/60' : 'fill-slate-300/40 dark:fill-slate-600/40'}
+                strokeWidth={isPlaced ? 0 : 2}
+                strokeDasharray={isPlaced ? undefined : '4 3'}
+                stroke={isPlaced ? undefined : undefined}
+              />
+              {!isPlaced && (
+                <>
+                  <line x1={x + 5} y1={y + 5} x2={x + 43} y2={y + 45} strokeWidth="1" className="stroke-slate-400/30" />
+                  <text x={x + 24} y={y + 30} textAnchor="middle" className="fill-slate-400/60" fontSize="18" fontWeight="bold">?</text>
+                </>
+              )}
+              {isPlaced && (
+                <rect x={x + 8} y={y + 8} width="32" height="34" rx="4" className="fill-yellow-400/40" />
+              )}
+            </g>
+          )
+        })
+      )}
+    </>
+  )
+}
+
+/* ─── Draw Me ─── */
+function DrawMe() {
+  return (
+    <>
+      <rect width="480" height="200" rx="8" className="fill-stone-100 dark:fill-stone-900/20" />
+      {/* Left panel: draw area */}
+      <rect x="30" y="20" width="190" height="160" rx="8" className="fill-slate-100/60 dark:fill-slate-800/30" />
+      <path d="M60,140 Q100,50 150,95 T190,55" fill="none" strokeWidth="4" strokeLinecap="round" strokeDasharray="6 4" className="stroke-yellow-400" />
+      <circle cx="60" cy="140" r="5" className="fill-green-400/40" />
+      <circle cx="190" cy="55" r="5" className="fill-red-400/40" />
+      <text x="125" y="175" textAnchor="middle" className="fill-slate-400/80" fontSize="10" fontWeight="bold">DRAW HERE</text>
+
+      {/* Right panel: reference */}
+      <rect x="260" y="20" width="190" height="160" rx="8" className="fill-slate-200/60 dark:fill-slate-700/30" />
+      <path d="M290,140 Q330,40 380,90 T420,50" fill="none" strokeWidth="5" strokeLinecap="round" className="stroke-blue-500" />
+      <circle cx="290" cy="140" r="6" className="fill-green-500" />
+      <circle cx="420" cy="50" r="6" className="fill-red-500" />
+      <text x="355" y="175" textAnchor="middle" className="fill-slate-400/80" fontSize="10" fontWeight="bold">REFERENCE</text>
+
     </>
   )
 }

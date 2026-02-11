@@ -15,6 +15,9 @@ import { generateDuckShootTurnSpec, getDuckShootClientSpec, DEFAULT_DUCK_SHOOT_C
 import { generateMemoryCardsTurnSpec, getMemoryCardsClientSpec, DEFAULT_MEMORY_CARDS_CONFIG } from '@/lib/game/memory-cards'
 import { generateNumberChainTurnSpec, getNumberChainClientSpec, DEFAULT_NUMBER_CHAIN_CONFIG } from '@/lib/game/number-chain'
 import { generateGridlockTurnSpec, getGridlockClientSpec, DEFAULT_GRIDLOCK_CONFIG } from '@/lib/game/gridlock'
+import { generateReactionBarsTurnSpec, getReactionBarsClientSpec, DEFAULT_REACTION_BARS_CONFIG } from '@/lib/game/reaction-bars'
+import { generateImagePuzzleTurnSpec, getImagePuzzleClientSpec, DEFAULT_IMAGE_PUZZLE_CONFIG } from '@/lib/game/image-puzzle'
+import { generateDrawMeTurnSpec, getDrawMeClientSpec, DEFAULT_DRAW_ME_CONFIG } from '@/lib/game/draw-me'
 import crypto from 'crypto'
 
 export async function POST(request: Request) {
@@ -91,6 +94,7 @@ export async function POST(request: Request) {
       'whack_a_mole', 'typing_speed', 'mental_math', 'color_match',
       'visual_diff', 'audio_pattern', 'drag_sort', 'follow_me',
       'duck_shoot', 'memory_cards', 'number_chain', 'gridlock',
+      'reaction_bars', 'image_puzzle', 'draw_me',
     ])
 
     if (!VALID_GAME_TYPES.has(activeGameType)) {
@@ -203,6 +207,27 @@ export async function POST(request: Request) {
           spec = glSpec as unknown as Record<string, unknown>
           clientSpec = getGridlockClientSpec(glSpec) as unknown as Record<string, unknown>
           gameTypeId = 'gridlock'
+          break
+        }
+        case 'reaction_bars': {
+          const rbSpec = generateReactionBarsTurnSpec(profile.user_id, DEFAULT_REACTION_BARS_CONFIG)
+          spec = rbSpec as unknown as Record<string, unknown>
+          clientSpec = getReactionBarsClientSpec(rbSpec) as unknown as Record<string, unknown>
+          gameTypeId = 'reaction_bars'
+          break
+        }
+        case 'image_puzzle': {
+          const ipSpec = generateImagePuzzleTurnSpec(profile.user_id, DEFAULT_IMAGE_PUZZLE_CONFIG)
+          spec = ipSpec as unknown as Record<string, unknown>
+          clientSpec = getImagePuzzleClientSpec(ipSpec) as unknown as Record<string, unknown>
+          gameTypeId = 'image_puzzle'
+          break
+        }
+        case 'draw_me': {
+          const dmSpec = generateDrawMeTurnSpec(profile.user_id, DEFAULT_DRAW_ME_CONFIG)
+          spec = dmSpec as unknown as Record<string, unknown>
+          clientSpec = getDrawMeClientSpec(dmSpec) as unknown as Record<string, unknown>
+          gameTypeId = 'draw_me'
           break
         }
         default: {

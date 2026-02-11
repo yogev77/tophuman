@@ -21,9 +21,14 @@ import {
   LayoutGrid,
   Hash,
   ParkingSquare,
+  Gauge,
+  Puzzle,
+  Brush,
   Clock,
   Lock,
   Crown,
+  List,
+  Grid3X3,
   Users,
   LucideIcon,
   Share2,
@@ -54,6 +59,9 @@ const GAME_ICONS: Record<string, LucideIcon> = {
   memory_cards: LayoutGrid,
   number_chain: Hash,
   gridlock: ParkingSquare,
+  reaction_bars: Gauge,
+  image_puzzle: Puzzle,
+  draw_me: Brush,
 }
 
 const GAME_ICON_COLORS: Record<string, { bg: string; icon: string }> = {
@@ -72,6 +80,9 @@ const GAME_ICON_COLORS: Record<string, { bg: string; icon: string }> = {
   memory_cards: { bg: 'bg-fuchsia-500/20', icon: 'text-fuchsia-400' },
   number_chain: { bg: 'bg-red-500/20', icon: 'text-red-400' },
   gridlock: { bg: 'bg-blue-500/20', icon: 'text-blue-400' },
+  reaction_bars: { bg: 'bg-purple-500/20', icon: 'text-purple-400' },
+  image_puzzle: { bg: 'bg-yellow-500/20', icon: 'text-yellow-400' },
+  draw_me: { bg: 'bg-stone-500/20', icon: 'text-stone-400' },
 }
 
 
@@ -314,6 +325,18 @@ export default function HomePage() {
   const [topPlayersToday, setTopPlayersToday] = useState<TopPlayerEntry[]>([])
   const [topPlayersTab, setTopPlayersTab] = useState<'allTime' | 'today'>('today')
   const [siteTab, setSiteTab] = useState<'games' | 'topCharts'>('games')
+  const [viewMode, setViewMode] = useState<'list' | 'icons'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('gameViewMode')
+      if (saved === 'list' || saved === 'icons') return saved
+      return window.innerWidth < 640 ? 'icons' : 'list'
+    }
+    return 'list'
+  })
+  const setAndSaveViewMode = (mode: 'list' | 'icons') => {
+    setViewMode(mode)
+    localStorage.setItem('gameViewMode', mode)
+  }
   const sharePopupRef = useRef<HTMLDivElement>(null)
 
   const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/auth/signup` : ''
@@ -439,10 +462,10 @@ export default function HomePage() {
       {/* Hero Section */}
       <div className="text-center mb-10">
         <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 font-title">
-          New Champions. Every Day.
+          Daily Mind Competitions.
         </h1>
         <p className="text-xl text-slate-300">
-          Top the charts. Take your share.
+          Every credit grows the pool. Climb the charts. Claim your share.
         </p>
       </div>
 
@@ -591,16 +614,59 @@ export default function HomePage() {
               {/* Active Games */}
               {playableGames.length > 0 && (
                 <>
-                  <h2 className="text-2xl font-bold text-white mb-6 font-title">Play Now</h2>
-                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
-                    {playableGames.map(game => (
-                      <GameTile
-                        key={game.id}
-                        game={game}
-                        msUntilSettlement={timeLeft}
-                      />
-                    ))}
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold text-white font-title">Play Now</h2>
+                    <div className="flex bg-slate-800 rounded-lg p-0.5">
+                      <button
+                        onClick={() => setAndSaveViewMode('list')}
+                        className={`px-3 py-1.5 rounded-md transition ${viewMode === 'list' ? 'bg-yellow-500 text-slate-900' : 'text-slate-400 hover:text-white'}`}
+                        aria-label="List view"
+                      >
+                        <List className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => setAndSaveViewMode('icons')}
+                        className={`px-3 py-1.5 rounded-md transition ${viewMode === 'icons' ? 'bg-yellow-500 text-slate-900' : 'text-slate-400 hover:text-white'}`}
+                        aria-label="Icon view"
+                      >
+                        <Grid3X3 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
+
+                  {viewMode === 'list' ? (
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
+                      {playableGames.map(game => (
+                        <GameTile
+                          key={game.id}
+                          game={game}
+                          msUntilSettlement={timeLeft}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3 mb-10">
+                      {playableGames.map(game => {
+                        const Icon = GAME_ICONS[game.id] || Target
+                        const colors = GAME_ICON_COLORS[game.id] || GAME_ICON_COLORS.emoji_keypad
+                        return (
+                          <Link
+                            key={game.id}
+                            href={`/game?type=${game.id}`}
+                            className="flex flex-col items-center text-center p-3 rounded-xl bg-slate-800 hover:bg-slate-700 transition-transform duration-150 hover:scale-105 active:scale-95"
+                          >
+                            <div className={`p-3 rounded-2xl mb-2 ${colors.bg}`}>
+                              <Icon className={`w-7 h-7 ${colors.icon}`} />
+                            </div>
+                            <span className="text-xs font-medium text-white leading-tight line-clamp-2">{game.name}</span>
+                            {game.poolSize > 0 && (
+                              <span className="text-[10px] text-yellow-400 mt-0.5"><CC />{game.poolSize}</span>
+                            )}
+                          </Link>
+                        )
+                      })}
+                    </div>
+                  )}
                 </>
               )}
 

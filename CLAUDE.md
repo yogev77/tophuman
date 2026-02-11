@@ -66,10 +66,20 @@ Each game has a unique pastel color scheme for its icon:
 - Follow Me: Cyan
 - Target Shoot: Emerald
 
+### Game Thumbnails
+Inline SVG vector illustrations for all 15 games (`src/components/GameThumbnail.tsx`). Used on homepage game tiles and game page pre-start screens. Each thumbnail:
+- `viewBox="0 0 480 200"` (2.4:1 wide aspect ratio)
+- Theme-aware: `fill-{color}-100` / `dark:fill-{color}-900/20` backgrounds
+- Shared neutral shapes: `fill-slate-300 dark:fill-slate-600`
+- No text elements — pure geometric shapes
+- `isPlayable` prop controls grayscale/opacity for inactive games
+- No PNG files — all inline SVG, zero network requests
+
 ### UI Components
 - **Stats Banner**: Shows total credits, players, time until settlement
 - **Top Players Ticker**: Scrolling marquee of game leaders (icon, crown, name, score, pool size)
-- **Game Tiles**: Equal height cards with icon, title, description, stats grid, and top player footer
+- **Game Tiles**: Equal height cards with SVG thumbnail, icon, title, description, stats grid, and top player footer
+- **Game Pre-Start Screen**: SVG thumbnail (top-aligned, `max-w-sm`), instructions, then Start Game button
 - **Referral Banner**: Invite friends UI with copy/share buttons
 
 ## Core Mechanics
@@ -199,6 +209,7 @@ src/
 │   ├── DuckShootGame.tsx
 │   ├── FollowMeGame.tsx
 │   ├── ImageRotateGame.tsx
+│   ├── GameThumbnail.tsx    # Inline SVG thumbnails for all 15 games
 │   ├── Leaderboard.tsx
 │   └── Header.tsx
 ├── lib/
@@ -226,7 +237,7 @@ Key tables:
 - `settlements` - End-of-day prize distribution records
 - `pending_claims` - Unclaimed winnings from settlements (users must claim via UI)
 
-## Game Details (12 Active + 2 Unreleased)
+## Game Details (15 Games)
 
 Each game follows the same architecture pattern:
 - **Server logic**: `src/lib/game/<game-id>.ts` — generates spec, strips secrets for client, validates events, computes score
@@ -434,9 +445,15 @@ Each game follows the same architecture pattern:
 
 ---
 
-### Unreleased Games
-- **Gridlock** (`src/lib/game/gridlock.ts`) — Sliding puzzle / rush-hour style. Not wired up.
-- **Memory Cards** (`src/lib/game/memory-cards.ts`) — Card matching pairs. Not wired up.
+### 14. Memory Cards (`memory_cards`)
+**Files**: `src/lib/game/memory-cards.ts`, `src/components/MemoryCardsGame.tsx`
+
+**Gameplay**: Flip cards to find matching pairs on a grid.
+
+### 15. Gridlock (`gridlock`)
+**Files**: `src/lib/game/gridlock.ts`, `src/components/GridlockGame.tsx`
+
+**Gameplay**: Sliding puzzle / rush-hour style. Slide blocks to free the green piece. 3 rounds of increasing difficulty.
 
 ## Known Issues
 
@@ -663,5 +680,48 @@ All items from two full security audits addressed. Key changes:
 - `src/lib/game/emoji-keypad.ts` — levels system, validation, time limit 90s
 - `src/lib/game/typing-speed.ts` — new sentence bank
 
+### Feb 10, 2026
+
+**v0.4 — SVG Game Thumbnails**
+
+Replaced all 15 PNG game thumbnails with inline SVG vector illustrations. Benefits: zero network requests, perfect scaling, native dark/light theme support via Tailwind fill classes.
+
+**New file:**
+- `src/components/GameThumbnail.tsx` — Single component rendering inline SVG for each game ID
+
+**Homepage (`src/app/page.tsx`):**
+- Replaced `<img src="/thumbnails/...">` with `<GameThumbnail>` in GameTile
+- Deleted `public/thumbnails/` directory (15 PNG files removed)
+
+**Game pre-start screens (all 15 game components):**
+- Added `<GameThumbnail>` above instructions in the `phase === 'idle'` block
+- Top-aligned layout: thumbnail flush to top (`pb-6`, no top padding), tighter `mb-4` spacing
+- Each game imports `GameThumbnail` and passes its own `gameId`
+
+**SVG design details per game:**
+| Game | Key elements |
+|------|-------------|
+| reaction_time | Zap-style lightning bolt (stroke outline), green/red pills, timer arcs |
+| emoji_keypad | 3x4 grid of colored rounded squares with highlight |
+| audio_pattern | 2x2 Simon buttons (red/green/blue/yellow), tight together, sound waves |
+| whack_a_mole | 3 holes, one mole popping up, hammer |
+| typing_speed | 3 keyboard rows + spacebar, highlighted key, cursor line |
+| mental_math | Number blocks with + and = operators, dashed answer box |
+| color_match | RGB venn diagram (3 overlapping circles), color sliders |
+| visual_diff | Two side panels with shapes, one different (dashed highlight) |
+| follow_me | Curved dashed path with dots, green start, pencil cursor |
+| drag_sort | 5 horizontal bars with grip dots, one displaced |
+| duck_shoot | Concentric target rings, crosshair, scope circle, green decoy |
+| memory_cards | 4 cards: 2 face-down (?), 2 revealed (matching stars) |
+| number_chain | 9 numbered circles connected in a chain path |
+| image_rotate | 3x3 tile grid, center tile rotated 20deg, rotation arrow |
+| gridlock | Grid frame with colored blocks (green = piece to free), exit gap |
+
+**Files modified:**
+- `src/components/GameThumbnail.tsx` — NEW
+- `src/app/page.tsx` — Swap `<img>` for `<GameThumbnail>`, added import
+- `public/thumbnails/` — DELETED
+- All 15 `src/components/*Game.tsx` — Added GameThumbnail import + idle phase thumbnail
+
 ---
-*Last updated: Feb 8, 2026*
+*Last updated: Feb 10, 2026*

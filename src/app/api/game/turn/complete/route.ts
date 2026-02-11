@@ -15,6 +15,9 @@ import { validateDuckShootTurn, DuckShootTurnSpec } from '@/lib/game/duck-shoot'
 import { validateMemoryCardsTurn, MemoryCardsTurnSpec } from '@/lib/game/memory-cards'
 import { validateNumberChainTurn, NumberChainTurnSpec } from '@/lib/game/number-chain'
 import { validateGridlockTurn, GridlockTurnSpec } from '@/lib/game/gridlock'
+import { validateReactionBarsTurn, ReactionBarsTurnSpec } from '@/lib/game/reaction-bars'
+import { validateImagePuzzleTurn, ImagePuzzleTurnSpec } from '@/lib/game/image-puzzle'
+import { validateDrawMeTurn, DrawMeTurnSpec } from '@/lib/game/draw-me'
 
 export async function POST(request: NextRequest) {
   try {
@@ -182,6 +185,21 @@ export async function POST(request: NextRequest) {
       case 'gridlock': {
         const spec = turn.spec as unknown as GridlockTurnSpec
         result = validateGridlockTurn(spec, baseEvents)
+        break
+      }
+      case 'reaction_bars': {
+        const spec = turn.spec as unknown as ReactionBarsTurnSpec
+        result = validateReactionBarsTurn(spec, baseEvents)
+        break
+      }
+      case 'image_puzzle': {
+        const spec = turn.spec as unknown as ImagePuzzleTurnSpec
+        result = validateImagePuzzleTurn(spec, baseEvents)
+        break
+      }
+      case 'draw_me': {
+        const spec = turn.spec as unknown as DrawMeTurnSpec
+        result = validateDrawMeTurn(spec, baseEvents)
         break
       }
       default: {

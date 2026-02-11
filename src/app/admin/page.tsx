@@ -78,6 +78,7 @@ interface SettlementClaim {
 interface SettlementDetail {
   id: string
   utc_day: string
+  game_type_id: string | null
   status: string
   pool_total: number
   participant_count: number
@@ -94,14 +95,22 @@ interface SettlementDetail {
 interface SettlementResult {
   success: boolean
   message: string
-  settlement?: {
-    id: string
-    utcDay: string
+  gameSettlements?: {
+    gameTypeId: string
+    settlementId: string
     winner: string
     winnerAmount: number
     rebateTotal: number
     sinkAmount: number
     participantCount: number
+    poolTotal: number
+  }[]
+  summary?: {
+    gamesSettled: number
+    totalPool: number
+    totalPrize: number
+    totalRebate: number
+    totalSink: number
   }
 }
 
@@ -144,7 +153,7 @@ const GAME_ICON_COLORS: Record<string, { bg: string; icon: string }> = {
 const GAME_OPTIONS: GameOption[] = [
   { id: 'emoji_keypad', icon: Target, name: 'Emoji Keypad', desc: 'Memorize & tap sequence' },
   { id: 'image_rotate', icon: RotateCw, name: 'Image Rotate', desc: 'Rotate tiles to restore' },
-  { id: 'reaction_time', icon: Zap, name: 'Reaction Time', desc: 'Test your reflexes' },
+  { id: 'reaction_time', icon: Zap, name: 'Reaction Tap', desc: 'Test your reflexes' },
   { id: 'whack_a_mole', icon: Hammer, name: 'Whack-a-Mole', desc: 'Hit the moles!' },
   { id: 'typing_speed', icon: Keyboard, name: 'Typing Speed', desc: 'Type the phrase fast' },
   { id: 'mental_math', icon: Calculator, name: 'Mental Math', desc: 'Solve math problems' },
@@ -155,6 +164,17 @@ const GAME_OPTIONS: GameOption[] = [
   { id: 'follow_me', icon: Pencil, name: 'Follow Me', desc: 'Trace the path accurately' },
   { id: 'duck_shoot', icon: Crosshair, name: 'Target Shoot', desc: 'Hit the moving targets' },
 ]
+
+const GAME_NAME_MAP: Record<string, string> = Object.fromEntries(
+  GAME_OPTIONS.map(g => [g.id, g.name])
+)
+// Legacy DB mapping
+GAME_NAME_MAP['emoji_keypad_sequence'] = 'Emoji Keypad'
+
+function gameDisplayName(id: string | null): string {
+  if (!id) return 'All Games'
+  return GAME_NAME_MAP[id] || id
+}
 
 type Tab = 'dashboard' | 'treasury'
 
@@ -201,6 +221,7 @@ export default function AdminPage() {
   const [settlementHistoryTotal, setSettlementHistoryTotal] = useState(0)
   const [settlementHistoryLoading, setSettlementHistoryLoading] = useState(false)
   const [expandedSettlement, setExpandedSettlement] = useState<string | null>(null)
+  const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set())
 
   // Treasury ledger state
   const [treasuryBalance, setTreasuryBalance] = useState<number | null>(null)
@@ -208,6 +229,8 @@ export default function AdminPage() {
   const [treasuryEntries, setTreasuryEntries] = useState<LedgerEntry[]>([])
   const [treasuryTotal, setTreasuryTotal] = useState(0)
   const [treasuryLoading, setTreasuryLoading] = useState(false)
+  const [showAllTreasury, setShowAllTreasury] = useState(false)
+  const [expandedTreasuryGroups, setExpandedTreasuryGroups] = useState<Set<string>>(new Set())
 
   // Treasury snapshots state
   const [snapshots, setSnapshots] = useState<TreasurySnapshot[]>([])
@@ -300,7 +323,7 @@ export default function AdminPage() {
     if (!userId) return
     setTreasuryLoading(true)
     try {
-      const res = await fetch(`/api/admin/treasury-history?user_id=${encodeURIComponent(userId)}&limit=10&offset=${offset}`)
+      const res = await fetch(`/api/admin/treasury-history?user_id=${encodeURIComponent(userId)}&limit=100&offset=${offset}`)
       if (res.ok) {
         const data = await res.json()
         setTreasuryBalance(data.balance)
@@ -862,57 +885,121 @@ export default function AdminPage() {
               ) : treasuryEntries.length === 0 ? (
                 <p className="text-slate-400">No credit history for this user.</p>
               ) : (
-                <>
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="text-left text-slate-400 text-sm">
-                          <th className="pb-3">Date</th>
-                          <th className="pb-3">Type</th>
-                          <th className="pb-3 text-right pr-4">Amount</th>
-                          <th className="pb-3 pl-4">Reference</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {treasuryEntries.map((entry) => {
-                          const style = EVENT_TYPE_STYLES[entry.event_type] || { label: entry.event_type, color: 'bg-slate-500/20 text-slate-400' }
-                          return (
-                            <tr key={entry.id} className="border-t border-slate-700">
-                              <td className="py-3 text-white text-sm">
-                                {new Date(entry.created_at).toLocaleDateString()}{' '}
-                                <span className="text-slate-500">{new Date(entry.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                              </td>
-                              <td className="py-3">
-                                <span className={`px-2 py-1 rounded text-xs ${style.color}`}>
-                                  {style.label}
-                                </span>
-                              </td>
-                              <td className={`py-3 text-right pr-4 font-mono text-sm ${entry.amount >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                {entry.amount >= 0 ? '+' : ''}{entry.amount}
-                              </td>
-                              <td className="py-3 pl-4 text-slate-400 text-sm font-mono">
-                                {entry.reference_id ? `${entry.reference_type || ''}:${entry.reference_id.slice(0, 8)}...` : '-'}
-                              </td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                (() => {
+                  const sevenDaysAgo = new Date()
+                  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+                  const visibleEntries = showAllTreasury
+                    ? treasuryEntries
+                    : treasuryEntries.filter(e => new Date(e.created_at) >= sevenDaysAgo)
+                  const hiddenCount = treasuryEntries.length - treasuryEntries.filter(e => new Date(e.created_at) >= sevenDaysAgo).length
 
-                  {/* See More */}
-                  {treasuryEntries.length < treasuryTotal && (
-                    <div className="mt-4 text-center">
-                      <button
-                        onClick={() => fetchTreasuryHistory(treasuryUserId, treasuryEntries.length, true)}
-                        disabled={treasuryLoading}
-                        className="bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white px-6 py-2 rounded-lg text-sm transition"
-                      >
-                        {treasuryLoading ? 'Loading...' : `See more (${treasuryTotal - treasuryEntries.length} remaining)`}
-                      </button>
-                    </div>
-                  )}
-                </>
+                  // Group entries by day then by event_type
+                  const dayGroups = new Map<string, { date: string; typeGroups: Map<string, LedgerEntry[]> }>()
+                  for (const entry of visibleEntries) {
+                    const dayKey = entry.utc_day || new Date(entry.created_at).toISOString().slice(0, 10)
+                    if (!dayGroups.has(dayKey)) {
+                      dayGroups.set(dayKey, { date: dayKey, typeGroups: new Map() })
+                    }
+                    const day = dayGroups.get(dayKey)!
+                    const list = day.typeGroups.get(entry.event_type) || []
+                    list.push(entry)
+                    day.typeGroups.set(entry.event_type, list)
+                  }
+
+                  return (
+                    <>
+                      <div className="space-y-3">
+                        {[...dayGroups.entries()].map(([dayKey, day]) => (
+                          <div key={dayKey}>
+                            <div className="text-xs text-slate-500 font-medium mb-1 px-1">{dayKey}</div>
+                            <div className="overflow-x-auto">
+                              <table className="w-full">
+                                <tbody>
+                                  {[...day.typeGroups.entries()].map(([eventType, entries]) => {
+                                    const style = EVENT_TYPE_STYLES[eventType] || { label: eventType, color: 'bg-slate-500/20 text-slate-400' }
+                                    const totalAmount = entries.reduce((s, e) => s + e.amount, 0)
+                                    const groupKey = `${dayKey}:${eventType}`
+                                    const isGroupExpanded = expandedTreasuryGroups.has(groupKey)
+                                    const canExpand = entries.length > 1
+
+                                    return (
+                                      <React.Fragment key={groupKey}>
+                                        <tr
+                                          className={`border-t border-slate-700 ${canExpand ? 'cursor-pointer hover:bg-slate-700/30' : ''} transition`}
+                                          onClick={() => {
+                                            if (!canExpand) return
+                                            setExpandedTreasuryGroups(prev => {
+                                              const next = new Set(prev)
+                                              if (next.has(groupKey)) next.delete(groupKey)
+                                              else next.add(groupKey)
+                                              return next
+                                            })
+                                          }}
+                                        >
+                                          <td className="py-2.5 w-6 text-slate-400">
+                                            {canExpand && (isGroupExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />)}
+                                          </td>
+                                          <td className="py-2.5">
+                                            <span className={`px-2 py-1 rounded text-xs ${style.color}`}>
+                                              {style.label}
+                                            </span>
+                                            {entries.length > 1 && (
+                                              <span className="text-slate-500 text-xs ml-2">x{entries.length}</span>
+                                            )}
+                                          </td>
+                                          <td className={`py-2.5 text-right pr-4 font-mono text-sm ${totalAmount >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                            {totalAmount >= 0 ? '+' : ''}{totalAmount}
+                                          </td>
+                                        </tr>
+                                        {isGroupExpanded && entries.map((entry) => {
+                                          const gameName = entry.metadata?.game_type_id ? gameDisplayName(entry.metadata.game_type_id as string) : null
+                                          return (
+                                            <tr key={entry.id} className="border-t border-slate-700/50 bg-slate-700/20">
+                                              <td className="py-1.5"></td>
+                                              <td className="py-1.5 pl-6 text-slate-400 text-xs">
+                                                {gameName || (entry.reference_id ? `${entry.reference_type || ''}:${entry.reference_id.slice(0, 8)}...` : '-')}
+                                              </td>
+                                              <td className={`py-1.5 text-right pr-4 font-mono text-xs ${entry.amount >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                {entry.amount >= 0 ? '+' : ''}{entry.amount}
+                                              </td>
+                                            </tr>
+                                          )
+                                        })}
+                                      </React.Fragment>
+                                    )
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {!showAllTreasury && hiddenCount > 0 && (
+                        <div className="mt-4 text-center">
+                          <button
+                            onClick={() => setShowAllTreasury(true)}
+                            className="bg-slate-700 hover:bg-slate-600 text-white px-6 py-2 rounded-lg text-sm transition"
+                          >
+                            Show older ({hiddenCount} more)
+                          </button>
+                        </div>
+                      )}
+
+                      {showAllTreasury && treasuryEntries.length < treasuryTotal && (
+                        <div className="mt-4 text-center">
+                          <button
+                            onClick={() => fetchTreasuryHistory(treasuryUserId, treasuryEntries.length, true)}
+                            disabled={treasuryLoading}
+                            className="bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white px-6 py-2 rounded-lg text-sm transition"
+                          >
+                            {treasuryLoading ? 'Loading...' : `Load more (${treasuryTotal - treasuryEntries.length} remaining)`}
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )
+                })()
               )}
             </div>
           ) : (
@@ -1000,105 +1087,157 @@ export default function AdminPage() {
             ) : (
               <>
                 <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="text-left text-slate-400 text-sm">
-                        <th className="pb-3 w-8"></th>
-                        <th className="pb-3 pr-4">Date</th>
-                        <th className="pb-3 px-3 text-right">Pool</th>
-                        <th className="pb-3 px-3">Winner</th>
-                        <th className="pb-3 px-3 text-right">Prize</th>
-                        <th className="pb-3 px-3 text-right">Credit Back</th>
-                        <th className="pb-3 px-3 text-right">Treasury</th>
-                        <th className="pb-3 pl-3">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {settlementHistory.map((s) => {
-                        const isExpanded = expandedSettlement === s.id
-                        return (
-                          <React.Fragment key={s.id}>
-                            <tr
-                              className="border-t border-slate-700 cursor-pointer hover:bg-slate-700/30 transition"
-                              onClick={() => setExpandedSettlement(isExpanded ? null : s.id)}
-                            >
-                              <td className="py-3 text-slate-400">
-                                {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                              </td>
-                              <td className="py-3 pr-4 text-white">{s.utc_day}</td>
-                              <td className="py-3 px-3 text-yellow-400 text-right font-mono">{s.pool_total}</td>
-                              <td className="py-3 px-3 text-slate-300 text-sm">
-                                {s.winner_name || (s.winner_user_id ? s.winner_user_id.slice(0, 12) + '...' : '-')}
-                              </td>
-                              <td className="py-3 px-3 text-green-400 text-right font-mono">{s.winner_amount ?? '-'}</td>
-                              <td className="py-3 px-3 text-blue-400 text-right font-mono">{s.rebate_total ?? '-'}</td>
-                              <td className="py-3 px-3 text-orange-400 text-right font-mono">{s.sink_amount ?? '-'}</td>
-                              <td className="py-3 pl-3">
-                                <span className={`px-2 py-1 rounded text-xs ${
-                                  s.status === 'completed' ? 'bg-green-500/20 text-green-400' :
-                                  s.status === 'processing' ? 'bg-yellow-500/20 text-yellow-400' :
-                                  'bg-slate-500/20 text-slate-400'
-                                }`}>
-                                  {s.status}
-                                </span>
-                              </td>
-                            </tr>
-                            {isExpanded && (
-                              <tr>
-                                <td colSpan={8} className="py-0">
-                                  <div className="bg-slate-700/30 rounded-lg p-4 mb-2">
-                                    <div className="text-sm text-slate-400 mb-2">
-                                      {s.participant_count} participants &middot; Settled {s.completed_at ? new Date(s.completed_at).toLocaleString() : 'pending'}
-                                    </div>
-                                    {s.claims.length === 0 ? (
-                                      <p className="text-slate-500 text-sm">No claims found for this settlement.</p>
-                                    ) : (
-                                      <table className="w-full text-sm">
-                                        <thead>
-                                          <tr className="text-slate-400">
-                                            <th className="text-left pb-2">User</th>
-                                            <th className="text-left pb-2">Type</th>
-                                            <th className="text-right pb-2">Amount</th>
-                                            <th className="text-right pb-2">Claimed</th>
-                                          </tr>
-                                        </thead>
-                                        <tbody>
-                                          {s.claims.map((c) => (
-                                            <tr key={c.id} className="border-t border-slate-600/50">
-                                              <td className="py-1.5 text-white">{c.user_name}</td>
-                                              <td className="py-1.5">
-                                                <span className={`px-2 py-0.5 rounded text-xs ${
-                                                  c.claim_type === 'prize_win' ? 'bg-yellow-500/20 text-yellow-400' :
-                                                  c.claim_type === 'rebate' ? 'bg-blue-500/20 text-blue-400' :
-                                                  c.claim_type === 'sink' ? 'bg-orange-500/20 text-orange-400' :
-                                                  'bg-slate-500/20 text-slate-400'
-                                                }`}>
-                                                  {c.claim_type === 'prize_win' ? 'Prize' :
-                                                   c.claim_type === 'rebate' ? 'Credit Back' :
-                                                   c.claim_type === 'sink' ? 'Treasury' : c.claim_type}
-                                                </span>
-                                              </td>
-                                              <td className="py-1.5 text-right font-mono text-green-400">{c.amount}</td>
-                                              <td className="py-1.5 text-right">
-                                                {c.claimed
-                                                  ? <Check className="w-4 h-4 text-green-400 inline" />
-                                                  : <X className="w-4 h-4 text-slate-500 inline" />
-                                                }
-                                              </td>
-                                            </tr>
-                                          ))}
-                                        </tbody>
-                                      </table>
-                                    )}
-                                  </div>
-                                </td>
-                              </tr>
-                            )}
-                          </React.Fragment>
-                        )
-                      })}
-                    </tbody>
-                  </table>
+                  {(() => {
+                    // Group settlements by utc_day
+                    const grouped = new Map<string, SettlementDetail[]>()
+                    for (const s of settlementHistory) {
+                      const list = grouped.get(s.utc_day) || []
+                      list.push(s)
+                      grouped.set(s.utc_day, list)
+                    }
+
+                    return [...grouped.entries()].map(([day, daySettlements]) => {
+                      const dayTotal = daySettlements.reduce((sum, s) => sum + s.pool_total, 0)
+                      const dayPrize = daySettlements.reduce((sum, s) => sum + (s.winner_amount ?? 0), 0)
+                      const dayRebate = daySettlements.reduce((sum, s) => sum + (s.rebate_total ?? 0), 0)
+                      const daySink = daySettlements.reduce((sum, s) => sum + (s.sink_amount ?? 0), 0)
+                      const isDayExpanded = expandedDays.has(day)
+
+                      return (
+                        <div key={day} className="mb-4">
+                          {/* Day header — clickable to expand games */}
+                          <div
+                            className="flex items-center justify-between bg-slate-700/40 rounded-lg px-4 py-3 cursor-pointer hover:bg-slate-700/60 transition"
+                            onClick={() => setExpandedDays(prev => {
+                              const next = new Set(prev)
+                              if (next.has(day)) next.delete(day)
+                              else next.add(day)
+                              return next
+                            })}
+                          >
+                            <div className="flex items-center gap-2">
+                              {isDayExpanded ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
+                              <span className="text-white font-bold">{day}</span>
+                            </div>
+                            <div className="flex gap-4 text-xs">
+                              <span className="text-yellow-400 font-mono">Pool: {dayTotal}</span>
+                              <span className="text-green-400 font-mono">Prize: {dayPrize}</span>
+                              <span className="text-blue-400 font-mono">Rebate: {dayRebate}</span>
+                              <span className="text-orange-400 font-mono">Treasury: {daySink}</span>
+                              <span className="text-slate-400">{daySettlements.length} game(s)</span>
+                            </div>
+                          </div>
+
+                          {isDayExpanded && (
+                            <table className="w-full">
+                              <thead>
+                                <tr className="text-left text-slate-400 text-xs">
+                                  <th className="py-2 w-8"></th>
+                                  <th className="py-2 pr-4">Game</th>
+                                  <th className="py-2 px-3 text-right">Pool</th>
+                                  <th className="py-2 px-3">Winner</th>
+                                  <th className="py-2 px-3 text-right">Prize</th>
+                                  <th className="py-2 px-3 text-right">Credit Back</th>
+                                  <th className="py-2 px-3 text-right">Treasury</th>
+                                  <th className="py-2 pl-3">Status</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {daySettlements.map((s) => {
+                                  const isExpanded = expandedSettlement === s.id
+                                  const gameColor = GAME_ICON_COLORS[s.game_type_id || '']
+                                  return (
+                                    <React.Fragment key={s.id}>
+                                      <tr
+                                        className="border-t border-slate-700 cursor-pointer hover:bg-slate-700/30 transition"
+                                        onClick={() => setExpandedSettlement(isExpanded ? null : s.id)}
+                                      >
+                                        <td className="py-2.5 text-slate-400">
+                                          {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                                        </td>
+                                        <td className="py-2.5 pr-4">
+                                          <span className={`px-2 py-0.5 rounded text-xs ${gameColor?.bg || 'bg-slate-600/50'} ${gameColor?.icon || 'text-slate-300'}`}>
+                                            {gameDisplayName(s.game_type_id)}
+                                          </span>
+                                        </td>
+                                        <td className="py-2.5 px-3 text-yellow-400 text-right font-mono text-sm">{s.pool_total}</td>
+                                        <td className="py-2.5 px-3 text-slate-300 text-sm">
+                                          {s.winner_name || (s.winner_user_id ? s.winner_user_id.slice(0, 12) + '...' : '-')}
+                                        </td>
+                                        <td className="py-2.5 px-3 text-green-400 text-right font-mono text-sm">{s.winner_amount ?? '-'}</td>
+                                        <td className="py-2.5 px-3 text-blue-400 text-right font-mono text-sm">{s.rebate_total ?? '-'}</td>
+                                        <td className="py-2.5 px-3 text-orange-400 text-right font-mono text-sm">{s.sink_amount ?? '-'}</td>
+                                        <td className="py-2.5 pl-3">
+                                          <span className={`px-2 py-1 rounded text-xs ${
+                                            s.status === 'completed' ? 'bg-green-500/20 text-green-400' :
+                                            s.status === 'processing' ? 'bg-yellow-500/20 text-yellow-400' :
+                                            'bg-slate-500/20 text-slate-400'
+                                          }`}>
+                                            {s.status}
+                                          </span>
+                                        </td>
+                                      </tr>
+                                      {isExpanded && (
+                                        <tr>
+                                          <td colSpan={8} className="py-0">
+                                            <div className="bg-slate-700/30 rounded-lg p-4 mb-2">
+                                              <div className="text-sm text-slate-400 mb-2">
+                                                {s.participant_count} participants &middot; Settled {s.completed_at ? new Date(s.completed_at).toLocaleString() : 'pending'}
+                                              </div>
+                                              {s.claims.length === 0 ? (
+                                                <p className="text-slate-500 text-sm">No claims found for this settlement.</p>
+                                              ) : (
+                                                <table className="w-full text-sm">
+                                                  <thead>
+                                                    <tr className="text-slate-400">
+                                                      <th className="text-left pb-2">User</th>
+                                                      <th className="text-left pb-2">Type</th>
+                                                      <th className="text-right pb-2">Amount</th>
+                                                      <th className="text-right pb-2">Claimed</th>
+                                                    </tr>
+                                                  </thead>
+                                                  <tbody>
+                                                    {s.claims.map((c) => (
+                                                      <tr key={c.id} className="border-t border-slate-600/50">
+                                                        <td className="py-1.5 text-white">{c.user_name}</td>
+                                                        <td className="py-1.5">
+                                                          <span className={`px-2 py-0.5 rounded text-xs ${
+                                                            c.claim_type === 'prize_win' ? 'bg-yellow-500/20 text-yellow-400' :
+                                                            c.claim_type === 'rebate' ? 'bg-blue-500/20 text-blue-400' :
+                                                            c.claim_type === 'sink' ? 'bg-orange-500/20 text-orange-400' :
+                                                            'bg-slate-500/20 text-slate-400'
+                                                          }`}>
+                                                            {c.claim_type === 'prize_win' ? 'Prize' :
+                                                             c.claim_type === 'rebate' ? 'Credit Back' :
+                                                             c.claim_type === 'sink' ? 'Treasury' : c.claim_type}
+                                                          </span>
+                                                        </td>
+                                                        <td className="py-1.5 text-right font-mono text-green-400">{c.amount}</td>
+                                                        <td className="py-1.5 text-right">
+                                                          {c.claimed
+                                                            ? <Check className="w-4 h-4 text-green-400 inline" />
+                                                            : <X className="w-4 h-4 text-slate-500 inline" />
+                                                          }
+                                                        </td>
+                                                      </tr>
+                                                    ))}
+                                                  </tbody>
+                                                </table>
+                                              )}
+                                            </div>
+                                          </td>
+                                        </tr>
+                                      )}
+                                    </React.Fragment>
+                                  )
+                                })}
+                              </tbody>
+                            </table>
+                          )}
+                        </div>
+                      )
+                    })
+                  })()}
                 </div>
 
                 {/* Load More */}
@@ -1169,24 +1308,42 @@ export default function AdminPage() {
                 <div className={settleResult.success ? 'text-green-400' : 'text-red-400'}>
                   {settleResult.message}
                 </div>
-                {settleResult.settlement && (
-                  <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
+                {settleResult.summary && (
+                  <div className="mt-3 grid grid-cols-2 md:grid-cols-5 gap-3">
                     <div>
-                      <div className="text-slate-400 text-xs">Winner Prize</div>
-                      <div className="text-yellow-400 font-bold">{settleResult.settlement.winnerAmount}</div>
+                      <div className="text-slate-400 text-xs">Games Settled</div>
+                      <div className="text-white font-bold">{settleResult.summary.gamesSettled}</div>
                     </div>
                     <div>
-                      <div className="text-slate-400 text-xs">Credit Back</div>
-                      <div className="text-blue-400 font-bold">{settleResult.settlement.rebateTotal}</div>
+                      <div className="text-slate-400 text-xs">Total Pool</div>
+                      <div className="text-yellow-400 font-bold">{settleResult.summary.totalPool}</div>
                     </div>
                     <div>
-                      <div className="text-slate-400 text-xs">Treasury</div>
-                      <div className="text-orange-400 font-bold">{settleResult.settlement.sinkAmount}</div>
+                      <div className="text-slate-400 text-xs">Total Prize</div>
+                      <div className="text-green-400 font-bold">{settleResult.summary.totalPrize}</div>
                     </div>
                     <div>
-                      <div className="text-slate-400 text-xs">Participants</div>
-                      <div className="text-white font-bold">{settleResult.settlement.participantCount}</div>
+                      <div className="text-slate-400 text-xs">Total Credit Back</div>
+                      <div className="text-blue-400 font-bold">{settleResult.summary.totalRebate}</div>
                     </div>
+                    <div>
+                      <div className="text-slate-400 text-xs">Total Treasury</div>
+                      <div className="text-orange-400 font-bold">{settleResult.summary.totalSink}</div>
+                    </div>
+                  </div>
+                )}
+                {settleResult.gameSettlements && settleResult.gameSettlements.length > 0 && (
+                  <div className="mt-3 space-y-1">
+                    {settleResult.gameSettlements.map((g) => (
+                      <div key={g.gameTypeId} className="flex items-center gap-3 text-xs">
+                        <span className={`px-2 py-0.5 rounded ${GAME_ICON_COLORS[g.gameTypeId]?.bg || 'bg-slate-600/50'} ${GAME_ICON_COLORS[g.gameTypeId]?.icon || 'text-slate-300'}`}>
+                          {gameDisplayName(g.gameTypeId)}
+                        </span>
+                        <span className="text-yellow-400 font-mono">Pool: {g.poolTotal}</span>
+                        <span className="text-green-400 font-mono">Prize: {g.winnerAmount}</span>
+                        <span className="text-slate-400">{g.participantCount} players</span>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>

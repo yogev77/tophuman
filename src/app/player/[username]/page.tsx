@@ -569,6 +569,13 @@ function SettingsTab() {
         <SoundsToggle />
       </div>
 
+      <a
+        href="/auth/forgot-password"
+        className="block text-center text-sm text-slate-500 hover:text-slate-300 transition"
+      >
+        Change password
+      </a>
+
       <button
         onClick={handleSignOut}
         className="w-full border-2 border-slate-600 hover:border-slate-500 text-slate-400 hover:text-white font-bold py-3 rounded-lg transition"
@@ -593,8 +600,8 @@ const HISTORY_EVENT_CONFIG: Record<string, { label: string; icon: typeof Gift; c
 
 const HISTORY_GAME_NAMES: Record<string, string> = {
   emoji_keypad_sequence: 'Emoji Sequence',
-  image_rotate: 'Image Puzzle',
-  reaction_time: 'Reaction Time',
+  image_rotate: 'Puzzle Rotation',
+  reaction_time: 'Reaction Tap',
   whack_a_mole: 'Whack-a-Mole',
   typing_speed: 'Typing Speed',
   mental_math: 'Mental Math',

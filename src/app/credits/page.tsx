@@ -13,6 +13,8 @@ import {
   Shield,
   Clock,
   Loader2,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react'
 import { CC } from '@/lib/currency'
 
@@ -61,8 +63,8 @@ function formatDate(dateStr: string) {
 
 const GAME_NAMES: Record<string, string> = {
   emoji_keypad_sequence: 'Emoji Sequence',
-  image_rotate: 'Image Puzzle',
-  reaction_time: 'Reaction Time',
+  image_rotate: 'Puzzle Rotation',
+  reaction_time: 'Reaction Tap',
   whack_a_mole: 'Whack-a-Mole',
   typing_speed: 'Typing Speed',
   mental_math: 'Mental Math',
@@ -77,11 +79,16 @@ const GAME_NAMES: Record<string, string> = {
   gridlock: 'Gridlock',
 }
 
+interface SubEntry {
+  gameTypeId?: string
+  amount: number
+}
+
 interface GroupedEntry {
   event_type: string
-  gameTypeId?: string
   totalAmount: number
   count: number
+  subEntries: SubEntry[]
 }
 
 interface DayGroup {
@@ -98,18 +105,17 @@ function groupEntriesByDay(entries: LedgerEntry[]): DayGroup[] {
     }
     const typeMap = dayMap.get(entry.utc_day)!
     const gameTypeId = (entry.metadata as Record<string, unknown>)?.game_type_id as string | undefined
-    // Group by event_type + gameTypeId so each game appears separately
-    const groupKey = gameTypeId ? `${entry.event_type}:${gameTypeId}` : entry.event_type
-    const existing = typeMap.get(groupKey)
+    const existing = typeMap.get(entry.event_type)
     if (existing) {
       existing.totalAmount += entry.amount
       existing.count += 1
+      existing.subEntries.push({ gameTypeId, amount: entry.amount })
     } else {
-      typeMap.set(groupKey, {
+      typeMap.set(entry.event_type, {
         event_type: entry.event_type,
-        gameTypeId,
         totalAmount: entry.amount,
         count: 1,
+        subEntries: [{ gameTypeId, amount: entry.amount }],
       })
     }
   }
@@ -130,6 +136,7 @@ export default function CreditsPage() {
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
 
   const fetchHistory = useCallback(async (offset: number, append: boolean) => {
     try {
@@ -206,21 +213,52 @@ export default function CreditsPage() {
                     const config = getEventConfig(grouped.event_type, grouped.totalAmount)
                     const Icon = config.icon
                     const isPositive = grouped.totalAmount >= 0
-                    const gameName = grouped.gameTypeId ? GAME_NAMES[grouped.gameTypeId] : null
+                    const canExpand = grouped.subEntries.length > 1 && grouped.subEntries.some(s => s.gameTypeId)
+                    const groupKey = `${day.utc_day}:${grouped.event_type}`
+                    const isExpanded = expandedGroups.has(groupKey)
 
                     return (
-                      <div key={`${grouped.event_type}-${grouped.gameTypeId || idx}`} className={`px-4 py-3 flex items-center gap-3${idx > 0 ? ' border-t border-light-divider' : ''}`}>
-                        <div className={`p-2 rounded-lg bg-slate-700/50 ${config.colorClass}`}>
-                          <Icon className="w-4 h-4" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm text-white font-medium">
-                            {config.label}{gameName ? ` · ${gameName}` : ''}{grouped.count > 1 ? ` x${grouped.count}` : ''}
+                      <div key={`${grouped.event_type}-${idx}`}>
+                        <div
+                          className={`px-4 py-3 flex items-center gap-3${idx > 0 ? ' border-t border-light-divider' : ''}${canExpand ? ' cursor-pointer' : ''}`}
+                          onClick={() => {
+                            if (!canExpand) return
+                            setExpandedGroups(prev => {
+                              const next = new Set(prev)
+                              if (next.has(groupKey)) next.delete(groupKey)
+                              else next.add(groupKey)
+                              return next
+                            })
+                          }}
+                        >
+                          <div className={`p-2 rounded-lg bg-slate-700/50 ${config.colorClass}`}>
+                            <Icon className="w-4 h-4" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm text-white font-medium flex items-center gap-1.5">
+                              {canExpand && (
+                                isExpanded
+                                  ? <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                  : <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                              )}
+                              {config.label}{grouped.count > 1 ? ` x${grouped.count}` : ''}
+                            </div>
+                          </div>
+                          <div className={`text-sm font-semibold tabular-nums ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
+                            {isPositive ? '+' : ''}{grouped.totalAmount}
                           </div>
                         </div>
-                        <div className={`text-sm font-semibold tabular-nums ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
-                          {isPositive ? '+' : ''}{grouped.totalAmount}
-                        </div>
+                        {isExpanded && grouped.subEntries.map((sub, subIdx) => {
+                          const gameName = sub.gameTypeId ? GAME_NAMES[sub.gameTypeId] : null
+                          return (
+                            <div key={subIdx} className="px-4 py-1.5 pl-14 flex items-center justify-between border-t border-slate-700/50 bg-slate-700/20">
+                              <span className="text-xs text-slate-400">{gameName || '-'}</span>
+                              <span className={`text-xs font-mono ${sub.amount >= 0 ? 'text-green-400/70' : 'text-red-400/70'}`}>
+                                {sub.amount >= 0 ? '+' : ''}{sub.amount}
+                              </span>
+                            </div>
+                          )
+                        })}
                       </div>
                     )
                   })}

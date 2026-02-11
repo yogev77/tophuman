@@ -12,8 +12,8 @@ interface ClaimedItem {
 
 const GAME_NAMES: Record<string, string> = {
   emoji_keypad_sequence: 'Emoji Sequence',
-  image_rotate: 'Image Puzzle',
-  reaction_time: 'Reaction Time',
+  image_rotate: 'Puzzle Rotation',
+  reaction_time: 'Reaction Tap',
   whack_a_mole: 'Whack-a-Mole',
   typing_speed: 'Typing Speed',
   mental_math: 'Mental Math',
@@ -43,13 +43,8 @@ export function ClaimSuccessModal({ isOpen, onClose, amount, newBalance, reason,
   useEffect(() => {
     if (isOpen) {
       setIsAnimating(true)
-      // Auto-close after 8 seconds (longer to read breakdown)
-      const timer = setTimeout(() => {
-        onClose()
-      }, 8000)
-      return () => clearTimeout(timer)
     }
-  }, [isOpen, onClose])
+  }, [isOpen])
 
   if (!isOpen) return null
 

@@ -17,11 +17,11 @@ const GAME_INFO: Record<string, { name: string; description: string }> = {
     description: 'Memorize and repeat the emoji pattern',
   },
   image_rotate: {
-    name: 'Image Puzzle',
+    name: 'Puzzle Rotation',
     description: 'Rotate tiles to complete the image',
   },
   reaction_time: {
-    name: 'Reaction Time',
+    name: 'Reaction Tap',
     description: 'Click as fast as you can when the signal appears',
   },
   whack_a_mole: {
@@ -71,6 +71,18 @@ const GAME_INFO: Record<string, { name: string; description: string }> = {
   gridlock: {
     name: 'Gridlock',
     description: 'Solve sliding puzzles',
+  },
+  reaction_bars: {
+    name: 'Reaction Bars',
+    description: 'Stop oscillating bars at the target width',
+  },
+  image_puzzle: {
+    name: 'Image Puzzle',
+    description: 'Place missing pieces to complete the image',
+  },
+  draw_me: {
+    name: 'Draw Me',
+    description: 'Reproduce the reference path from sight',
   },
 }
 

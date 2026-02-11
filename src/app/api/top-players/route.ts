@@ -12,8 +12,8 @@ function toUiGameId(dbId: string): string {
 
 const GAME_NAMES: Record<string, string> = {
   emoji_keypad: 'Emoji Sequence',
-  image_rotate: 'Image Puzzle',
-  reaction_time: 'Reaction Time',
+  image_rotate: 'Puzzle Rotation',
+  reaction_time: 'Reaction Tap',
   whack_a_mole: 'Whack-a-Mole',
   typing_speed: 'Typing Speed',
   mental_math: 'Mental Math',

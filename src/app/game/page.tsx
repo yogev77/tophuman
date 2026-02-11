@@ -21,6 +21,9 @@ import { DuckShootGame } from '@/components/DuckShootGame'
 import { MemoryCardsGame } from '@/components/MemoryCardsGame'
 import { NumberChainGame } from '@/components/NumberChainGame'
 import { GridlockGame } from '@/components/GridlockGame'
+import { ReactionBarsGame } from '@/components/ReactionBarsGame'
+import { ImagePuzzleGame } from '@/components/ImagePuzzleGame'
+import { DrawMeGame } from '@/components/DrawMeGame'
 import { Leaderboard } from '@/components/Leaderboard'
 import Link from 'next/link'
 import {
@@ -39,6 +42,9 @@ import {
   LayoutGrid,
   Hash,
   ParkingSquare,
+  Gauge,
+  Puzzle,
+  Brush,
   ArrowLeft,
   LucideIcon,
   CalendarCheck,
@@ -65,6 +71,9 @@ const GAME_ICON_COLORS: Record<string, { bg: string; icon: string }> = {
   memory_cards: { bg: 'bg-fuchsia-500/20', icon: 'text-fuchsia-400' },
   number_chain: { bg: 'bg-red-500/20', icon: 'text-red-400' },
   gridlock: { bg: 'bg-blue-500/20', icon: 'text-blue-400' },
+  reaction_bars: { bg: 'bg-purple-500/20', icon: 'text-purple-400' },
+  image_puzzle: { bg: 'bg-yellow-500/20', icon: 'text-yellow-400' },
+  draw_me: { bg: 'bg-stone-500/20', icon: 'text-stone-400' },
 }
 
 const GAME_CONFIG: Record<string, {
@@ -83,14 +92,14 @@ const GAME_CONFIG: Record<string, {
   },
   image_rotate: {
     component: ImageRotateGame,
-    name: 'Image Puzzle',
+    name: 'Puzzle Rotation',
     description: 'Rotate the tiles to restore the original image.',
     leaderboardType: 'image_rotate',
     icon: RotateCw,
   },
   reaction_time: {
     component: ReactionTimeGame,
-    name: 'Reaction Time',
+    name: 'Reaction Tap',
     description: 'Tap when the color changes. Skip the fakes.',
     leaderboardType: 'reaction_time',
     icon: Zap,
@@ -178,6 +187,27 @@ const GAME_CONFIG: Record<string, {
     description: 'Slide blocks to free the green piece. 3 rounds.',
     leaderboardType: 'gridlock',
     icon: ParkingSquare,
+  },
+  reaction_bars: {
+    component: ReactionBarsGame,
+    name: 'Reaction Bars',
+    description: 'Stop oscillating bars at the target. Speed + accuracy.',
+    leaderboardType: 'reaction_bars',
+    icon: Gauge,
+  },
+  image_puzzle: {
+    component: ImagePuzzleGame,
+    name: 'Image Puzzle',
+    description: 'Place missing pieces to complete the image.',
+    leaderboardType: 'image_puzzle',
+    icon: Puzzle,
+  },
+  draw_me: {
+    component: DrawMeGame,
+    name: 'Draw Me',
+    description: 'Copy the reference path. 3 rounds of increasing difficulty.',
+    leaderboardType: 'draw_me',
+    icon: Brush,
   },
 }
 
