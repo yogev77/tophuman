@@ -223,14 +223,14 @@ export function ImagePuzzleGame({ onGameComplete }: ImagePuzzleGameProps) {
   const tileSize = 100
 
   return (
-    <div className="bg-slate-800 rounded-xl p-4 sm:p-6">
+    <div className="bg-white dark:bg-slate-800 rounded-xl p-4 sm:p-6">
       <div className="flex items-center justify-between mb-6">
         {phase === 'play' && (
           <>
             <div className={`text-2xl font-mono ${timeLeft < 10000 ? 'text-red-400' : 'text-green-400'}`}>
               {formatTime(timeLeft)}
             </div>
-            <div className="text-sm text-slate-400">
+            <div className="text-sm text-slate-500 dark:text-slate-400">
               {mistakes > 0 && <span className="text-red-400">{mistakes} mistake{mistakes !== 1 ? 's' : ''}</span>}
             </div>
           </>
@@ -240,7 +240,7 @@ export function ImagePuzzleGame({ onGameComplete }: ImagePuzzleGameProps) {
       {phase === 'idle' && (
         <div className="text-center pb-6">
           <div className="mb-4 max-w-sm mx-auto"><GameThumbnail gameId="image_puzzle" isPlayable={true} /></div>
-          <p className="text-slate-300 mb-6">
+          <p className="text-slate-600 dark:text-slate-300 mb-6">
             Place the missing puzzle pieces! Tap a piece from the bank, then tap the empty cell where it belongs.
           </p>
           <button
@@ -255,17 +255,17 @@ export function ImagePuzzleGame({ onGameComplete }: ImagePuzzleGameProps) {
       {phase === 'loading' && (
         <div className="text-center py-12">
           <div className="mx-auto mb-4"><Spinner /></div>
-          <p className="text-slate-300">Preparing puzzle...</p>
+          <p className="text-slate-600 dark:text-slate-300">Preparing puzzle...</p>
         </div>
       )}
 
       {phase === 'play' && spec && (
         <div className="flex flex-col items-center">
-          <p className="text-slate-400 text-sm mb-4">Select a piece below, then tap where it goes!</p>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mb-4">Select a piece below, then tap where it goes!</p>
 
           {/* Grid */}
           <div
-            className="grid gap-1 bg-slate-900 p-1 rounded-lg max-w-full overflow-hidden"
+            className="grid gap-1 bg-slate-200 dark:bg-slate-900 p-1 rounded-lg max-w-full overflow-hidden"
             style={{
               gridTemplateColumns: `repeat(${gridSize}, ${tileSize}px)`,
               width: `${gridSize * tileSize + (gridSize + 1) * 4}px`,
@@ -287,8 +287,8 @@ export function ImagePuzzleGame({ onGameComplete }: ImagePuzzleGameProps) {
                     isFilled
                       ? ''
                       : selectedPiece !== null
-                      ? 'cursor-pointer hover:brightness-125 border-2 border-dashed border-slate-500'
-                      : 'border-2 border-dashed border-slate-600'
+                      ? 'cursor-pointer hover:brightness-125 border-2 border-dashed border-slate-400 dark:border-slate-500 bg-slate-100 dark:bg-slate-700'
+                      : 'border-2 border-dashed border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-700'
                   } ${
                     isFlashing
                       ? flashCell?.correct
@@ -299,7 +299,7 @@ export function ImagePuzzleGame({ onGameComplete }: ImagePuzzleGameProps) {
                   style={{
                     width: tileSize,
                     height: tileSize,
-                    backgroundColor: isFilled ? 'transparent' : '#334155',
+                    backgroundColor: isFilled ? 'transparent' : undefined,
                   }}
                 >
                   {isFilled ? (
@@ -323,7 +323,7 @@ export function ImagePuzzleGame({ onGameComplete }: ImagePuzzleGameProps) {
                     </div>
                   ) : (
                     <div className="flex items-center justify-center w-full h-full">
-                      <span className="text-slate-500 text-2xl">?</span>
+                      <span className="text-slate-400 dark:text-slate-500 text-2xl">?</span>
                     </div>
                   )}
                 </button>
@@ -333,7 +333,7 @@ export function ImagePuzzleGame({ onGameComplete }: ImagePuzzleGameProps) {
 
           {/* Bank */}
           <div className="mt-4 w-full">
-            <p className="text-slate-500 text-xs mb-2 text-center">Tap a piece to select it:</p>
+            <p className="text-slate-400 dark:text-slate-500 text-xs mb-2 text-center">Tap a piece to select it:</p>
             <div className="flex gap-2 overflow-x-auto pb-2 justify-center flex-wrap">
               {availablePieces.map((pieceIndex) => {
                 const row = Math.floor(pieceIndex / gridSize)
@@ -384,7 +384,7 @@ export function ImagePuzzleGame({ onGameComplete }: ImagePuzzleGameProps) {
       {phase === 'checking' && (
         <div className="text-center py-12">
           <div className="mx-auto mb-4"><Spinner /></div>
-          <p className="text-slate-300">Verifying solution...</p>
+          <p className="text-slate-600 dark:text-slate-300">Verifying solution...</p>
         </div>
       )}
 
@@ -393,26 +393,26 @@ export function ImagePuzzleGame({ onGameComplete }: ImagePuzzleGameProps) {
           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-yellow-500/20 flex items-center justify-center">
             <Puzzle className="w-10 h-10 text-yellow-400" />
           </div>
-          <h3 className="text-2xl font-bold text-green-400 mb-4">Puzzle Complete!</h3>
-          <div className="bg-slate-900/50 rounded-lg max-w-xs mx-auto mb-6">
+          <h3 className="text-2xl font-bold text-green-500 dark:text-green-400 mb-4">Puzzle Complete!</h3>
+          <div className="bg-slate-100 dark:bg-slate-900/50 rounded-lg max-w-xs mx-auto mb-6">
             <div className="grid grid-cols-2 text-center divide-x divide-slate-200 dark:divide-slate-600/50">
               <div className="py-4 px-2">
-                <div className="text-2xl font-bold text-white">{result.score?.toLocaleString()}</div>
-                <div className="text-[10px] text-slate-400">Score</div>
+                <div className="text-2xl font-bold text-slate-900 dark:text-white">{result.score?.toLocaleString()}</div>
+                <div className="text-[10px] text-slate-500 dark:text-slate-400">Score</div>
               </div>
               <div className="py-4 px-2">
-                <div className="text-2xl font-bold text-white">#{result.rank}</div>
-                <div className="text-[10px] text-slate-400">Rank</div>
+                <div className="text-2xl font-bold text-slate-900 dark:text-white">#{result.rank}</div>
+                <div className="text-[10px] text-slate-500 dark:text-slate-400">Rank</div>
               </div>
             </div>
             <div className="grid grid-cols-2 text-center divide-x divide-slate-200 dark:divide-slate-600/50 border-t border-slate-200 dark:border-slate-600/50">
               <div className="py-3 px-2">
-                <div className="text-base font-bold text-white">{formatTime(result.completionTimeMs || 0)}</div>
-                <div className="text-[10px] text-slate-400">Time</div>
+                <div className="text-base font-bold text-slate-900 dark:text-white">{formatTime(result.completionTimeMs || 0)}</div>
+                <div className="text-[10px] text-slate-500 dark:text-slate-400">Time</div>
               </div>
               <div className="py-3 px-2">
-                <div className="text-base font-bold text-white">{result.mistakes || 0}</div>
-                <div className="text-[10px] text-slate-400">Mistakes</div>
+                <div className="text-base font-bold text-slate-900 dark:text-white">{result.mistakes || 0}</div>
+                <div className="text-[10px] text-slate-500 dark:text-slate-400">Mistakes</div>
               </div>
             </div>
           </div>
@@ -429,10 +429,10 @@ export function ImagePuzzleGame({ onGameComplete }: ImagePuzzleGameProps) {
           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-yellow-500/20 flex items-center justify-center">
             <Puzzle className="w-10 h-10 text-yellow-400" />
           </div>
-          <h3 className="text-2xl font-bold text-red-400 mb-4">
+          <h3 className="text-2xl font-bold text-red-500 dark:text-red-400 mb-4">
             {result?.reason === 'timeout' ? "Time's Up!" : 'Failed!'}
           </h3>
-          <p className="text-slate-300 mb-6">
+          <p className="text-slate-600 dark:text-slate-300 mb-6">
             {result?.reason === 'timeout'
               ? 'You ran out of time.'
               : result?.reason === 'incomplete'

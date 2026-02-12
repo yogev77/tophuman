@@ -21,7 +21,7 @@ import {
   LayoutGrid,
   Hash,
   ParkingSquare,
-  Gauge,
+  BarChartHorizontal,
   Puzzle,
   Brush,
   Clock,
@@ -59,7 +59,7 @@ const GAME_ICONS: Record<string, LucideIcon> = {
   memory_cards: LayoutGrid,
   number_chain: Hash,
   gridlock: ParkingSquare,
-  reaction_bars: Gauge,
+  reaction_bars: BarChartHorizontal,
   image_puzzle: Puzzle,
   draw_me: Brush,
 }

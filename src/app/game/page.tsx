@@ -42,7 +42,7 @@ import {
   LayoutGrid,
   Hash,
   ParkingSquare,
-  Gauge,
+  BarChartHorizontal,
   Puzzle,
   Brush,
   ArrowLeft,
@@ -193,7 +193,7 @@ const GAME_CONFIG: Record<string, {
     name: 'Reaction Bars',
     description: 'Stop oscillating bars at the target. Speed + accuracy.',
     leaderboardType: 'reaction_bars',
-    icon: Gauge,
+    icon: BarChartHorizontal,
   },
   image_puzzle: {
     component: ImagePuzzleGame,

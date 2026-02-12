@@ -377,7 +377,7 @@ export function DrawMeGame({ onGameComplete }: DrawMeGameProps) {
   }, [])
 
   return (
-    <div className="bg-slate-800 rounded-xl p-4 sm:p-6">
+    <div className="bg-white dark:bg-slate-800 rounded-xl p-4 sm:p-6">
       <div className="flex items-center justify-between mb-4 sm:mb-6">
         {(phase === 'ready' || phase === 'draw') && spec && (
           <>
@@ -410,7 +410,7 @@ export function DrawMeGame({ onGameComplete }: DrawMeGameProps) {
       {phase === 'idle' && (
         <div className="text-center pb-6">
           <div className="mb-4 max-w-sm mx-auto"><GameThumbnail gameId="draw_me" isPlayable={true} /></div>
-          <p className="text-slate-300 mb-6">
+          <p className="text-slate-600 dark:text-slate-300 mb-6">
             Look at the reference path, then draw it on the blank canvas!
             {TOTAL_ROUNDS} rounds of increasing complexity. Speed and accuracy both count.
           </p>
@@ -426,7 +426,7 @@ export function DrawMeGame({ onGameComplete }: DrawMeGameProps) {
       {phase === 'loading' && (
         <div className="text-center py-12">
           <div className="mx-auto mb-4"><Spinner /></div>
-          <p className="text-slate-300">Generating paths...</p>
+          <p className="text-slate-600 dark:text-slate-300">Generating paths...</p>
         </div>
       )}
 
@@ -435,7 +435,7 @@ export function DrawMeGame({ onGameComplete }: DrawMeGameProps) {
           {/* Stacked wide canvases: reference above, draw below */}
           <div className="flex flex-col gap-2 w-full max-w-lg mx-auto touch-none">
             {/* Reference canvas (top, read-only) */}
-            <div className="border-2 border-blue-500/40 rounded-lg overflow-hidden bg-slate-900" style={{ aspectRatio: `${canvasWidth} / ${canvasHeight}` }}>
+            <div className="border-2 border-blue-500/40 rounded-lg overflow-hidden bg-slate-50 dark:bg-slate-900" style={{ aspectRatio: `${canvasWidth} / ${canvasHeight}` }}>
               <canvas
                 ref={refCanvasRef}
                 width={canvasWidth}
@@ -445,7 +445,7 @@ export function DrawMeGame({ onGameComplete }: DrawMeGameProps) {
             </div>
 
             {/* Drawing canvas (bottom) */}
-            <div className="border-2 border-yellow-500/40 rounded-lg overflow-hidden bg-slate-900" style={{ aspectRatio: `${canvasWidth} / ${canvasHeight}` }}>
+            <div className="border-2 border-yellow-500/40 rounded-lg overflow-hidden bg-white dark:bg-slate-900" style={{ aspectRatio: `${canvasWidth} / ${canvasHeight}` }}>
               <canvas
                 ref={drawCanvasRef}
                 width={canvasWidth}
@@ -467,7 +467,7 @@ export function DrawMeGame({ onGameComplete }: DrawMeGameProps) {
       {phase === 'checking' && (
         <div className="text-center py-12">
           <div className="mx-auto mb-4"><Spinner /></div>
-          <p className="text-slate-300">Calculating accuracy...</p>
+          <p className="text-slate-600 dark:text-slate-300">Calculating accuracy...</p>
         </div>
       )}
 
@@ -476,26 +476,26 @@ export function DrawMeGame({ onGameComplete }: DrawMeGameProps) {
           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-stone-500/20 flex items-center justify-center">
             <Brush className="w-10 h-10 text-stone-400" />
           </div>
-          <h3 className="text-2xl font-bold text-green-400 mb-4">Great Drawing!</h3>
-          <div className="bg-slate-900/50 rounded-lg max-w-xs mx-auto mb-6">
+          <h3 className="text-2xl font-bold text-green-500 dark:text-green-400 mb-4">Great Drawing!</h3>
+          <div className="bg-slate-100 dark:bg-slate-900/50 rounded-lg max-w-xs mx-auto mb-6">
             <div className="grid grid-cols-2 text-center divide-x divide-slate-200 dark:divide-slate-600/50">
               <div className="py-4 px-2">
-                <div className="text-2xl font-bold text-white">{result.score?.toLocaleString()}</div>
-                <div className="text-[10px] text-slate-400">Score</div>
+                <div className="text-2xl font-bold text-slate-900 dark:text-white">{result.score?.toLocaleString()}</div>
+                <div className="text-[10px] text-slate-500 dark:text-slate-400">Score</div>
               </div>
               <div className="py-4 px-2">
-                <div className="text-2xl font-bold text-white">#{result.rank}</div>
-                <div className="text-[10px] text-slate-400">Rank</div>
+                <div className="text-2xl font-bold text-slate-900 dark:text-white">#{result.rank}</div>
+                <div className="text-[10px] text-slate-500 dark:text-slate-400">Rank</div>
               </div>
             </div>
             <div className="grid grid-cols-2 text-center divide-x divide-slate-200 dark:divide-slate-600/50 border-t border-slate-200 dark:border-slate-600/50">
               <div className="py-3 px-2">
-                <div className="text-base font-bold text-white">{result.accuracy ? Math.round(result.accuracy * 100) : 0}%</div>
-                <div className="text-[10px] text-slate-400">Accuracy</div>
+                <div className="text-base font-bold text-slate-900 dark:text-white">{result.accuracy ? Math.round(result.accuracy * 100) : 0}%</div>
+                <div className="text-[10px] text-slate-500 dark:text-slate-400">Accuracy</div>
               </div>
               <div className="py-3 px-2">
-                <div className="text-base font-bold text-white">{result.coverage ? Math.round(result.coverage * 100) : 0}%</div>
-                <div className="text-[10px] text-slate-400">Coverage</div>
+                <div className="text-base font-bold text-slate-900 dark:text-white">{result.coverage ? Math.round(result.coverage * 100) : 0}%</div>
+                <div className="text-[10px] text-slate-500 dark:text-slate-400">Coverage</div>
               </div>
             </div>
           </div>
@@ -519,8 +519,8 @@ export function DrawMeGame({ onGameComplete }: DrawMeGameProps) {
           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-stone-500/20 flex items-center justify-center">
             <Brush className="w-10 h-10 text-stone-400" />
           </div>
-          <h3 className="text-2xl font-bold text-red-400 mb-4">Not Quite!</h3>
-          <p className="text-slate-300 mb-6">
+          <h3 className="text-2xl font-bold text-red-500 dark:text-red-400 mb-4">Not Quite!</h3>
+          <p className="text-slate-600 dark:text-slate-300 mb-6">
             {result?.reason === 'no_drawing'
               ? 'You need to draw the path!'
               : result?.reason === 'low_coverage'

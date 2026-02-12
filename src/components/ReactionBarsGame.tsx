@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
-import { Gauge } from 'lucide-react'
+import { BarChartHorizontal } from 'lucide-react'
 import { ShareScore } from './ShareScore'
 import { Spinner } from '@/components/Spinner'
 import { CC } from '@/lib/currency'
@@ -218,7 +218,7 @@ export function ReactionBarsGame({ onGameComplete }: ReactionBarsGameProps) {
   }, [])
 
   return (
-    <div className="bg-slate-800 rounded-xl p-4 sm:p-6">
+    <div className="bg-white dark:bg-slate-800 rounded-xl p-4 sm:p-6">
       <div className="flex items-center justify-between mb-4 sm:mb-6">
         {phase === 'play' && (
           <div className={`text-2xl font-mono ${timeLeft < 10000 ? 'text-red-400' : 'text-green-400'}`}>
@@ -226,7 +226,7 @@ export function ReactionBarsGame({ onGameComplete }: ReactionBarsGameProps) {
           </div>
         )}
         {phase === 'play' && spec && (
-          <div className="text-sm text-slate-400">
+          <div className="text-sm text-slate-500 dark:text-slate-400">
             Bar {Math.min(activeBar + 1, spec.bars.length)} / {spec.bars.length}
           </div>
         )}
@@ -235,7 +235,7 @@ export function ReactionBarsGame({ onGameComplete }: ReactionBarsGameProps) {
       {phase === 'idle' && (
         <div className="text-center pb-6">
           <div className="mb-4 max-w-sm mx-auto"><GameThumbnail gameId="reaction_bars" isPlayable={true} /></div>
-          <p className="text-slate-300 mb-6">
+          <p className="text-slate-600 dark:text-slate-300 mb-6">
             Stop each bar at the target marker! Tap to freeze each bar. Speed and accuracy both count.
           </p>
           <button
@@ -250,13 +250,13 @@ export function ReactionBarsGame({ onGameComplete }: ReactionBarsGameProps) {
       {phase === 'loading' && (
         <div className="text-center py-12">
           <div className="mx-auto mb-4"><Spinner /></div>
-          <p className="text-slate-300">Preparing bars...</p>
+          <p className="text-slate-600 dark:text-slate-300">Preparing bars...</p>
         </div>
       )}
 
       {phase === 'play' && spec && (
         <div className="space-y-6">
-          <p className="text-slate-400 text-sm text-center">
+          <p className="text-slate-500 dark:text-slate-400 text-sm text-center">
             Tap to stop the bar at the target line!
           </p>
           {spec.bars.map((bar, i) => {
@@ -270,14 +270,13 @@ export function ReactionBarsGame({ onGameComplete }: ReactionBarsGameProps) {
                 key={i}
                 onClick={isActive ? handleBarStop : undefined}
                 disabled={!isActive}
-                className={`relative w-full h-16 rounded-lg overflow-hidden transition-all ${
+                className={`relative w-full h-16 rounded-lg overflow-hidden transition-all bg-slate-200 dark:bg-slate-900 ${
                   isActive
-                    ? 'ring-2 ring-white/50 cursor-pointer'
+                    ? 'ring-2 ring-slate-400 dark:ring-white/50 cursor-pointer'
                     : isStopped
                     ? 'opacity-70'
                     : 'opacity-30'
                 }`}
-                style={{ backgroundColor: '#1e293b' }}
               >
                 {/* Bar fill */}
                 <div
@@ -291,16 +290,13 @@ export function ReactionBarsGame({ onGameComplete }: ReactionBarsGameProps) {
 
                 {/* Target marker */}
                 <div
-                  className="absolute top-0 h-full w-0.5"
-                  style={{
-                    left: `${targetWidth}%`,
-                    borderLeft: '2px dashed rgba(255,255,255,0.8)',
-                  }}
+                  className="absolute top-0 h-full w-0.5 border-l-2 border-dashed border-slate-500 dark:border-white/80"
+                  style={{ left: `${targetWidth}%` }}
                 />
 
                 {/* Target label */}
                 <div
-                  className="absolute top-1 text-[10px] text-white/60 font-mono"
+                  className="absolute top-1 text-[10px] text-slate-500 dark:text-white/60 font-mono"
                   style={{ left: `${targetWidth}%`, transform: 'translateX(-50%)' }}
                 >
                   {Math.round(targetWidth)}
@@ -317,7 +313,7 @@ export function ReactionBarsGame({ onGameComplete }: ReactionBarsGameProps) {
 
                 {/* Active indicator */}
                 {isActive && (
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-white/80 text-sm font-bold animate-pulse">
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-600 dark:text-white/80 text-sm font-bold animate-pulse">
                     TAP!
                   </div>
                 )}
@@ -330,30 +326,30 @@ export function ReactionBarsGame({ onGameComplete }: ReactionBarsGameProps) {
       {phase === 'checking' && (
         <div className="text-center py-12">
           <div className="mx-auto mb-4"><Spinner /></div>
-          <p className="text-slate-300">Calculating results...</p>
+          <p className="text-slate-600 dark:text-slate-300">Calculating results...</p>
         </div>
       )}
 
       {phase === 'completed' && result && (
         <div className="text-center py-8">
           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-purple-500/20 flex items-center justify-center">
-            <Gauge className="w-10 h-10 text-purple-400" />
+            <BarChartHorizontal className="w-10 h-10 text-purple-400" />
           </div>
-          <h3 className="text-2xl font-bold text-green-400 mb-4">Great Timing!</h3>
-          <div className="bg-slate-900/50 rounded-lg max-w-xs mx-auto mb-6">
+          <h3 className="text-2xl font-bold text-green-500 dark:text-green-400 mb-4">Great Timing!</h3>
+          <div className="bg-slate-100 dark:bg-slate-900/50 rounded-lg max-w-xs mx-auto mb-6">
             <div className="grid grid-cols-2 text-center divide-x divide-slate-200 dark:divide-slate-600/50">
               <div className="py-4 px-2">
-                <div className="text-2xl font-bold text-white">{result.score?.toLocaleString()}</div>
-                <div className="text-[10px] text-slate-400">Score</div>
+                <div className="text-2xl font-bold text-slate-900 dark:text-white">{result.score?.toLocaleString()}</div>
+                <div className="text-[10px] text-slate-500 dark:text-slate-400">Score</div>
               </div>
               <div className="py-4 px-2">
-                <div className="text-2xl font-bold text-white">#{result.rank}</div>
-                <div className="text-[10px] text-slate-400">Rank</div>
+                <div className="text-2xl font-bold text-slate-900 dark:text-white">#{result.rank}</div>
+                <div className="text-[10px] text-slate-500 dark:text-slate-400">Rank</div>
               </div>
             </div>
             <div className="py-3 px-2 text-center border-t border-slate-200 dark:border-slate-600/50">
-              <div className="text-base font-bold text-white">{result.avgAccuracy ? Math.round(result.avgAccuracy * 100) : 0}%</div>
-              <div className="text-[10px] text-slate-400">Accuracy</div>
+              <div className="text-base font-bold text-slate-900 dark:text-white">{result.avgAccuracy ? Math.round(result.avgAccuracy * 100) : 0}%</div>
+              <div className="text-[10px] text-slate-500 dark:text-slate-400">Accuracy</div>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3 max-w-xs mx-auto">
@@ -367,12 +363,12 @@ export function ReactionBarsGame({ onGameComplete }: ReactionBarsGameProps) {
       {phase === 'failed' && (
         <div className="text-center py-8">
           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-purple-500/20 flex items-center justify-center">
-            <Gauge className="w-10 h-10 text-purple-400" />
+            <BarChartHorizontal className="w-10 h-10 text-purple-400" />
           </div>
-          <h3 className="text-2xl font-bold text-red-400 mb-4">
+          <h3 className="text-2xl font-bold text-red-500 dark:text-red-400 mb-4">
             {result?.reason === 'timeout' ? "Time's Up!" : 'Failed!'}
           </h3>
-          <p className="text-slate-300 mb-6">
+          <p className="text-slate-600 dark:text-slate-300 mb-6">
             {result?.reason === 'timeout'
               ? 'You ran out of time.'
               : result?.reason === 'incomplete'
