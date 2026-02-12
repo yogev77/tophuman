@@ -207,6 +207,12 @@ html.light .text-green-400 {
   animation: pulse-subtle 2.5s ease-in-out infinite;
 }
 
+/* Number chain: pulsing glow ring (no opacity change) */
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(234, 179, 8, 0.6); }
+  50% { box-shadow: 0 0 0 4px rgba(234, 179, 8, 0.1); }
+}
+
 /* Emoji flash animation */
 @keyframes scaleIn {
   0% { transform: scale(0.5); opacity: 0; }

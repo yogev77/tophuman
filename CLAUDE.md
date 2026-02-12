@@ -22,7 +22,7 @@ TopHuman is a "proof of humanity" gaming platform where:
 
 ### Why These Games?
 Each game targets different human capabilities that are difficult to automate:
-- **Reaction Time** - Tests genuine reflexes, timing patterns reveal bots
+- **Reaction Tap** (ID: `reaction_time`) - Tests genuine reflexes, timing patterns reveal bots
 - **Emoji Keypad** - Memory + visual recognition + motor control
 - **Whack-a-Mole** - Unpredictable targets, reaction speed, accuracy
 - **Typing Speed** - Natural typing rhythm is hard to fake
@@ -34,6 +34,9 @@ Each game targets different human capabilities that are difficult to automate:
 - **Drag Sort** - Touch/mouse coordination
 - **Image Rotate** - Spatial reasoning
 - **Target Shoot** (ID: `duck_shoot`) - Olympic-style target shooting with red (hit) and green (avoid) targets
+- **Reaction Bars** - Stop oscillating bars at target markers, tests timing precision
+- **Image Puzzle** - Place missing pieces into a 3x3 image grid
+- **Draw Me** - Copy reference paths by drawing on a canvas, tests accuracy and speed
 
 ## Design System
 
@@ -55,7 +58,7 @@ Each game targets different human capabilities that are difficult to automate:
 Each game has a unique pastel color scheme for its icon:
 - Emoji Keypad: Rose
 - Image Rotate: Sky
-- Reaction Time: Amber
+- Reaction Tap: Amber
 - Whack-a-Mole: Green
 - Typing Speed: Violet
 - Mental Math: Orange
@@ -65,9 +68,12 @@ Each game has a unique pastel color scheme for its icon:
 - Drag Sort: Lime
 - Follow Me: Cyan
 - Target Shoot: Emerald
+- Reaction Bars: Purple
+- Image Puzzle: Yellow
+- Draw Me: Stone
 
 ### Game Thumbnails
-Inline SVG vector illustrations for all 15 games (`src/components/GameThumbnail.tsx`). Used on homepage game tiles and game page pre-start screens. Each thumbnail:
+Inline SVG vector illustrations for all 18 games (`src/components/GameThumbnail.tsx`). Used on homepage game tiles and game page pre-start screens. Each thumbnail:
 - `viewBox="0 0 480 200"` (2.4:1 wide aspect ratio)
 - Theme-aware: `fill-{color}-100` / `dark:fill-{color}-900/20` backgrounds
 - Shared neutral shapes: `fill-slate-300 dark:fill-slate-600`
@@ -209,7 +215,10 @@ src/
 │   ├── DuckShootGame.tsx
 │   ├── FollowMeGame.tsx
 │   ├── ImageRotateGame.tsx
-│   ├── GameThumbnail.tsx    # Inline SVG thumbnails for all 15 games
+│   ├── ReactionBarsGame.tsx
+│   ├── ImagePuzzleGame.tsx
+│   ├── DrawMeGame.tsx
+│   ├── GameThumbnail.tsx    # Inline SVG thumbnails for all 18 games
 │   ├── Leaderboard.tsx
 │   └── Header.tsx
 ├── lib/
@@ -237,7 +246,7 @@ Key tables:
 - `settlements` - End-of-day prize distribution records
 - `pending_claims` - Unclaimed winnings from settlements (users must claim via UI)
 
-## Game Details (15 Games)
+## Game Details (18 Games)
 
 Each game follows the same architecture pattern:
 - **Server logic**: `src/lib/game/<game-id>.ts` — generates spec, strips secrets for client, validates events, computes score
@@ -278,7 +287,7 @@ Each game follows the same architecture pattern:
 
 ---
 
-### 3. Reaction Time (`reaction_time`)
+### 3. Reaction Tap (`reaction_time`)
 **Files**: `src/lib/game/reaction-time.ts`, `src/components/ReactionTimeGame.tsx`
 
 **Gameplay**: 8 rounds — colored circles appear after random delays (800-2500ms). ~70% are "Tap!" rounds, ~30% are "Don't Tap!" traps. Player must tap quickly on tap rounds and resist on trap rounds.
@@ -454,6 +463,51 @@ Each game follows the same architecture pattern:
 **Files**: `src/lib/game/gridlock.ts`, `src/components/GridlockGame.tsx`
 
 **Gameplay**: Sliding puzzle / rush-hour style. Slide blocks to free the green piece. 3 rounds of increasing difficulty.
+
+---
+
+### 16. Reaction Bars (`reaction_bars`)
+**Files**: `src/lib/game/reaction-bars.ts`, `src/components/ReactionBarsGame.tsx`
+
+**Gameplay**: 3 bars oscillate sinusoidally at varying speeds (~6s, 4s, 3s periods). Player stops each bar when its width matches the target marker. Target width ranges 25-80%.
+
+**Config**: `num_bars: 3`, `time_limit: 30s`
+
+**Client receives**: Bar configs (speed, target width), time limit. Events: `bar_stop` with barIndex and stoppedWidth.
+
+**Validation**: Accuracy per bar = `max(0, 1 - diff/30)` (30% tolerance window). Completion time must be ≤ time limit + 5s. Bot detection: `avgAccuracy > 0.99 && stdDev < 0.005` + all intervals < 200ms = flagged.
+
+**Scoring**: `pow(avgAccuracy, 1.2) * 7000 * sqrt(maxTime / completionTime) * completionRatio`
+
+---
+
+### 17. Image Puzzle (`image_puzzle`)
+**Files**: `src/lib/game/image-puzzle.ts`, `src/components/ImagePuzzleGame.tsx`
+
+**Gameplay**: 3x3 image grid with 3 pre-placed pieces and 6 pieces in a bank. Drag bank pieces to their correct grid positions. Puzzle image randomly selected from pool.
+
+**Config**: `grid_size: 3` (9 cells), `pre_placed: 3`, `time_limit: 60s`
+
+**Client receives**: Image URL, grid layout, pre-placed positions, bank pieces (shuffled). Events: `place_piece` with pieceIndex and cellIndex.
+
+**Validation**: Replays all `place_piece` events server-side, tracks correct/incorrect placements. Must place all 6 pieces correctly (incomplete = invalid). Bot detection: (0 mistakes in < 3s) OR (avg interval < 200ms AND stdDev < 30ms) = flagged.
+
+**Scoring**: `(7000 - mistakes * 500) * sqrt(maxTime / max(completionTime, 3000))`
+
+---
+
+### 18. Draw Me (`draw_me`)
+**Files**: `src/lib/game/draw-me.ts`, `src/components/DrawMeGame.tsx`
+
+**Gameplay**: 3 rounds of increasing difficulty — copy reference paths by drawing on a canvas. Paths generated via control points (3→5→6 points, 30→45→55px span). Canvas is 300x300 logical, displayed as wide 1.6:1 rectangle (480x300) with path centered via xOffset.
+
+**Config**: `canvas_size: 300`, `num_rounds: 3`, `time_limit: 30s`
+
+**Client receives**: Canvas size, path points per round, time limit. Events: `draw_start`, `round_complete` (rounds 1-2), `draw_complete` (round 3) with user's drawn points.
+
+**Validation**: Each round must have ≥ 10 drawn points. Uses `validateRoundPath()` helper (shared with Follow Me) computing accuracy and coverage. Must average ≥ 50% coverage across valid rounds. Bot detection: draw time < 500ms with 20+ total points = flagged.
+
+**Scoring**: `(pow(accuracy, 1.15) * 4000 + coverage * 3000) * sqrt(maxTime / max(time, 2000)) * (validRounds / totalRounds)`
 
 ## Known Issues
 
@@ -723,5 +777,44 @@ Replaced all 15 PNG game thumbnails with inline SVG vector illustrations. Benefi
 - `public/thumbnails/` — DELETED
 - All 15 `src/components/*Game.tsx` — Added GameThumbnail import + idle phase thumbnail
 
+### Feb 11, 2026
+
+**3 New Games: Reaction Bars, Image Puzzle, Draw Me**
+
+Added game #16-18, each with server-side scoring, SVG thumbnails, and anti-cheat validation. All follow the standard turn flow (`create → start → event → complete`).
+
+**Files added:**
+- `src/components/ReactionBarsGame.tsx`, `src/lib/game/reaction-bars.ts`
+- `src/components/ImagePuzzleGame.tsx`, `src/lib/game/image-puzzle.ts`
+- `src/components/DrawMeGame.tsx`, `src/lib/game/draw-me.ts`
+
+**Race condition fix (Image Puzzle + Reaction Bars):**
+Fire-and-forget event fetches caused the last event to miss the DB before `completeGame` ran. Fixed with `pendingEventRef` pattern — store last event promise in a ref, await it before calling `/complete`.
+
+**Draw Me layout iterations:**
+- Started as side-by-side grid, moved to stacked (target above, drawing below)
+- Canvas ratio: 1.6:1 wide rectangle (480x300) with 300x300 path content centered via `xOffset`
+- `touch-none` on container + canvas to prevent mobile scroll during drawing
+- `getCanvasPoint` subtracts `xOffset` for server-compatible coordinates
+
+**Reaction Tap rename:**
+Renamed "Reaction Time" → "Reaction Tap" across 10 files (game page, API routes, admin, player, credits, claim modal, top-players, game-settings). DB ID remains `reaction_time`.
+
+**Reaction Bars accuracy:**
+30% tolerance window on either side of target marker. Accuracy = `max(0, 1 - diff/30)`. No hard fail threshold — any completed game gets a score.
+
+**Homepage grid view toggle:**
+- List/Icon toggle in "Play Now" title row (`src/app/page.tsx`)
+- Icon view: 3-col grid on mobile, 4 on sm, 6 on lg — shows game icon, name, pool size
+- Mobile defaults to grid view, desktop to list
+- Persisted to localStorage; user choice overrides device default
+
+**Social snippet update:**
+- OG image (`src/app/opengraph-image.tsx`): tagline "Daily Mind Competitions.", description matches homepage copy
+- Layout metadata (`src/app/layout.tsx`): OpenGraph + Twitter card descriptions updated
+
+**Image Puzzle thumbnail:** Removed 3 bank rectangles from SVG
+**Draw Me thumbnail:** Removed pencil/brush icon from SVG
+
 ---
-*Last updated: Feb 10, 2026*
+*Last updated: Feb 11, 2026*

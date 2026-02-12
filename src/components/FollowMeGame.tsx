@@ -73,11 +73,6 @@ export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
     const currentPath = spec.paths[currentRound - 1]
     if (!currentPath || currentPath.length < 2) return
 
-    // Check if this path loops (start ≈ end)
-    const dx = currentPath[0].x - currentPath[currentPath.length - 1].x
-    const dy = currentPath[0].y - currentPath[currentPath.length - 1].y
-    const isLoop = Math.sqrt(dx * dx + dy * dy) < 20
-
     // Draw target path
     ctx.strokeStyle = '#3b82f6' // blue-500
     ctx.lineWidth = 8
@@ -90,25 +85,17 @@ export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
     }
     ctx.stroke()
 
-    if (isLoop) {
-      // For loops, just draw a single start/end indicator
-      ctx.fillStyle = '#22c55e' // green-500
-      ctx.beginPath()
-      ctx.arc(currentPath[0].x, currentPath[0].y, 12, 0, Math.PI * 2)
-      ctx.fill()
-    } else {
-      // Draw start indicator
-      ctx.fillStyle = '#22c55e' // green-500
-      ctx.beginPath()
-      ctx.arc(currentPath[0].x, currentPath[0].y, 12, 0, Math.PI * 2)
-      ctx.fill()
+    // Draw end indicator first (so start dot renders on top)
+    ctx.fillStyle = '#ef4444' // red-500
+    ctx.beginPath()
+    ctx.arc(currentPath[currentPath.length - 1].x, currentPath[currentPath.length - 1].y, 12, 0, Math.PI * 2)
+    ctx.fill()
 
-      // Draw end indicator
-      ctx.fillStyle = '#ef4444' // red-500
-      ctx.beginPath()
-      ctx.arc(currentPath[currentPath.length - 1].x, currentPath[currentPath.length - 1].y, 12, 0, Math.PI * 2)
-      ctx.fill()
-    }
+    // Draw start indicator
+    ctx.fillStyle = '#22c55e' // green-500
+    ctx.beginPath()
+    ctx.arc(currentPath[0].x, currentPath[0].y, 12, 0, Math.PI * 2)
+    ctx.fill()
 
     // Draw user path
     if (userPath.length > 1) {
@@ -465,7 +452,7 @@ export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
           </div>
           <h3 className="text-2xl font-bold text-green-400 mb-4">Great Tracing!</h3>
           <div className="bg-slate-900/50 rounded-lg max-w-xs mx-auto mb-6">
-            <div className="grid grid-cols-2 text-center divide-x divide-slate-600/50">
+            <div className="grid grid-cols-2 text-center divide-x divide-slate-200 dark:divide-slate-600/50">
               <div className="py-4 px-2">
                 <div className="text-2xl font-bold text-white">{result.score?.toLocaleString()}</div>
                 <div className="text-[10px] text-slate-400">Score</div>
@@ -475,7 +462,7 @@ export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
                 <div className="text-[10px] text-slate-400">Rank</div>
               </div>
             </div>
-            <div className="grid grid-cols-2 text-center divide-x divide-slate-600/50 border-t border-slate-600/50">
+            <div className="grid grid-cols-2 text-center divide-x divide-slate-200 dark:divide-slate-600/50 border-t border-slate-200 dark:border-slate-600/50">
               <div className="py-3 px-2">
                 <div className="text-base font-bold text-white">{result.accuracy ? Math.round(result.accuracy * 100) : 0}%</div>
                 <div className="text-[10px] text-slate-400">Accuracy</div>

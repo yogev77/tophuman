@@ -462,7 +462,7 @@ export default function HomePage() {
       {/* Hero Section */}
       <div className="text-center mb-10">
         <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 font-title">
-          Daily Mind Competitions.
+          Daily Mind Battles.
         </h1>
         <p className="text-xl text-slate-300">
           Every credit grows the pool. Climb the charts. Claim your share.
@@ -660,7 +660,7 @@ export default function HomePage() {
                             </div>
                             <span className="text-xs font-medium text-white leading-tight line-clamp-2">{game.name}</span>
                             {game.poolSize > 0 && (
-                              <span className="text-[10px] text-yellow-400 mt-0.5"><CC />{game.poolSize}</span>
+                              <span className="text-xs font-semibold text-yellow-400 mt-0.5"><CC />{game.poolSize}</span>
                             )}
                           </Link>
                         )

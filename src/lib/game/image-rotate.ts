@@ -26,7 +26,7 @@ export interface ImageRotateValidationResult {
 
 // Available puzzle images - using Unsplash for perfect squares (400x400)
 // Categories: cats, puppies, intersections, abstract art, memes
-const PUZZLE_IMAGES = [
+export const PUZZLE_IMAGES = [
   // Cats (9)
   'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=400&h=400&fit=crop',
   'https://images.unsplash.com/photo-1573865526739-10659fec78a5?w=400&h=400&fit=crop',

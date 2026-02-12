@@ -2,7 +2,7 @@ import { ImageResponse } from 'next/og'
 
 export const runtime = 'edge'
 
-export const alt = 'Podium Arena - Daily Mind Competitions'
+export const alt = 'Podium Arena - Daily Mind Battles'
 export const size = {
   width: 1200,
   height: 630,
@@ -26,8 +26,8 @@ export default async function Image() {
       >
         {/* Trophy Icon */}
         <svg
-          width="120"
-          height="120"
+          width="140"
+          height="140"
           viewBox="0 0 24 24"
           fill="none"
           stroke="#facc15"
@@ -48,38 +48,25 @@ export default async function Image() {
           style={{
             display: 'flex',
             alignItems: 'center',
-            marginTop: 30,
-            fontSize: 72,
+            marginTop: 40,
+            fontSize: 96,
             fontWeight: 800,
           }}
         >
           <span style={{ color: '#facc15' }}>Podium</span>
-          <span style={{ color: '#ffffff', marginLeft: 16 }}>Arena</span>
+          <span style={{ color: '#ffffff', marginLeft: 20 }}>Arena</span>
         </div>
 
         {/* Tagline */}
         <div
           style={{
             color: '#94a3b8',
-            fontSize: 36,
-            marginTop: 20,
+            fontSize: 52,
+            marginTop: 24,
             textAlign: 'center',
           }}
         >
-          Daily Mind Competitions.
-        </div>
-
-        {/* Description */}
-        <div
-          style={{
-            color: '#64748b',
-            fontSize: 24,
-            marginTop: 16,
-            textAlign: 'center',
-            maxWidth: 800,
-          }}
-        >
-          Every credit grows the pool. Climb the charts. Claim your share.
+          Daily Mind Battles.
         </div>
       </div>
     ),

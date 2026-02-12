@@ -42,7 +42,7 @@ export const DEFAULT_FOLLOW_ME_CONFIG: FollowMeConfig = {
   path_complexity: 3,
 }
 
-function seededRandom(seed: string): () => number {
+export function seededRandom(seed: string): () => number {
   let hash = 0
   for (let i = 0; i < seed.length; i++) {
     const char = seed.charCodeAt(i)
@@ -56,7 +56,7 @@ function seededRandom(seed: string): () => number {
   }
 }
 
-function generatePath(
+export function generatePath(
   random: () => number,
   canvasSize: number,
   numControlPoints: number,
@@ -76,7 +76,7 @@ function generatePath(
 
     for (let i = 0; i < numControlPoints; i++) {
       const angle = (i / numControlPoints) * Math.PI * 2
-      const radiusVariance = baseRadius * (0.6 + random() * 0.8)
+      const radiusVariance = baseRadius * (0.45 + random() * 1.1)
       controlPoints.push({
         x: Math.max(padding, Math.min(canvasSize - padding, cx + Math.cos(angle) * radiusVariance)),
         y: Math.max(padding, Math.min(canvasSize - padding, cy + Math.sin(angle) * radiusVariance)),
@@ -146,6 +146,12 @@ function generatePath(
   // Add the last point
   path.push(controlPoints[controlPoints.length - 1])
 
+  if (loop && path.length > 10) {
+    // Trim the tail so start and end dots don't overlap
+    const trimCount = Math.max(1, Math.floor(path.length * 0.12))
+    path.length = path.length - trimCount
+  }
+
   return path
 }
 
@@ -186,7 +192,7 @@ export function getFollowMeClientSpec(spec: FollowMeTurnSpec): {
   }
 }
 
-function validateRoundPath(
+export function validateRoundPath(
   targetPath: Point[],
   userPoints: Point[]
 ): { accuracy: number; coverage: number } {

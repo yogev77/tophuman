@@ -311,7 +311,7 @@ export function WhackAMoleGame({ onGameComplete }: WhackAMoleGameProps) {
       {phase === 'play' && spec && (
         <div className="flex justify-center">
           <div
-            className="grid gap-2 w-full max-w-[272px] sm:max-w-none"
+            className="grid gap-2 w-full max-w-[272px]"
             style={{ gridTemplateColumns: `repeat(${gridSize}, 1fr)` }}
           >
             {Array.from({ length: gridSize * gridSize }).map((_, index) => {
@@ -327,7 +327,7 @@ export function WhackAMoleGame({ onGameComplete }: WhackAMoleGameProps) {
                 <button
                   key={index}
                   onClick={() => handleCellClick(index)}
-                  className={`aspect-square w-full max-w-20 rounded-xl transition-all transform ${
+                  className={`aspect-square w-full rounded-xl transition-all transform ${
                     hasMole || hasBomb
                       ? 'bg-amber-600 hover:bg-amber-500 scale-110'
                       : 'bg-slate-700 hover:bg-slate-600'
@@ -356,7 +356,7 @@ export function WhackAMoleGame({ onGameComplete }: WhackAMoleGameProps) {
           </div>
           <h3 className="text-2xl font-bold text-green-400 mb-4">Great Job!</h3>
           <div className="bg-slate-900/50 rounded-lg max-w-xs mx-auto mb-6">
-            <div className="grid grid-cols-2 text-center divide-x divide-slate-600/50">
+            <div className="grid grid-cols-2 text-center divide-x divide-slate-200 dark:divide-slate-600/50">
               <div className="py-4 px-2">
                 <div className="text-2xl font-bold text-white">{result.score?.toLocaleString()}</div>
                 <div className="text-[10px] text-slate-400">Score</div>
@@ -366,7 +366,7 @@ export function WhackAMoleGame({ onGameComplete }: WhackAMoleGameProps) {
                 <div className="text-[10px] text-slate-400">Rank</div>
               </div>
             </div>
-            <div className="grid grid-cols-2 text-center divide-x divide-slate-600/50 border-t border-slate-600/50">
+            <div className="grid grid-cols-2 text-center divide-x divide-slate-200 dark:divide-slate-600/50 border-t border-slate-200 dark:border-slate-600/50">
               <div className="py-3 px-2">
                 <div className="text-base font-bold text-white">{result.hits}</div>
                 <div className="text-[10px] text-slate-400">Hits</div>

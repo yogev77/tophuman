@@ -294,6 +294,11 @@ function AuthContent() {
                 className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-yellow-500 transition"
                 placeholder={tab === 'signup' ? 'At least 8 characters' : 'Your password'}
               />
+              {tab === 'login' && (
+                <a href="/auth/forgot-password" className="block text-xs text-slate-500 hover:text-slate-300 mt-1.5 transition">
+                  Forgot password?
+                </a>
+              )}
             </div>
 
             {tab === 'signup' && (

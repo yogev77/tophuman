@@ -108,14 +108,14 @@ export function ClaimSuccessModal({ isOpen, onClose, amount, newBalance, reason,
 
       {/* Modal */}
       <div
-        className={`relative bg-gradient-to-b from-slate-800 to-slate-900 rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl border border-slate-700 transform transition-all duration-300 ${
+        className={`relative bg-gradient-to-b from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl border border-slate-200 dark:border-slate-700 transform transition-all duration-300 ${
           isAnimating ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
         }`}
       >
         {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-slate-500 hover:text-white transition"
+          className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 dark:text-slate-500 dark:hover:text-white transition"
         >
           <X className="w-5 h-5" />
         </button>
@@ -136,15 +136,15 @@ export function ClaimSuccessModal({ isOpen, onClose, amount, newBalance, reason,
         </div>
 
         {/* Title */}
-        <h2 className="text-2xl font-bold text-white mb-1 font-title">
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-1 font-title">
           {content.title}
         </h2>
-        <p className="text-slate-400 text-sm mb-6">
+        <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">
           {content.subtitle}
         </p>
 
         {/* Claimed Items Breakdown */}
-        <div className="bg-slate-700/50 rounded-xl p-4 mb-4">
+        <div className="bg-slate-100 dark:bg-slate-700/50 rounded-xl p-4 mb-4">
           {claimedItems && claimedItems.length > 0 ? (
             <div className="space-y-2 mb-3">
               {claimedItems.map((item, index) => {
@@ -155,30 +155,30 @@ export function ClaimSuccessModal({ isOpen, onClose, amount, newBalance, reason,
                     <div className="flex items-center gap-2">
                       {icon}
                       <div>
-                        <span className="text-slate-300">{label}</span>
+                        <span className="text-slate-700 dark:text-slate-300">{label}</span>
                         {gameName && (
-                          <div className="text-xs text-slate-500">{gameName}</div>
+                          <div className="text-xs text-slate-400 dark:text-slate-500">{gameName}</div>
                         )}
                       </div>
                     </div>
-                    <span className="text-green-400 font-semibold">+{item.amount}</span>
+                    <span className="text-green-600 dark:text-green-400 font-semibold">+{item.amount}</span>
                   </div>
                 )
               })}
               {claimedItems.length > 1 && (
-                <div className="border-t border-slate-600 pt-2 mt-2 flex items-center justify-between">
-                  <span className="text-slate-400 text-sm">Total</span>
-                  <span className="text-yellow-400 font-bold text-lg">+{amount} <CC />Credits</span>
+                <div className="border-t border-slate-200 dark:border-slate-600 pt-2 mt-2 flex items-center justify-between">
+                  <span className="text-slate-500 dark:text-slate-400 text-sm">Total</span>
+                  <span className="text-yellow-600 dark:text-yellow-400 font-bold text-lg">+{amount} <CC />Credits</span>
                 </div>
               )}
             </div>
           ) : (
-            <div className="text-3xl font-bold text-yellow-400 mb-1">
+            <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-400 mb-1">
               +{amount} <CC />Credits
             </div>
           )}
-          <div className="text-slate-400 text-sm text-center pt-2 border-t border-slate-600">
-            New balance: <span className="text-white font-semibold">{newBalance} <CC />Credits</span>
+          <div className="text-slate-500 dark:text-slate-400 text-sm text-center pt-2 border-t border-slate-200 dark:border-slate-600">
+            New balance: <span className="text-slate-900 dark:text-white font-semibold">{newBalance} <CC />Credits</span>
           </div>
         </div>
 

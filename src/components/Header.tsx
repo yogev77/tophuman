@@ -5,12 +5,12 @@ import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { useCreditsNotification } from './CreditsNotificationProvider'
 import { useTheme } from '@/hooks/useTheme'
-import { Share2, Copy, Check, Gift, Sun, Moon, Trophy, History } from 'lucide-react'
+import { Share2, Copy, Check, Gift, Sun, Moon, Trophy, History, Loader2 } from 'lucide-react'
 import { C, CC } from '@/lib/currency'
 
 export function Header() {
   const { user, loading: authLoading } = useAuth()
-  const { balance, dailyGrantAvailable, hasPendingClaims, pendingTotal, claimCredits, displayName, username: profileUsername, referralCode, loading: creditsLoading, isCounterAnimating, hasUnseenNotification, markNotificationSeen } = useCreditsNotification()
+  const { balance, dailyGrantAvailable, hasPendingClaims, pendingTotal, claimCredits, isClaiming, displayName, username: profileUsername, referralCode, loading: creditsLoading, isCounterAnimating, hasUnseenNotification, markNotificationSeen } = useCreditsNotification()
   const { theme, toggleTheme } = useTheme()
   const [showCreditsMenu, setShowCreditsMenu] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -109,12 +109,13 @@ export function Header() {
                                 claimCredits()
                                 setShowCreditsMenu(false)
                               }}
-                              className="w-full px-4 py-3 flex items-center gap-3 hover:bg-slate-700 transition text-left ring-1 ring-yellow-400/30 animate-pulse-subtle"
+                              disabled={isClaiming}
+                              className={`w-full px-4 py-3 flex items-center gap-3 transition text-left ring-1 ring-yellow-400/30 ${isClaiming ? 'opacity-60 cursor-not-allowed' : 'hover:bg-slate-700 animate-pulse-subtle'}`}
                             >
-                              <Trophy className="w-5 h-5 text-yellow-400" />
+                              {isClaiming ? <Loader2 className="w-5 h-5 text-yellow-400 animate-spin" /> : <Trophy className="w-5 h-5 text-yellow-400" />}
                               <div>
-                                <div className="text-yellow-400 font-semibold">Claim {pendingTotal} <CC />Credits!</div>
-                                <div className="text-sm text-slate-400">You have unclaimed winnings</div>
+                                <div className="text-yellow-400 font-semibold">{isClaiming ? 'Claiming...' : <>Claim {pendingTotal} <CC />Credits!</>}</div>
+                                <div className="text-sm text-slate-400">{isClaiming ? 'Processing your winnings' : 'You have unclaimed winnings'}</div>
                               </div>
                             </button>
                           )}
@@ -125,12 +126,13 @@ export function Header() {
                                 claimCredits()
                                 setShowCreditsMenu(false)
                               }}
-                              className="w-full px-4 py-3 flex items-center gap-3 hover:bg-slate-700 transition text-left ring-1 ring-green-400/30 animate-pulse-subtle"
+                              disabled={isClaiming}
+                              className={`w-full px-4 py-3 flex items-center gap-3 transition text-left ring-1 ring-green-400/30 ${isClaiming ? 'opacity-60 cursor-not-allowed' : 'hover:bg-slate-700 animate-pulse-subtle'}`}
                             >
-                              <Gift className="w-5 h-5 text-green-400" />
+                              {isClaiming ? <Loader2 className="w-5 h-5 text-green-400 animate-spin" /> : <Gift className="w-5 h-5 text-green-400" />}
                               <div>
-                                <div className="text-white font-semibold">Claim Daily <CC />Credits</div>
-                                <div className="text-sm text-slate-400">Your daily credits are ready</div>
+                                <div className="text-white font-semibold">{isClaiming ? 'Claiming...' : <>Claim Daily <CC />Credits</>}</div>
+                                <div className="text-sm text-slate-400">{isClaiming ? 'Processing your credits' : 'Your daily credits are ready'}</div>
                               </div>
                             </button>
                           )}

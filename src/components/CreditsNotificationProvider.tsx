@@ -17,6 +17,7 @@ interface CreditsNotificationContextType {
   loading: boolean
   error: string | null
   claimCredits: () => Promise<boolean>
+  isClaiming: boolean
   refreshBalance: () => Promise<void>
   isCounterAnimating: boolean
   isBottomBarDismissed: boolean
@@ -30,6 +31,7 @@ const CreditsNotificationContext = createContext<CreditsNotificationContextType 
 export function CreditsNotificationProvider({ children }: { children: React.ReactNode }) {
   const credits = useCredits()
   const [isCounterAnimating, setIsCounterAnimating] = useState(false)
+  const [isClaiming, setIsClaiming] = useState(false)
   const [isBottomBarDismissed, setIsBottomBarDismissed] = useState(true) // Start hidden to avoid flash
   const [hasUnseenNotification, setHasUnseenNotification] = useState(false)
   const [claimModal, setClaimModal] = useState<{
@@ -91,67 +93,74 @@ export function CreditsNotificationProvider({ children }: { children: React.Reac
 
   // Unified claim function that handles both daily grants and pending winnings
   const claimCredits = useCallback(async () => {
-    // First claim pending winnings if any
-    if (credits.pendingTotal > 0) {
-      const result = await credits.claimWinnings()
+    if (isClaiming) return false
+    setIsClaiming(true)
 
-      if (result) {
-        // Trigger counter animation
-        setIsCounterAnimating(true)
-        setTimeout(() => setIsCounterAnimating(false), 1200)
+    try {
+      // First claim pending winnings if any
+      if (credits.pendingTotal > 0) {
+        const result = await credits.claimWinnings()
 
-        // Show celebratory modal with breakdown
-        setClaimModal({
-          isOpen: true,
-          amount: result.totalClaimed,
-          newBalance: result.newBalance,
-          reason: result.primaryType === 'prize' ? 'prize' :
-                  result.primaryType === 'referral' ? 'referral' : 'rebate',
-          claimedItems: result.claimed || [],
-        })
+        if (result) {
+          // Trigger counter animation
+          setIsCounterAnimating(true)
+          setTimeout(() => setIsCounterAnimating(false), 1200)
 
-        // Dismiss bottom bar and clear notification
-        setIsBottomBarDismissed(true)
-        setHasUnseenNotification(false)
-        sessionStorage.setItem('credits-bar-dismissed', 'true')
-        return true
-      } else {
-        toast.error(credits.error || 'Failed to claim winnings. Please try again.', { duration: 4000 })
-        return false
-      }
-    }
+          // Show celebratory modal with breakdown
+          setClaimModal({
+            isOpen: true,
+            amount: result.totalClaimed,
+            newBalance: result.newBalance,
+            reason: result.primaryType === 'prize' ? 'prize' :
+                    result.primaryType === 'referral' ? 'referral' : 'rebate',
+            claimedItems: result.claimed || [],
+          })
 
-    // Otherwise claim daily grant
-    if (credits.dailyGrantAvailable) {
-      const success = await credits.claimDailyGrant()
-
-      if (success) {
-        // Trigger counter animation
-        setIsCounterAnimating(true)
-        setTimeout(() => setIsCounterAnimating(false), 1200)
-
-        // Show celebratory modal with breakdown
-        setClaimModal({
-          isOpen: true,
-          amount: 10,
-          newBalance: credits.balance + 10,
-          reason: 'daily',
-          claimedItems: [{ type: 'daily_grant', amount: 10 }],
-        })
-
-        // Dismiss bottom bar and clear notification
-        setIsBottomBarDismissed(true)
-        setHasUnseenNotification(false)
-        sessionStorage.setItem('credits-bar-dismissed', 'true')
-      } else {
-        toast.error(credits.error || 'Failed to claim credits. Please try again.', { duration: 4000 })
+          // Dismiss bottom bar and clear notification
+          setIsBottomBarDismissed(true)
+          setHasUnseenNotification(false)
+          sessionStorage.setItem('credits-bar-dismissed', 'true')
+          return true
+        } else {
+          toast.error(credits.error || 'Failed to claim winnings. Please try again.', { duration: 4000 })
+          return false
+        }
       }
 
-      return success
-    }
+      // Otherwise claim daily grant
+      if (credits.dailyGrantAvailable) {
+        const success = await credits.claimDailyGrant()
 
-    return false
-  }, [credits])
+        if (success) {
+          // Trigger counter animation
+          setIsCounterAnimating(true)
+          setTimeout(() => setIsCounterAnimating(false), 1200)
+
+          // Show celebratory modal with breakdown
+          setClaimModal({
+            isOpen: true,
+            amount: 10,
+            newBalance: credits.balance + 10,
+            reason: 'daily',
+            claimedItems: [{ type: 'daily_grant', amount: 10 }],
+          })
+
+          // Dismiss bottom bar and clear notification
+          setIsBottomBarDismissed(true)
+          setHasUnseenNotification(false)
+          sessionStorage.setItem('credits-bar-dismissed', 'true')
+        } else {
+          toast.error(credits.error || 'Failed to claim credits. Please try again.', { duration: 4000 })
+        }
+
+        return success
+      }
+
+      return false
+    } finally {
+      setIsClaiming(false)
+    }
+  }, [credits, isClaiming])
 
   return (
     <CreditsNotificationContext.Provider value={{
@@ -166,6 +175,7 @@ export function CreditsNotificationProvider({ children }: { children: React.Reac
       loading: credits.loading,
       error: credits.error,
       claimCredits,
+      isClaiming,
       refreshBalance: credits.refreshBalance,
       isCounterAnimating,
       isBottomBarDismissed,

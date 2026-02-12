@@ -652,7 +652,7 @@ export function GridlockGame({ onGameComplete }: GridlockGameProps) {
           </div>
           <h3 className="text-2xl font-bold text-green-500 mb-4">Puzzle Solved!</h3>
           <div className="bg-slate-900/50 rounded-lg max-w-xs mx-auto mb-6">
-            <div className="grid grid-cols-2 text-center divide-x divide-slate-600/50">
+            <div className="grid grid-cols-2 text-center divide-x divide-slate-200 dark:divide-slate-600/50">
               <div className="py-4 px-2">
                 <div className="text-2xl font-bold text-white">{result.score?.toLocaleString()}</div>
                 <div className="text-[10px] text-slate-400">Score</div>

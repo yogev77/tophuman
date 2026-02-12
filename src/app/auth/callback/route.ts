@@ -7,9 +7,13 @@ export async function GET(request: NextRequest) {
   const next = searchParams.get('next') ?? '/'
 
   if (code) {
-    const response = NextResponse.redirect(
-      `${origin}/auth/welcome?next=${encodeURIComponent(next)}`
-    )
+    // For password recovery, redirect to reset page instead of welcome
+    const isPasswordReset = next === '/auth/reset-password'
+    const redirectTo = isPasswordReset
+      ? `${origin}/auth/reset-password`
+      : `${origin}/auth/welcome?next=${encodeURIComponent(next)}`
+
+    const response = NextResponse.redirect(redirectTo)
 
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,

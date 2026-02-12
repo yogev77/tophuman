@@ -426,7 +426,7 @@ export function EmojiKeypadGame({ onGameComplete }: EmojiKeypadGameProps) {
           </div>
           <h3 className="text-2xl font-bold text-green-400 mb-4">Completed!</h3>
           <div className="bg-slate-900/50 rounded-lg max-w-xs mx-auto mb-6">
-            <div className="grid grid-cols-2 text-center divide-x divide-slate-600/50">
+            <div className="grid grid-cols-2 text-center divide-x divide-slate-200 dark:divide-slate-600/50">
               <div className="py-4 px-2">
                 <div className="text-2xl font-bold text-white">{result.score?.toLocaleString()}</div>
                 <div className="text-[10px] text-slate-400">Score</div>
@@ -436,7 +436,7 @@ export function EmojiKeypadGame({ onGameComplete }: EmojiKeypadGameProps) {
                 <div className="text-[10px] text-slate-400">Rank</div>
               </div>
             </div>
-            <div className="grid grid-cols-2 text-center divide-x divide-slate-600/50 border-t border-slate-600/50">
+            <div className="grid grid-cols-2 text-center divide-x divide-slate-200 dark:divide-slate-600/50 border-t border-slate-200 dark:border-slate-600/50">
               <div className="py-3 px-2">
                 <div className="text-base font-bold text-white">{formatTime(result.completionTimeMs || 0)}</div>
                 <div className="text-[10px] text-slate-400">Time</div>

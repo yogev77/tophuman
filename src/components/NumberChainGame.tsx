@@ -176,9 +176,6 @@ export function NumberChainGame({ onGameComplete }: NumberChainGameProps) {
         }),
       })
 
-      // Update UI immediately
-      setTapped(prev => new Set(prev).add(number))
-
       if (isRoundComplete) {
         await tapPromise
         // Check if there are more rounds
@@ -186,10 +183,13 @@ export function NumberChainGame({ onGameComplete }: NumberChainGameProps) {
           setCurrentRound(currentRound + 1)
           setNextIndex(0)
           setTapped(new Set())
+          setFlashRed(null)
         } else {
           completeGame()
         }
       } else {
+        // Update UI immediately (only for non-completing taps)
+        setTapped(prev => new Set(prev).add(number))
         setNextIndex(nextIndex + 1)
       }
     } else {
@@ -312,7 +312,7 @@ export function NumberChainGame({ onGameComplete }: NumberChainGameProps) {
                     : isFlashRed
                     ? 'bg-red-500/40 text-white border-2 border-red-500'
                     : isNext && nextIndex === 0
-                    ? 'bg-slate-700 text-white border-2 border-slate-600 hover:bg-slate-600 animate-pulse'
+                    ? 'bg-slate-700 text-white border-2 border-yellow-500 hover:bg-slate-600 animate-[glow-pulse_1.5s_ease-in-out_infinite]'
                     : 'bg-slate-700 text-white border-2 border-slate-600 hover:bg-slate-600'
                 }`}
               >
@@ -337,7 +337,7 @@ export function NumberChainGame({ onGameComplete }: NumberChainGameProps) {
           </div>
           <h3 className="text-2xl font-bold text-green-400 mb-4">Chain Complete!</h3>
           <div className="bg-slate-900/50 rounded-lg max-w-xs mx-auto mb-6">
-            <div className="grid grid-cols-2 text-center divide-x divide-slate-600/50">
+            <div className="grid grid-cols-2 text-center divide-x divide-slate-200 dark:divide-slate-600/50">
               <div className="py-4 px-2">
                 <div className="text-2xl font-bold text-white">{result.score?.toLocaleString()}</div>
                 <div className="text-[10px] text-slate-400">Score</div>
@@ -347,7 +347,7 @@ export function NumberChainGame({ onGameComplete }: NumberChainGameProps) {
                 <div className="text-[10px] text-slate-400">Rank</div>
               </div>
             </div>
-            <div className="border-t border-slate-600/50 text-center py-3">
+            <div className="border-t border-slate-200 dark:border-slate-600/50 text-center py-3">
               <div className="text-base font-bold text-white">{result.mistakes || 0}</div>
               <div className="text-[10px] text-slate-400">Mistakes</div>
             </div>

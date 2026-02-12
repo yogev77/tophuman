@@ -72,15 +72,11 @@ export function useCredits() {
 
   useEffect(() => {
     const supabase = createClient()
+    let initialFetchDone = false
 
-    // Fetch balance initially
-    fetchBalance()
-
-    // Re-fetch when auth state changes (login/logout)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        fetchBalance()
-      } else if (event === 'SIGNED_OUT') {
+    // Listen to auth state changes — handles initial session, login, logout, token refresh
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
         setState({
           balance: 0,
           dailyGrantAvailable: false,
@@ -93,10 +89,31 @@ export function useCredits() {
           loading: false,
           error: null,
         })
+        return
+      }
+
+      // Fetch balance when we have a session (covers INITIAL_SESSION, SIGNED_IN, TOKEN_REFRESHED)
+      if (session) {
+        initialFetchDone = true
+        fetchBalance()
+      } else if (event === 'INITIAL_SESSION') {
+        // INITIAL_SESSION with no session = not logged in
+        initialFetchDone = true
+        setState(s => ({ ...s, loading: false }))
       }
     })
 
-    return () => subscription.unsubscribe()
+    // Fallback: if onAuthStateChange hasn't fired after 2s, stop loading
+    const timeout = setTimeout(() => {
+      if (!initialFetchDone) {
+        setState(s => ({ ...s, loading: false }))
+      }
+    }, 2000)
+
+    return () => {
+      subscription.unsubscribe()
+      clearTimeout(timeout)
+    }
   }, [fetchBalance])
 
   const claimDailyGrant = async () => {

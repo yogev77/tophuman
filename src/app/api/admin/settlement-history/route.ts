@@ -37,6 +37,7 @@ export async function GET(request: NextRequest) {
         .from('settlements')
         .select('*')
         .order('utc_day', { ascending: false })
+        .order('game_type_id', { ascending: true })
         .range(offset, offset + limit - 1),
     ])
 
@@ -154,6 +155,7 @@ export async function GET(request: NextRequest) {
     const enriched = settlements.map((s: {
       id: string
       utc_day: string
+      game_type_id: string | null
       status: string
       pool_total: number
       participant_count: number
