@@ -935,7 +935,12 @@ function SkillsTab({ username }: { username: string }) {
                   {skill.totalPlays} plays · {isMax ? 'Max level' : `${playsToNext} to Lv.${skill.level + 1}`}
                 </span>
                 {skill.totalPlays > 0 && (
-                  <span>Rank #{skill.rank}{skill.totalPlayers > 0 ? ` of ${skill.totalPlayers}` : ''}</span>
+                  <span className="flex items-center gap-1">
+                    {skill.rank <= 3 && (
+                      <Crown className={`w-3 h-3 ${skill.rank === 1 ? 'text-yellow-400' : skill.rank === 2 ? 'text-slate-400' : 'text-orange-400'}`} />
+                    )}
+                    #{skill.rank}{skill.totalPlayers > 0 ? ` of ${skill.totalPlayers}` : ''}
+                  </span>
                 )}
               </div>
             </div>
