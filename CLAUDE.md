@@ -816,5 +816,54 @@ Renamed "Reaction Time" → "Reaction Tap" across 10 files (game page, API route
 **Image Puzzle thumbnail:** Removed 3 bank rectangles from SVG
 **Draw Me thumbnail:** Removed pencil/brush icon from SVG
 
+### Feb 12, 2026
+
+**Skills Tab Enhancement — Radar Chart + Strength Bars**
+
+Complete rewrite of the Skills tab on player profiles (`src/app/player/[username]/page.tsx`).
+
+**New files:**
+- `src/lib/skills.ts` — Centralized skills + games config (single source of truth, server-compatible)
+- `src/lib/game-icons.ts` — Lucide icon mapping per game (React-side only)
+- `src/app/api/player/[username]/skills/route.ts` — Skills API with score-based percentile + rank
+- `src/app/api/top-skills/route.ts` — Top skills leaderboard API
+
+**Radar/Spider Chart (`SkillRadarChart` component):**
+- Inline SVG, `viewBox="0 0 370 290"`, center at `(185, 150)`, radius 82
+- 5 vertices following `SKILL_LIST` order: reflex, logic, focus, memory, pattern
+- 3 concentric pentagon grid + 5 spokes
+- Data polygon: golden fill (`rgba(234,179,8,0.15)`) + stroke, colored dots per vertex
+- `foreignObject` labels: icon circle (w-7) + skill name (13px) + level (11px)
+- Uses **percentile** for vertex distance (not level), with 8% minimum floor
+
+**Score-Based Percentile (IMPORTANT):**
+- Percentile is based on **best game scores** compared to other players, NOT play count
+- For each game in a skill: compare player's best score against all players' best scores
+- `beaten / (totalPlayers - 1)` per game, averaged across games in the skill
+- Sole player in a game gets 50% (not inflated 100%)
+- This powers both the radar chart AND the strength bars — must stay consistent
+
+**Score-Based Rank:**
+- Rank is also score-based: average rank across games in the skill (by best score)
+- API returns `rank` and `totalPlayers` so UI can show "Rank #1 of 3"
+- Crown icons: gold (rank 1), silver (rank 2), bronze (rank 3)
+
+**Skill Cards:**
+- Strength bar = percentile (0–100), minimum 20% visual floor
+- Number displayed at end of bar (just the number, no "/100")
+- Glow effect at 80%+ strength (`boxShadow` with skill hex color)
+- Subtle metadata: "{N} plays · {M} to Lv.{X}" left, "Rank #N of M" right
+- Level badge: pill with skill dot color + white text
+
+**Skill Icons (`SKILL_ICONS`):**
+- reflex → Zap, logic → Cog, focus → CrosshairIcon, memory → Brain, pattern → Shapes
+
+**Skill Hex Colors (`SKILL_HEX`):**
+- reflex: `#eab308`, logic: `#2563eb`, focus: `#ef4444`, memory: `#a855f7`, pattern: `#22c55e`
+
+**Explainer text** at bottom of Skills tab explaining radar chart, strength score, and level vs strength distinction.
+
+**Key constants:** `MAX_SKILL_LEVEL = 50`, `RADAR_CX = 185`, `RADAR_CY = 150`, `RADAR_R = 82`
+
 ---
-*Last updated: Feb 11, 2026*
+*Last updated: Feb 12, 2026*
