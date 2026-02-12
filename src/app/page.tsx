@@ -7,30 +7,12 @@ import { useTheme } from '@/hooks/useTheme'
 import Link from 'next/link'
 import {
   Target,
-  RotateCw,
-  Zap,
-  Hammer,
-  Keyboard,
-  Calculator,
-  Palette,
-  ScanEye,
-  Music,
-  GripVertical,
-  Pencil,
-  Crosshair,
-  LayoutGrid,
-  Hash,
-  ParkingSquare,
-  BarChartHorizontal,
-  Puzzle,
-  Brush,
   Clock,
   Lock,
   Crown,
   List,
   Grid3X3,
   Users,
-  LucideIcon,
   Share2,
   Copy,
   Check,
@@ -42,48 +24,8 @@ import {
 } from 'lucide-react'
 import { C, CC } from '@/lib/currency'
 import { GameThumbnail } from '@/components/GameThumbnail'
-
-const GAME_ICONS: Record<string, LucideIcon> = {
-  emoji_keypad: Target,
-  image_rotate: RotateCw,
-  reaction_time: Zap,
-  whack_a_mole: Hammer,
-  typing_speed: Keyboard,
-  mental_math: Calculator,
-  color_match: Palette,
-  visual_diff: ScanEye,
-  audio_pattern: Music,
-  drag_sort: GripVertical,
-  follow_me: Pencil,
-  duck_shoot: Crosshair,
-  memory_cards: LayoutGrid,
-  number_chain: Hash,
-  gridlock: ParkingSquare,
-  reaction_bars: BarChartHorizontal,
-  image_puzzle: Puzzle,
-  draw_me: Brush,
-}
-
-const GAME_ICON_COLORS: Record<string, { bg: string; icon: string }> = {
-  emoji_keypad: { bg: 'bg-rose-500/20', icon: 'text-rose-400' },
-  image_rotate: { bg: 'bg-sky-500/20', icon: 'text-sky-400' },
-  reaction_time: { bg: 'bg-amber-500/20', icon: 'text-amber-400' },
-  whack_a_mole: { bg: 'bg-green-500/20', icon: 'text-green-400' },
-  typing_speed: { bg: 'bg-violet-500/20', icon: 'text-violet-400' },
-  mental_math: { bg: 'bg-orange-500/20', icon: 'text-orange-400' },
-  color_match: { bg: 'bg-pink-500/20', icon: 'text-pink-400' },
-  visual_diff: { bg: 'bg-teal-500/20', icon: 'text-teal-400' },
-  audio_pattern: { bg: 'bg-indigo-500/20', icon: 'text-indigo-400' },
-  drag_sort: { bg: 'bg-lime-500/20', icon: 'text-lime-400' },
-  follow_me: { bg: 'bg-cyan-500/20', icon: 'text-cyan-400' },
-  duck_shoot: { bg: 'bg-emerald-500/20', icon: 'text-emerald-400' },
-  memory_cards: { bg: 'bg-fuchsia-500/20', icon: 'text-fuchsia-400' },
-  number_chain: { bg: 'bg-red-500/20', icon: 'text-red-400' },
-  gridlock: { bg: 'bg-blue-500/20', icon: 'text-blue-400' },
-  reaction_bars: { bg: 'bg-purple-500/20', icon: 'text-purple-400' },
-  image_puzzle: { bg: 'bg-yellow-500/20', icon: 'text-yellow-400' },
-  draw_me: { bg: 'bg-stone-500/20', icon: 'text-stone-400' },
-}
+import { GAMES, SKILLS, SKILL_LIST, getSkillForGame, SkillId } from '@/lib/skills'
+import { GAME_ICONS } from '@/lib/game-icons'
 
 
 interface TopPlayerEntry {
@@ -93,6 +35,14 @@ interface TopPlayerEntry {
   playerUsername: string | null
   score: number
   poolSize?: number
+}
+
+interface TopSkillEntry {
+  skillId: SkillId
+  skillName: string
+  playerName: string | null
+  playerUsername: string | null
+  skillScore: number
 }
 
 interface GameInfo {
@@ -180,7 +130,7 @@ function TopPlayersTicker({ games }: { games: GameInfo[] }) {
 
   const tickerItems = topPlayers.map(game => {
     const Icon = GAME_ICONS[game.id] || Target
-    const iconColors = GAME_ICON_COLORS[game.id] || GAME_ICON_COLORS.emoji_keypad
+    const iconColors = GAMES[game.id]?.iconColors || GAMES.emoji_keypad.iconColors
 
     return (
       <div key={game.id} className="flex items-center gap-2 px-4 whitespace-nowrap">
@@ -217,22 +167,33 @@ function TopPlayersTicker({ games }: { games: GameInfo[] }) {
 
 function GameTile({ game, msUntilSettlement }: { game: GameInfo; msUntilSettlement: number }) {
   const Icon = GAME_ICONS[game.id] || Target
-  const iconColors = GAME_ICON_COLORS[game.id] || GAME_ICON_COLORS.emoji_keypad
+  const iconColors = GAMES[game.id]?.iconColors || GAMES.emoji_keypad.iconColors
   const isPlayable = game.isPlayable
+
+  const skill = getSkillForGame(game.id)
 
   const content = (
     <div className="relative">
-      {isPlayable && (
-        <span className="absolute top-0 right-0 text-[10px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full items-center gap-1 hidden sm:flex">
-          <Clock className="w-3 h-3" />
-          {formatTimeLeft(msUntilSettlement)}
-        </span>
-      )}
+      {/* Skill label + settlement timer — top right */}
+      <div className="absolute top-0 right-0 flex flex-col items-end gap-1 z-10">
+        {skill && (
+          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${skill.colors.bg} ${skill.colors.text}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${skill.colors.dot}`} />
+            {skill.name}
+          </span>
+        )}
+        {isPlayable && (
+          <span className="text-[10px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+            <Clock className="w-3 h-3" />
+            {formatTimeLeft(msUntilSettlement)}
+          </span>
+        )}
+      </div>
       <div className="flex items-start gap-3 mb-3">
         <div className={`p-4 rounded-lg shrink-0 ${isPlayable ? iconColors.bg : 'bg-slate-600/30'}`}>
           <Icon className={`w-7 h-7 ${isPlayable ? iconColors.icon : 'text-slate-500'}`} />
         </div>
-        <div className="min-w-0 pr-16">
+        <div className="min-w-0 pr-24">
           <h3 className={`text-base font-bold font-title leading-tight ${isPlayable ? 'text-white' : 'text-slate-400'}`}>
             {game.name}
           </h3>
@@ -324,6 +285,9 @@ export default function HomePage() {
   const [topPlayersAllTime, setTopPlayersAllTime] = useState<TopPlayerEntry[]>([])
   const [topPlayersToday, setTopPlayersToday] = useState<TopPlayerEntry[]>([])
   const [topPlayersTab, setTopPlayersTab] = useState<'allTime' | 'today'>('today')
+  const [topSkillsToday, setTopSkillsToday] = useState<TopSkillEntry[]>([])
+  const [topSkillsAllTime, setTopSkillsAllTime] = useState<TopSkillEntry[]>([])
+
   const [siteTab, setSiteTab] = useState<'games' | 'topCharts'>('games')
   const [viewMode, setViewMode] = useState<'list' | 'icons'>(() => {
     if (typeof window !== 'undefined') {
@@ -401,6 +365,14 @@ export default function HomePage() {
       .then(data => {
         if (data?.allTime) setTopPlayersAllTime(data.allTime)
         if (data?.today) setTopPlayersToday(data.today)
+      })
+      .catch(() => {})
+
+    fetch('/api/top-skills')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data?.today) setTopSkillsToday(data.today)
+        if (data?.allTime) setTopSkillsAllTime(data.allTime)
       })
       .catch(() => {})
 
@@ -648,7 +620,7 @@ export default function HomePage() {
                     <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3 mb-10">
                       {playableGames.map(game => {
                         const Icon = GAME_ICONS[game.id] || Target
-                        const colors = GAME_ICON_COLORS[game.id] || GAME_ICON_COLORS.emoji_keypad
+                        const colors = GAMES[game.id]?.iconColors || GAMES.emoji_keypad.iconColors
                         return (
                           <Link
                             key={game.id}
@@ -659,6 +631,9 @@ export default function HomePage() {
                               <Icon className={`w-7 h-7 ${colors.icon}`} />
                             </div>
                             <span className="text-xs font-medium text-white leading-tight line-clamp-2">{game.name}</span>
+                            {(() => { const sk = getSkillForGame(game.id); return sk ? (
+                              <span className={`text-[10px] font-medium mt-0.5 ${sk.colors.text}`}>{sk.name}</span>
+                            ) : null })()}
                             {game.poolSize > 0 && (
                               <span className="text-xs font-semibold text-yellow-400 mt-0.5"><CC />{game.poolSize}</span>
                             )}
@@ -740,7 +715,7 @@ export default function HomePage() {
                 <tbody>
                   {entries.map((entry, i) => {
                     const Icon = GAME_ICONS[entry.gameId] || Target
-                    const colors = GAME_ICON_COLORS[entry.gameId] || GAME_ICON_COLORS.emoji_keypad
+                    const colors = GAMES[entry.gameId]?.iconColors || GAMES.emoji_keypad.iconColors
                     return (
                       <tr key={entry.gameId} className={i < entries.length - 1 ? 'border-b border-slate-700/50' : ''}>
                         <td className="px-3 sm:px-4 py-3">
@@ -821,6 +796,110 @@ export default function HomePage() {
                 topPlayersTab === 'today'
               )}
             </div>
+
+            {/* Top Skills */}
+            <div className="mt-12">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white font-title">Top Skills</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Bragging rights only.</p>
+
+              {/* Desktop: 5 tiles showing both today + all-time */}
+              <div className="hidden lg:grid lg:grid-cols-5 gap-3">
+                {SKILL_LIST.map(skill => {
+                  const todayEntry = topSkillsToday.find(e => e.skillId === skill.id)
+                  const allTimeEntry = topSkillsAllTime.find(e => e.skillId === skill.id)
+                  const hasAnyLeader = todayEntry?.playerName || allTimeEntry?.playerName
+                  const linkTarget = todayEntry?.playerUsername
+                    ? `/player/${todayEntry.playerUsername}`
+                    : allTimeEntry?.playerUsername
+                      ? `/player/${allTimeEntry.playerUsername}`
+                      : null
+
+                  const card = (
+                    <div className={`rounded-xl p-4 bg-white dark:bg-slate-800 border-l-2 ${skill.colors.border} ${hasAnyLeader ? '' : 'opacity-60'} ${linkTarget ? 'hover:scale-[1.02] hover:shadow-md transition-transform duration-150' : ''}`}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className={`w-2.5 h-2.5 rounded-full ${skill.colors.dot}`} />
+                        <span className={`text-sm font-semibold ${skill.colors.textLight} dark:${skill.colors.text}`}>{skill.name}</span>
+                      </div>
+
+                      {todayEntry?.playerName ? (
+                        <div className="mb-3">
+                          <div className="text-sm font-medium text-slate-900 dark:text-white truncate">{todayEntry.playerName}</div>
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400">#1 Today</div>
+                          <div className={`text-xs font-medium mt-0.5 ${skill.colors.textLight} dark:${skill.colors.text}`}>{abbreviateNumber(todayEntry.skillScore)}</div>
+                        </div>
+                      ) : (
+                        <div className="mb-3">
+                          <div className="text-xs text-slate-400 dark:text-slate-500">No leader yet today.</div>
+                          <div className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">Play to become the first.</div>
+                        </div>
+                      )}
+
+                      {allTimeEntry?.playerName ? (
+                        <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+                          <div className="text-sm font-medium text-slate-900 dark:text-white truncate">{allTimeEntry.playerName}</div>
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400">#1 All Time</div>
+                          <div className={`text-xs font-medium mt-0.5 ${skill.colors.textLight} dark:${skill.colors.text}`}>{abbreviateNumber(allTimeEntry.skillScore)}</div>
+                        </div>
+                      ) : (
+                        <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+                          <div className="text-xs text-slate-400 dark:text-slate-500">No leader yet.</div>
+                        </div>
+                      )}
+                    </div>
+                  )
+
+                  return linkTarget ? (
+                    <Link key={skill.id} href={linkTarget} className="tap-highlight">
+                      {card}
+                    </Link>
+                  ) : (
+                    <div key={skill.id}>{card}</div>
+                  )
+                })}
+              </div>
+
+              {/* Mobile: follows topPlayersTab toggle */}
+              <div className="lg:hidden grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {SKILL_LIST.map(skill => {
+                  const entries = topPlayersTab === 'allTime' ? topSkillsAllTime : topSkillsToday
+                  const entry = entries.find(e => e.skillId === skill.id)
+                  const hasLeader = !!entry?.playerName
+                  const label = topPlayersTab === 'allTime' ? '#1 All Time' : '#1 Today'
+                  const emptyMsg = topPlayersTab === 'allTime' ? 'No leader yet.' : 'No leader yet today.'
+
+                  const card = (
+                    <div className={`rounded-xl p-4 bg-white dark:bg-slate-800 border-l-2 ${skill.colors.border} ${hasLeader ? '' : 'opacity-60'} ${hasLeader && entry?.playerUsername ? 'hover:scale-[1.02] hover:shadow-md transition-transform duration-150' : ''}`}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className={`w-2.5 h-2.5 rounded-full ${skill.colors.dot}`} />
+                        <span className={`text-sm font-semibold ${skill.colors.textLight} dark:${skill.colors.text}`}>{skill.name}</span>
+                      </div>
+
+                      {hasLeader ? (
+                        <>
+                          <div className="text-sm font-medium text-slate-900 dark:text-white truncate">{entry!.playerName}</div>
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400">{label}</div>
+                          <div className={`text-xs font-medium mt-0.5 ${skill.colors.textLight} dark:${skill.colors.text}`}>{abbreviateNumber(entry!.skillScore)}</div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="text-xs text-slate-400 dark:text-slate-500">{emptyMsg}</div>
+                          <div className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">Play to become the first.</div>
+                        </>
+                      )}
+                    </div>
+                  )
+
+                  return hasLeader && entry?.playerUsername ? (
+                    <Link key={skill.id} href={`/player/${entry.playerUsername}`} className="tap-highlight">
+                      {card}
+                    </Link>
+                  ) : (
+                    <div key={skill.id}>{card}</div>
+                  )
+                })}
+              </div>
+            </div>
+
           </div>
         )
       })()}

@@ -5,23 +5,10 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import {
   Target,
-  RotateCw,
-  Zap,
-  Hammer,
-  Keyboard,
-  Calculator,
-  Palette,
-  ScanEye,
-  Music,
-  GripVertical,
   Pencil,
-  Crosshair,
-  LayoutGrid,
-  Hash,
-  ParkingSquare,
+  Gamepad2,
   ArrowLeft,
   Crown,
-  LucideIcon,
   Trophy,
   Settings,
   Sun,
@@ -38,48 +25,36 @@ import {
   Clock,
   Volume2,
   VolumeX,
+  Zap,
+  Cog,
+  Brain,
+  Shapes,
 } from 'lucide-react'
 import { CC } from '@/lib/currency'
 import { useCreditsNotification } from '@/components/CreditsNotificationProvider'
 import { useTheme } from '@/hooks/useTheme'
 import { useSound } from '@/hooks/useSound'
 import { createClient } from '@/lib/supabase/client'
+import { GAMES, SKILLS, SKILL_LIST, getGameName, SkillId } from '@/lib/skills'
+import { GAME_ICONS } from '@/lib/game-icons'
 
-const GAME_ICONS: Record<string, LucideIcon> = {
-  emoji_keypad: Target,
-  image_rotate: RotateCw,
-  reaction_time: Zap,
-  whack_a_mole: Hammer,
-  typing_speed: Keyboard,
-  mental_math: Calculator,
-  color_match: Palette,
-  visual_diff: ScanEye,
-  audio_pattern: Music,
-  drag_sort: GripVertical,
-  follow_me: Pencil,
-  duck_shoot: Crosshair,
-  memory_cards: LayoutGrid,
-  number_chain: Hash,
-  gridlock: ParkingSquare,
+const SKILL_ICONS: Record<SkillId, typeof Zap> = {
+  reflex: Zap,
+  logic: Cog,
+  focus: CrosshairIcon,
+  memory: Brain,
+  pattern: Shapes,
 }
 
-const GAME_ICON_COLORS: Record<string, { bg: string; icon: string }> = {
-  emoji_keypad: { bg: 'bg-rose-500/20', icon: 'text-rose-400' },
-  image_rotate: { bg: 'bg-sky-500/20', icon: 'text-sky-400' },
-  reaction_time: { bg: 'bg-amber-500/20', icon: 'text-amber-400' },
-  whack_a_mole: { bg: 'bg-green-500/20', icon: 'text-green-400' },
-  typing_speed: { bg: 'bg-violet-500/20', icon: 'text-violet-400' },
-  mental_math: { bg: 'bg-orange-500/20', icon: 'text-orange-400' },
-  color_match: { bg: 'bg-pink-500/20', icon: 'text-pink-400' },
-  visual_diff: { bg: 'bg-teal-500/20', icon: 'text-teal-400' },
-  audio_pattern: { bg: 'bg-indigo-500/20', icon: 'text-indigo-400' },
-  drag_sort: { bg: 'bg-lime-500/20', icon: 'text-lime-400' },
-  follow_me: { bg: 'bg-cyan-500/20', icon: 'text-cyan-400' },
-  duck_shoot: { bg: 'bg-emerald-500/20', icon: 'text-emerald-400' },
-  memory_cards: { bg: 'bg-fuchsia-500/20', icon: 'text-fuchsia-400' },
-  number_chain: { bg: 'bg-red-500/20', icon: 'text-red-400' },
-  gridlock: { bg: 'bg-blue-500/20', icon: 'text-blue-400' },
+const SKILL_HEX: Record<SkillId, string> = {
+  reflex: '#eab308',
+  logic: '#2563eb',
+  focus: '#ef4444',
+  memory: '#a855f7',
+  pattern: '#22c55e',
 }
+
+const MAX_SKILL_LEVEL = 50
 
 interface GameStats {
   gameId: string
@@ -95,7 +70,7 @@ interface PlayerData {
   games: GameStats[]
 }
 
-type PageTab = 'profile' | 'settings' | 'history'
+type PageTab = 'profile' | 'skills' | 'settings' | 'history'
 
 function formatCompactScore(n: number): string {
   if (n >= 10000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K'
@@ -181,7 +156,7 @@ function ProfileTab({ data }: { data: PlayerData }) {
           <tbody>
             {games.map((game, i) => {
               const Icon = GAME_ICONS[game.gameId] || Target
-              const colors = GAME_ICON_COLORS[game.gameId] || GAME_ICON_COLORS.emoji_keypad
+              const colors = GAMES[game.gameId]?.iconColors || GAMES.emoji_keypad.iconColors
               const stats = mode === 'today' ? game.today : game.allTime
               if (!stats) return null
 
@@ -598,23 +573,6 @@ const HISTORY_EVENT_CONFIG: Record<string, { label: string; icon: typeof Gift; c
   expiration:       { label: 'Expired',          icon: Clock,        colorClass: 'text-red-400' },
 }
 
-const HISTORY_GAME_NAMES: Record<string, string> = {
-  emoji_keypad_sequence: 'Emoji Sequence',
-  image_rotate: 'Puzzle Rotation',
-  reaction_time: 'Reaction Tap',
-  whack_a_mole: 'Whack-a-Mole',
-  typing_speed: 'Typing Speed',
-  mental_math: 'Mental Math',
-  color_match: 'Color Match',
-  visual_diff: 'Spot Difference',
-  audio_pattern: 'Audio Pattern',
-  drag_sort: 'Drag & Sort',
-  follow_me: 'Follow Me',
-  duck_shoot: 'Target Shoot',
-  memory_cards: 'Memory Cards',
-  number_chain: 'Number Chain',
-  gridlock: 'Gridlock',
-}
 
 interface LedgerEntry {
   id: number
@@ -738,7 +696,7 @@ function HistoryTab() {
                 const config = getHistoryEventConfig(grouped.event_type, grouped.totalAmount)
                 const Icon = config.icon
                 const isPositive = grouped.totalAmount >= 0
-                const gameName = grouped.gameTypeId ? HISTORY_GAME_NAMES[grouped.gameTypeId] : null
+                const gameName = grouped.gameTypeId ? getGameName(grouped.gameTypeId) : null
 
                 return (
                   <div key={`${grouped.event_type}-${grouped.gameTypeId || idx}`} className={`px-4 py-3 flex items-center gap-3${idx > 0 ? ' border-t border-light-divider' : ''}`}>
@@ -781,6 +739,221 @@ function HistoryTab() {
   )
 }
 
+interface SkillEntry {
+  skillId: SkillId
+  name: string
+  level: number
+  totalPlays: number
+  gamesPlayed: number
+  totalGames: number
+  rank: number
+  totalPlayers: number
+  percentile: number
+}
+
+const RADAR_CX = 185
+const RADAR_CY = 150
+const RADAR_R = 82
+
+function SkillRadarChart({ skills }: { skills: SkillEntry[] }) {
+  const skillMap = new Map(skills.map(s => [s.skillId, s]))
+  const angles = SKILL_LIST.map((_, i) => -Math.PI / 2 + (i * 2 * Math.PI) / 5)
+  const hasData = skills.some(s => s.totalPlays > 0)
+
+  const pt = (angle: number, r: number) => ({
+    x: RADAR_CX + r * Math.cos(angle),
+    y: RADAR_CY + r * Math.sin(angle),
+  })
+
+  const poly = (r: number) =>
+    angles.map(a => { const p = pt(a, r); return `${p.x},${p.y}` }).join(' ')
+
+  const dataPoints = SKILL_LIST.map((def, i) => {
+    const s = skillMap.get(def.id)
+    // Use percentile (0–1) for radar distance; minimum 8% so dots are always visible
+    const ratio = s && s.totalPlays > 0 ? Math.max(s.percentile, 0.08) : 0
+    return pt(angles[i], ratio * RADAR_R)
+  })
+
+  const labelConfigs = SKILL_LIST.map((_, i) => {
+    const edge = pt(angles[i], RADAR_R + 20)
+    if (i === 0) return { fo: { x: edge.x - 55, y: edge.y - 46, w: 110, h: 46 }, align: 'center' }
+    if (i === 1) return { fo: { x: edge.x + 4, y: edge.y - 23, w: 110, h: 46 }, align: 'left' }
+    if (i === 2) return { fo: { x: edge.x + 4, y: edge.y - 4, w: 110, h: 46 }, align: 'left' }
+    if (i === 3) return { fo: { x: edge.x - 114, y: edge.y - 4, w: 110, h: 46 }, align: 'right' }
+    return { fo: { x: edge.x - 114, y: edge.y - 23, w: 110, h: 46 }, align: 'right' }
+  })
+
+  return (
+    <div className="flex justify-center">
+      <svg viewBox="0 0 370 290" className="w-full max-w-sm">
+        {/* Grid pentagons */}
+        {[0.33, 0.66, 1].map(s => (
+          <polygon key={s} points={poly(RADAR_R * s)} fill="none" className="stroke-slate-300 dark:stroke-slate-600/30" strokeWidth="0.8" />
+        ))}
+        {/* Spokes */}
+        {angles.map((a, i) => {
+          const p = pt(a, RADAR_R)
+          return <line key={i} x1={RADAR_CX} y1={RADAR_CY} x2={p.x} y2={p.y} className="stroke-slate-300 dark:stroke-slate-600/30" strokeWidth="0.8" />
+        })}
+        {/* Data polygon */}
+        {hasData && (
+          <>
+            <polygon
+              points={dataPoints.map(p => `${p.x},${p.y}`).join(' ')}
+              fill="rgba(234,179,8,0.15)"
+              stroke="rgba(234,179,8,0.6)"
+              strokeWidth="2"
+              strokeLinejoin="round"
+            />
+            {dataPoints.map((p, i) => (
+              <circle key={i} cx={p.x} cy={p.y} r={3.5} fill={SKILL_HEX[SKILL_LIST[i].id]} />
+            ))}
+          </>
+        )}
+        {/* Vertex labels */}
+        {SKILL_LIST.map((def, i) => {
+          const skill = skillMap.get(def.id)
+          const Icon = SKILL_ICONS[def.id]
+          const cfg = labelConfigs[i]
+          return (
+            <foreignObject key={def.id} x={cfg.fo.x} y={cfg.fo.y} width={cfg.fo.w} height={cfg.fo.h}>
+              <div className={`flex items-center gap-1.5 ${cfg.align === 'right' ? 'justify-end' : cfg.align === 'center' ? 'justify-center' : ''}`}>
+                <div className={`w-7 h-7 rounded-full ${def.colors.bg} flex items-center justify-center shrink-0`}>
+                  <Icon className={`w-3.5 h-3.5 ${def.colors.textLight} dark:${def.colors.text}`} />
+                </div>
+                <div className="leading-tight">
+                  <div className="text-[13px] font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">{def.name}</div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                    Lv.{skill?.level ?? 1}
+                  </div>
+                </div>
+              </div>
+            </foreignObject>
+          )
+        })}
+        {/* Empty state */}
+        {!hasData && (
+          <text x={RADAR_CX} y={RADAR_CY + 4} textAnchor="middle" className="fill-slate-400 dark:fill-slate-500 text-[11px]">
+            Play games to see your skills
+          </text>
+        )}
+      </svg>
+    </div>
+  )
+}
+
+function SkillsTab({ username }: { username: string }) {
+  const [skills, setSkills] = useState<SkillEntry[] | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchSkills = async () => {
+      try {
+        const res = await fetch(`/api/player/${encodeURIComponent(username)}/skills`)
+        if (res.ok) {
+          const data = await res.json()
+          setSkills(data.skills)
+        }
+      } catch (err) {
+        console.error('Failed to fetch skills:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchSkills()
+  }, [username])
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-center">
+          <div className="animate-pulse w-full max-w-xs aspect-square bg-white dark:bg-slate-800 rounded-xl" />
+        </div>
+        <div className="space-y-3">
+          {[1, 2, 3, 4, 5].map(i => (
+            <div key={i} className="animate-pulse bg-white dark:bg-slate-800 rounded-xl p-5 h-24" />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (!skills) return null
+
+  return (
+    <div className="space-y-6">
+      <SkillRadarChart skills={skills} />
+      <div className="space-y-3">
+        {skills.map(skill => {
+          const def = SKILLS[skill.skillId]
+          const Icon = SKILL_ICONS[skill.skillId]
+          const isMax = skill.level >= MAX_SKILL_LEVEL
+          const strengthPct = Math.round(skill.percentile * 100)
+          // Visual floor: min 20% fill so new players see presence
+          const barFill = skill.totalPlays > 0 ? Math.max(strengthPct, 20) : 0
+          const isStrong = strengthPct >= 80
+          const xpInLevel = skill.totalPlays % 10
+          const playsToNext = isMax ? 0 : 10 - xpInLevel
+
+          return (
+            <div key={skill.skillId} className="bg-white dark:bg-slate-800 rounded-xl p-4">
+              {/* Header: icon + name + level badge */}
+              <div className="flex items-center gap-3 mb-3">
+                <div className={`w-10 h-10 rounded-full ${def.colors.bg} flex items-center justify-center shrink-0`}>
+                  <Icon className={`w-[18px] h-[18px] ${def.colors.textLight} dark:${def.colors.text}`} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-slate-900 dark:text-white">{skill.name}</span>
+                    <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full text-white ${def.colors.dot}`}>
+                      Lv.{skill.level}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Strength bar + number */}
+              <div className="flex items-center gap-2.5 mb-1.5">
+                <div className="flex-1 h-2.5 rounded-full bg-slate-200 dark:bg-slate-700">
+                  <div
+                    className={`h-2.5 rounded-full ${def.colors.dot} transition-all`}
+                    style={{
+                      width: `${barFill}%`,
+                      ...(isStrong ? { boxShadow: `0 0 8px ${SKILL_HEX[skill.skillId]}66` } : {}),
+                    }}
+                  />
+                </div>
+                <span className="text-sm font-bold text-slate-700 dark:text-slate-200 tabular-nums w-6 text-right shrink-0">
+                  {skill.totalPlays > 0 ? strengthPct : '—'}
+                </span>
+              </div>
+
+              {/* Subtle metadata */}
+              <div className="flex items-center justify-between text-[11px] text-slate-400 dark:text-slate-500">
+                <span>
+                  {skill.totalPlays} plays · {isMax ? 'Max level' : `${playsToNext} to Lv.${skill.level + 1}`}
+                </span>
+                {skill.totalPlays > 0 && (
+                  <span>Rank #{skill.rank}{skill.totalPlayers > 0 ? ` of ${skill.totalPlayers}` : ''}</span>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* How to read this */}
+      <div className="text-[11px] text-slate-400 dark:text-slate-500 leading-relaxed space-y-1 px-1">
+        <p className="font-medium text-slate-500 dark:text-slate-400">How to read your skills</p>
+        <p>The <strong>radar chart</strong> gives a quick overview of your strengths across all five skill categories.</p>
+        <p>Each <strong>strength score</strong> (0–100) is based on your best game scores compared to other players on the platform — not how many games you played. A score of 75 means you outperform 75% of players in that skill.</p>
+        <p><strong>Level</strong> tracks your experience and goes up every 10 plays. Strength measures how good you are; level measures how much you&apos;ve played.</p>
+      </div>
+    </div>
+  )
+}
+
 function PlayerProfileContent() {
   const params = useParams()
   const searchParams = useSearchParams()
@@ -790,7 +963,7 @@ function PlayerProfileContent() {
   const [notFound, setNotFound] = useState(false)
   const tabParam = searchParams.get('tab')
   const [activeTab, setActiveTab] = useState<PageTab>(
-    tabParam === 'history' ? 'history' : tabParam === 'settings' ? 'settings' : 'profile'
+    tabParam === 'skills' ? 'skills' : tabParam === 'history' ? 'history' : tabParam === 'settings' ? 'settings' : 'profile'
   )
   const { username: myUsername } = useCreditsNotification()
 
@@ -872,7 +1045,7 @@ function PlayerProfileContent() {
         <Link href="/" className="text-slate-400 hover:text-white transition">
           <ArrowLeft className="w-5 h-5" />
         </Link>
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <h1 className="text-3xl font-bold text-white font-title">{data.displayName}</h1>
           {data.joinedAt && (
             <p className="text-sm text-slate-400">
@@ -880,50 +1053,63 @@ function PlayerProfileContent() {
             </p>
           )}
         </div>
+        {isOwnProfile && (
+          <button
+            onClick={() => setActiveTab('settings')}
+            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition shrink-0"
+            aria-label="Settings"
+          >
+            <Settings className="w-5 h-5" />
+          </button>
+        )}
       </div>
 
       {/* Tab Navigation */}
-      {isOwnProfile && (
-        <div className="flex gap-1 bg-slate-800 rounded-xl p-1 mb-8">
-            <button
-              onClick={() => setActiveTab('profile')}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition ${
-                activeTab === 'profile'
-                  ? 'bg-yellow-500 text-slate-900'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Trophy className="w-4 h-4" />
-              Profile
-            </button>
+      <div className="flex gap-1 bg-white dark:bg-slate-800 rounded-xl p-1 mb-8 lg:inline-flex">
+          <button
+            onClick={() => setActiveTab('profile')}
+            className={`flex-1 lg:flex-initial flex items-center justify-center lg:justify-start gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition ${
+              activeTab === 'profile'
+                ? 'bg-yellow-500 text-slate-900'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <Trophy className="w-4 h-4" />
+            Profile
+          </button>
+          <button
+            onClick={() => setActiveTab('skills')}
+            className={`flex-1 lg:flex-initial flex items-center justify-center lg:justify-start gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition ${
+              activeTab === 'skills'
+                ? 'bg-yellow-500 text-slate-900'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <Gamepad2 className="w-4 h-4" />
+            Skills
+          </button>
+          {isOwnProfile && (
             <button
               onClick={() => setActiveTab('history')}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition ${
+              className={`flex-1 lg:flex-initial flex items-center justify-center lg:justify-start gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition ${
                 activeTab === 'history'
                   ? 'bg-yellow-500 text-slate-900'
-                  : 'text-slate-400 hover:text-white'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               <History className="w-4 h-4" />
               Credits
             </button>
-            <button
-              onClick={() => setActiveTab('settings')}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition ${
-                activeTab === 'settings'
-                  ? 'bg-yellow-500 text-slate-900'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Settings className="w-4 h-4" />
-              Settings
-            </button>
-        </div>
-      )}
+          )}
+      </div>
 
       {/* Tab Contents — kept mounted to preserve state across tab switches */}
       <div className={activeTab === 'profile' ? '' : 'hidden'}>
         <ProfileTab data={data} />
+      </div>
+
+      <div className={activeTab === 'skills' ? '' : 'hidden'}>
+        <SkillsTab username={username} />
       </div>
 
       {isOwnProfile && (

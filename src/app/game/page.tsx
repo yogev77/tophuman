@@ -27,26 +27,7 @@ import { DrawMeGame } from '@/components/DrawMeGame'
 import { Leaderboard } from '@/components/Leaderboard'
 import Link from 'next/link'
 import {
-  Target,
-  RotateCw,
-  Zap,
-  Hammer,
-  Keyboard,
-  Calculator,
-  Palette,
-  ScanEye,
-  Music,
-  GripVertical,
-  Pencil,
-  Crosshair,
-  LayoutGrid,
-  Hash,
-  ParkingSquare,
-  BarChartHorizontal,
-  Puzzle,
-  Brush,
   ArrowLeft,
-  LucideIcon,
   CalendarCheck,
   Share2,
   Copy,
@@ -54,161 +35,28 @@ import {
   RefreshCw,
 } from 'lucide-react'
 import { C, CC } from '@/lib/currency'
+import { GAMES, toDbGameTypeId, getSkillForGame } from '@/lib/skills'
+import { GAME_ICONS } from '@/lib/game-icons'
 
-const GAME_ICON_COLORS: Record<string, { bg: string; icon: string }> = {
-  emoji_keypad: { bg: 'bg-rose-500/20', icon: 'text-rose-400' },
-  image_rotate: { bg: 'bg-sky-500/20', icon: 'text-sky-400' },
-  reaction_time: { bg: 'bg-amber-500/20', icon: 'text-amber-400' },
-  whack_a_mole: { bg: 'bg-green-500/20', icon: 'text-green-400' },
-  typing_speed: { bg: 'bg-violet-500/20', icon: 'text-violet-400' },
-  mental_math: { bg: 'bg-orange-500/20', icon: 'text-orange-400' },
-  color_match: { bg: 'bg-pink-500/20', icon: 'text-pink-400' },
-  visual_diff: { bg: 'bg-teal-500/20', icon: 'text-teal-400' },
-  audio_pattern: { bg: 'bg-indigo-500/20', icon: 'text-indigo-400' },
-  drag_sort: { bg: 'bg-lime-500/20', icon: 'text-lime-400' },
-  follow_me: { bg: 'bg-cyan-500/20', icon: 'text-cyan-400' },
-  duck_shoot: { bg: 'bg-emerald-500/20', icon: 'text-emerald-400' },
-  memory_cards: { bg: 'bg-fuchsia-500/20', icon: 'text-fuchsia-400' },
-  number_chain: { bg: 'bg-red-500/20', icon: 'text-red-400' },
-  gridlock: { bg: 'bg-blue-500/20', icon: 'text-blue-400' },
-  reaction_bars: { bg: 'bg-purple-500/20', icon: 'text-purple-400' },
-  image_puzzle: { bg: 'bg-yellow-500/20', icon: 'text-yellow-400' },
-  draw_me: { bg: 'bg-stone-500/20', icon: 'text-stone-400' },
-}
-
-const GAME_CONFIG: Record<string, {
-  component: React.ComponentType<{ onGameComplete?: () => void }>
-  name: string
-  description: string
-  leaderboardType: string
-  icon: LucideIcon
-}> = {
-  emoji_keypad: {
-    component: EmojiKeypadGame,
-    name: 'Emoji Sequence',
-    description: 'Memorize the emoji sequence, then tap them in order.',
-    leaderboardType: 'emoji_keypad_sequence',
-    icon: Target,
-  },
-  image_rotate: {
-    component: ImageRotateGame,
-    name: 'Puzzle Rotation',
-    description: 'Rotate the tiles to restore the original image.',
-    leaderboardType: 'image_rotate',
-    icon: RotateCw,
-  },
-  reaction_time: {
-    component: ReactionTimeGame,
-    name: 'Reaction Tap',
-    description: 'Tap when the color changes. Skip the fakes.',
-    leaderboardType: 'reaction_time',
-    icon: Zap,
-  },
-  whack_a_mole: {
-    component: WhackAMoleGame,
-    name: 'Whack-a-Mole',
-    description: 'Tap the moles as fast as you can. Avoid the bombs.',
-    leaderboardType: 'whack_a_mole',
-    icon: Hammer,
-  },
-  typing_speed: {
-    component: TypingSpeedGame,
-    name: 'Typing Speed',
-    description: 'Type the text as fast and accurately as you can.',
-    leaderboardType: 'typing_speed',
-    icon: Keyboard,
-  },
-  mental_math: {
-    component: MentalMathGame,
-    name: 'Mental Math',
-    description: 'Solve arithmetic problems as quickly as possible.',
-    leaderboardType: 'mental_math',
-    icon: Calculator,
-  },
-  color_match: {
-    component: ColorMatchGame,
-    name: 'Color Match',
-    description: 'Match the target color as closely as you can.',
-    leaderboardType: 'color_match',
-    icon: Palette,
-  },
-  visual_diff: {
-    component: VisualDiffGame,
-    name: 'Spot Difference',
-    description: 'Find the differences between the two images.',
-    leaderboardType: 'visual_diff',
-    icon: ScanEye,
-  },
-  audio_pattern: {
-    component: AudioPatternGame,
-    name: 'Audio Pattern',
-    description: 'Listen to the pattern, then repeat it.',
-    leaderboardType: 'audio_pattern',
-    icon: Music,
-  },
-  drag_sort: {
-    component: DragSortGame,
-    name: 'Drag & Sort',
-    description: 'Drag the items into the correct order.',
-    leaderboardType: 'drag_sort',
-    icon: GripVertical,
-  },
-  follow_me: {
-    component: FollowMeGame,
-    name: 'Follow Me',
-    description: 'Trace the path from start to finish. 3 levels.',
-    leaderboardType: 'follow_me',
-    icon: Pencil,
-  },
-  duck_shoot: {
-    component: DuckShootGame,
-    name: 'Target Shoot',
-    description: 'Tap to fire. Hit red. Avoid green. 10 shots.',
-    leaderboardType: 'duck_shoot',
-    icon: Crosshair,
-  },
-  memory_cards: {
-    component: MemoryCardsGame,
-    name: 'Memory Cards',
-    description: 'Flip cards and find all matching pairs.',
-    leaderboardType: 'memory_cards',
-    icon: LayoutGrid,
-  },
-  number_chain: {
-    component: NumberChainGame,
-    name: 'Number Chain',
-    description: 'Tap the numbers in ascending order.',
-    leaderboardType: 'number_chain',
-    icon: Hash,
-  },
-  gridlock: {
-    component: GridlockGame,
-    name: 'Gridlock',
-    description: 'Slide blocks to free the green piece. 3 rounds.',
-    leaderboardType: 'gridlock',
-    icon: ParkingSquare,
-  },
-  reaction_bars: {
-    component: ReactionBarsGame,
-    name: 'Reaction Bars',
-    description: 'Stop oscillating bars at the target. Speed + accuracy.',
-    leaderboardType: 'reaction_bars',
-    icon: BarChartHorizontal,
-  },
-  image_puzzle: {
-    component: ImagePuzzleGame,
-    name: 'Image Puzzle',
-    description: 'Place missing pieces to complete the image.',
-    leaderboardType: 'image_puzzle',
-    icon: Puzzle,
-  },
-  draw_me: {
-    component: DrawMeGame,
-    name: 'Draw Me',
-    description: 'Copy the reference path. 3 rounds of increasing difficulty.',
-    leaderboardType: 'draw_me',
-    icon: Brush,
-  },
+const GAME_COMPONENTS: Record<string, React.ComponentType<{ onGameComplete?: () => void }>> = {
+  emoji_keypad: EmojiKeypadGame,
+  image_rotate: ImageRotateGame,
+  reaction_time: ReactionTimeGame,
+  whack_a_mole: WhackAMoleGame,
+  typing_speed: TypingSpeedGame,
+  mental_math: MentalMathGame,
+  color_match: ColorMatchGame,
+  visual_diff: VisualDiffGame,
+  audio_pattern: AudioPatternGame,
+  drag_sort: DragSortGame,
+  follow_me: FollowMeGame,
+  duck_shoot: DuckShootGame,
+  memory_cards: MemoryCardsGame,
+  number_chain: NumberChainGame,
+  gridlock: GridlockGame,
+  reaction_bars: ReactionBarsGame,
+  image_puzzle: ImagePuzzleGame,
+  draw_me: DrawMeGame,
 }
 
 function OutOfCreditsView({ referralCode }: { referralCode: string | null }) {
@@ -302,10 +150,10 @@ function GamePageContent() {
   const { balance, dailyGrantAvailable, refreshBalance, referralCode, loading: creditsLoading } = useCreditsNotification()
 
   // Use URL param or default to emoji_keypad
-  const gameType = gameTypeParam && GAME_CONFIG[gameTypeParam] ? gameTypeParam : 'emoji_keypad'
-  const config = GAME_CONFIG[gameType]
-  const iconColors = GAME_ICON_COLORS[gameType] || GAME_ICON_COLORS.emoji_keypad
-  const GameIcon = config.icon
+  const gameType = gameTypeParam && GAME_COMPONENTS[gameTypeParam] ? gameTypeParam : 'emoji_keypad'
+  const gameDef = GAMES[gameType]
+  const iconColors = gameDef?.iconColors || GAMES.emoji_keypad.iconColors
+  const GameIcon = GAME_ICONS[gameType] || GAME_ICONS.emoji_keypad
   const [poolSize, setPoolSize] = useState<number | null>(null)
   const [msUntilSettlement, setMsUntilSettlement] = useState(0)
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -408,7 +256,7 @@ function GamePageContent() {
     )
   }
 
-  const GameComponent = config.component
+  const GameComponent = GAME_COMPONENTS[gameType]
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 overflow-x-hidden select-none">
@@ -425,8 +273,16 @@ function GamePageContent() {
             <GameIcon className={`w-10 h-10 ${iconColors.icon}`} />
           </div>
           <div className="min-w-0">
-            <h1 className="text-2xl font-bold text-white font-title">{config.name}</h1>
-            <p className="text-slate-400 text-sm">{config.description}</p>
+            <h1 className="text-2xl font-bold text-white font-title">{gameDef.name}</h1>
+            <div className="flex items-center gap-2">
+              <p className="text-slate-400 text-sm">{gameDef.description}</p>
+              {(() => { const skill = getSkillForGame(gameType); return skill ? (
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${skill.colors.bg} ${skill.colors.text}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${skill.colors.dot}`} />
+                  {skill.name}
+                </span>
+              ) : null })()}
+            </div>
           </div>
           {/* Restart button - hidden, will redesign later */}
           {false && <button
@@ -472,8 +328,8 @@ function GamePageContent() {
 
         <div>
           <Leaderboard
-            gameType={config.leaderboardType}
-            gameTypeName={config.name}
+            gameType={toDbGameTypeId(gameType)}
+            gameTypeName={gameDef.name}
           />
         </div>
       </div>

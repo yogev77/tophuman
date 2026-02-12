@@ -1,90 +1,6 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-
-// Map UI game IDs to database game_type_ids (for legacy compatibility)
-const DB_GAME_TYPE_MAP: Record<string, string> = {
-  emoji_keypad: 'emoji_keypad_sequence', // Legacy: stored as emoji_keypad_sequence in DB
-}
-
-// Get the database ID for a game
-function getDbGameTypeId(uiId: string): string {
-  return DB_GAME_TYPE_MAP[uiId] || uiId
-}
-
-const GAME_INFO: Record<string, { name: string; description: string }> = {
-  emoji_keypad: {
-    name: 'Emoji Sequence',
-    description: 'Memorize and repeat the emoji pattern',
-  },
-  image_rotate: {
-    name: 'Puzzle Rotation',
-    description: 'Rotate tiles to complete the image',
-  },
-  reaction_time: {
-    name: 'Reaction Tap',
-    description: 'Click as fast as you can when the signal appears',
-  },
-  whack_a_mole: {
-    name: 'Whack-a-Mole',
-    description: 'Hit the moles as they pop up',
-  },
-  typing_speed: {
-    name: 'Typing Speed',
-    description: 'Type the phrase as fast and accurately as possible',
-  },
-  mental_math: {
-    name: 'Mental Math',
-    description: 'Solve arithmetic problems quickly',
-  },
-  color_match: {
-    name: 'Color Match',
-    description: 'Match the target color using RGB sliders',
-  },
-  visual_diff: {
-    name: 'Spot Difference',
-    description: 'Find all the differences between two images',
-  },
-  audio_pattern: {
-    name: 'Audio Pattern',
-    description: 'Listen and repeat the sound sequence',
-  },
-  drag_sort: {
-    name: 'Drag & Sort',
-    description: 'Arrange items in the correct order',
-  },
-  follow_me: {
-    name: 'Follow Me',
-    description: 'Trace the path as accurately as possible',
-  },
-  duck_shoot: {
-    name: 'Target Shoot',
-    description: 'Hit the moving targets with precision',
-  },
-  memory_cards: {
-    name: 'Memory Cards',
-    description: 'Match pairs of cards',
-  },
-  number_chain: {
-    name: 'Number Chain',
-    description: 'Tap numbers in order',
-  },
-  gridlock: {
-    name: 'Gridlock',
-    description: 'Solve sliding puzzles',
-  },
-  reaction_bars: {
-    name: 'Reaction Bars',
-    description: 'Stop oscillating bars at the target width',
-  },
-  image_puzzle: {
-    name: 'Image Puzzle',
-    description: 'Place missing pieces to complete the image',
-  },
-  draw_me: {
-    name: 'Draw Me',
-    description: 'Reproduce the reference path from sight',
-  },
-}
+import { GAMES, toDbGameTypeId } from '@/lib/skills'
 
 export async function GET() {
   try {
@@ -207,8 +123,8 @@ export async function GET() {
     }
 
     // Build response
-    const games = Object.entries(GAME_INFO).map(([id, info]) => {
-      const dbGameTypeId = getDbGameTypeId(id)
+    const games = Object.entries(GAMES).map(([id, gameDef]) => {
+      const dbGameTypeId = toDbGameTypeId(id)
       const dbGame = gameTypes?.find(g => g.id === id)
       const stats = gameStats.get(dbGameTypeId)
 
@@ -225,8 +141,8 @@ export async function GET() {
 
       return {
         id,
-        name: info.name,
-        description: info.description,
+        name: gameDef.name,
+        description: gameDef.description,
         isActive,
         isPlayable,
         opensAt: dbGame?.opens_at || null,
