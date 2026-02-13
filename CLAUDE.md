@@ -865,5 +865,34 @@ Complete rewrite of the Skills tab on player profiles (`src/app/player/[username
 
 **Key constants:** `MAX_SKILL_LEVEL = 50`, `RADAR_CX = 185`, `RADAR_CY = 150`, `RADAR_R = 82`
 
+### Feb 13, 2026
+
+**Group Play Settlement — v0.0.5**
+
+Group play sessions now settle when the session ends. Settlement runs lazily on the first GET request after expiry, transitioning status from `'ended'` → `'settled'`.
+
+**Settlement logic** (mirrors daily cron settlement pattern):
+- Pool = total completed unflagged turns in the group session
+- Winner = highest score (first in leaderboard)
+- Split: 50% winner prize, 30% rebate pool (proportional by turn count, cap 10 weight), 20% treasury sink
+- Remainder from integer division → treasury sink
+- Atomic `UPDATE WHERE status='ended'` prevents double-settlement across concurrent requests
+
+**Files modified:**
+- `src/app/api/group-play/[token]/route.ts` — Settlement block after leaderboard build
+- `src/app/api/credits/claim-winnings/route.ts` — Passes `groupSessionId` through to ledger metadata and response
+- `src/components/ClaimSuccessModal.tsx` — Purple trophy for "Group Play Prize", purple coin for "Group Play · Credit Back"
+- `src/app/player/[username]/page.tsx` — Credit history: group play entries show purple Users icon, separate grouping from daily pool
+- `src/app/group/[token]/page.tsx` — `refreshBalance()` on ended/settled, `isEnded` includes `'settled'`, game description in header
+- `src/components/GroupPlayBar.tsx` — Grid-aligned (`max-w-6xl`), `CC` currency symbol, subtle hover
+- `src/components/GroupPlayDrawer.tsx` — Grid-aligned, `CC` currency symbol
+- `src/components/GroupSessionBar.tsx` — Clipboard copies full share text + URL
+- `src/components/Header.tsx` — Desktop profile link shows username (not display name)
+
+**Key patterns:**
+- Group play pending_claims have `settlement_id: null` (no settlements table entry) and `metadata: { game_type_id, group_session_id }`
+- Credit ledger entries for group play include `metadata.group_session_id` for frontend distinction
+- Treasury sink lookup reuses `site_settings.treasury_user_id` pattern from cron settlement
+
 ---
-*Last updated: Feb 12, 2026*
+*Last updated: Feb 13, 2026*

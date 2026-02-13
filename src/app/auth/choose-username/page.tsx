@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useEffect, useCallback, Suspense } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Check, X, Loader2 } from 'lucide-react'
 import { Spinner } from '@/components/Spinner'
 
 function ChooseUsernameContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [username, setUsername] = useState('')
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid'>('idle')
   const [usernameMessage, setUsernameMessage] = useState<string | null>(null)
@@ -32,8 +33,10 @@ function ChooseUsernameContent() {
         .single()
 
       if (profile && !/^player_[a-f0-9]{8}$/.test(profile.username)) {
-        // Already has a real username, skip to home
-        router.replace('/')
+        // Already has a real username, skip to destination
+        const next = new URLSearchParams(window.location.search).get('next') || localStorage.getItem('authRedirectTo') || '/'
+        localStorage.removeItem('authRedirectTo')
+        router.replace(next)
         return
       }
       setCheckingAuth(false)
@@ -105,7 +108,8 @@ function ChooseUsernameContent() {
       }
 
       // Success — go to welcome page for credit grant + referral
-      router.push('/auth/welcome?next=/')
+      const next = searchParams.get('next') || localStorage.getItem('authRedirectTo') || '/'
+      router.push(`/auth/welcome?next=${encodeURIComponent(next)}`)
     } catch {
       setError('Something went wrong. Please try again.')
     } finally {

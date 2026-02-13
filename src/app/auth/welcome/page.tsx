@@ -26,7 +26,8 @@ function WelcomeContent() {
   useEffect(() => {
     const processWelcome = async () => {
       const referralCode = localStorage.getItem('referralCode')
-      const next = searchParams.get('next') || '/'
+      const next = searchParams.get('next') || localStorage.getItem('authRedirectTo') || '/'
+      localStorage.removeItem('authRedirectTo')
 
       // Auto-grant first daily credits with retry
       const grantOk = await grantCreditsWithRetry()

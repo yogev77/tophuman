@@ -63,6 +63,11 @@ function AuthContent() {
       setReferralCode(ref)
       localStorage.setItem('referralCode', ref)
     }
+    // Store redirect destination for after auth
+    const next = searchParams.get('next')
+    if (next) {
+      localStorage.setItem('authRedirectTo', next)
+    }
     // Check if we should show login tab
     const mode = searchParams.get('mode')
     if (mode === 'login') {
@@ -102,7 +107,7 @@ function AuthContent() {
         password,
         options: {
           data: { username },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `${window.location.origin}/auth/callback${localStorage.getItem('authRedirectTo') ? `?next=${encodeURIComponent(localStorage.getItem('authRedirectTo')!)}` : ''}`,
         },
       })
 
@@ -121,7 +126,7 @@ function AuthContent() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${window.location.origin}/auth/callback${localStorage.getItem('authRedirectTo') ? `?next=${encodeURIComponent(localStorage.getItem('authRedirectTo')!)}` : ''}`,
       },
     })
     if (error) {
@@ -142,7 +147,9 @@ function AuthContent() {
 
       if (error) throw error
 
-      router.push('/')
+      const redirectTo = localStorage.getItem('authRedirectTo') || '/'
+      localStorage.removeItem('authRedirectTo')
+      router.push(redirectTo)
       router.refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')

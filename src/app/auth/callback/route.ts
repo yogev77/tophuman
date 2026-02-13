@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
         }
 
         redirectTo = needsUsername
-          ? `${origin}/auth/choose-username`
+          ? `${origin}/auth/choose-username?next=${encodeURIComponent(next)}`
           : `${origin}/auth/welcome?next=${encodeURIComponent(next)}`
       }
 

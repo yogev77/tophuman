@@ -178,10 +178,10 @@ export default function GroupPage({ params }: { params: Promise<{ token: string 
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">Login Required</h2>
           <p className="text-slate-600 dark:text-slate-300 mb-6">You need to be logged in to join group play.</p>
           <div className="flex justify-center gap-4">
-            <Link href="/auth/login" className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-6 rounded-lg transition">
+            <Link href={`/auth/login?next=/group/${token}`} className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-6 rounded-lg transition">
               Login
             </Link>
-            <Link href="/auth/signup" className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 px-6 rounded-lg transition">
+            <Link href={`/auth/signup?next=/group/${token}`} className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 px-6 rounded-lg transition">
               Sign Up
             </Link>
           </div>
