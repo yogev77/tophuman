@@ -29,9 +29,10 @@ interface GameResult {
 
 interface TypingSpeedGameProps {
   onGameComplete?: (result: GameResult) => void
+  groupSessionId?: string
 }
 
-export function TypingSpeedGame({ onGameComplete }: TypingSpeedGameProps) {
+export function TypingSpeedGame({ onGameComplete, groupSessionId }: TypingSpeedGameProps) {
   const { play } = useSound()
   const [phase, setPhase] = useState<GamePhase>('idle')
   const [turnToken, setTurnToken] = useState<string | null>(null)
@@ -56,7 +57,7 @@ export function TypingSpeedGame({ onGameComplete }: TypingSpeedGameProps) {
       const createRes = await fetch('/api/game/turn/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gameType: 'typing_speed' }),
+        body: JSON.stringify({ gameType: 'typing_speed', ...(groupSessionId && { groupSessionId }) }),
       })
       if (!createRes.ok) {
         const data = await createRes.json()

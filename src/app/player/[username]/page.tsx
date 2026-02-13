@@ -1085,7 +1085,7 @@ function PlayerProfileContent() {
             }`}
           >
             <Trophy className="w-4 h-4" />
-            Profile
+            Charts
           </button>
           <button
             onClick={() => setActiveTab('skills')}

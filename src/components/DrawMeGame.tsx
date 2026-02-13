@@ -34,11 +34,12 @@ interface GameResult {
 
 interface DrawMeGameProps {
   onGameComplete?: (result: GameResult) => void
+  groupSessionId?: string
 }
 
 const TOTAL_ROUNDS = 3
 
-export function DrawMeGame({ onGameComplete }: DrawMeGameProps) {
+export function DrawMeGame({ onGameComplete, groupSessionId }: DrawMeGameProps) {
   const { theme } = useTheme()
   const light = theme === 'light'
   const { play } = useSound()
@@ -186,7 +187,7 @@ export function DrawMeGame({ onGameComplete }: DrawMeGameProps) {
       const createRes = await fetch('/api/game/turn/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gameType: 'draw_me' }),
+        body: JSON.stringify({ gameType: 'draw_me', ...(groupSessionId && { groupSessionId }) }),
       })
       if (!createRes.ok) {
         const data = await createRes.json()

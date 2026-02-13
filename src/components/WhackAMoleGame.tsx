@@ -33,9 +33,10 @@ interface GameResult {
 
 interface WhackAMoleGameProps {
   onGameComplete?: (result: GameResult) => void
+  groupSessionId?: string
 }
 
-export function WhackAMoleGame({ onGameComplete }: WhackAMoleGameProps) {
+export function WhackAMoleGame({ onGameComplete, groupSessionId }: WhackAMoleGameProps) {
   const { play } = useSound()
   const [phase, setPhase] = useState<GamePhase>('idle')
   const [turnToken, setTurnToken] = useState<string | null>(null)
@@ -73,7 +74,7 @@ export function WhackAMoleGame({ onGameComplete }: WhackAMoleGameProps) {
       const createRes = await fetch('/api/game/turn/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gameType: 'whack_a_mole' }),
+        body: JSON.stringify({ gameType: 'whack_a_mole', ...(groupSessionId && { groupSessionId }) }),
       })
       if (!createRes.ok) {
         const data = await createRes.json()

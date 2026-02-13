@@ -39,6 +39,7 @@ interface GameResult {
 
 interface DuckShootGameProps {
   onGameComplete?: (result: GameResult) => void
+  groupSessionId?: string
 }
 
 interface ActiveDuck {
@@ -113,7 +114,7 @@ function drawGun(ctx: CanvasRenderingContext2D, cx: number, bottomY: number) {
   ctx.fill()
 }
 
-export function DuckShootGame({ onGameComplete }: DuckShootGameProps) {
+export function DuckShootGame({ onGameComplete, groupSessionId }: DuckShootGameProps) {
   const { play } = useSound()
   const [phase, setPhase] = useState<GamePhase>('idle')
   const [turnToken, setTurnToken] = useState<string | null>(null)
@@ -305,7 +306,7 @@ export function DuckShootGame({ onGameComplete }: DuckShootGameProps) {
       const createRes = await fetch('/api/game/turn/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gameType: 'duck_shoot' }),
+        body: JSON.stringify({ gameType: 'duck_shoot', ...(groupSessionId && { groupSessionId }) }),
       })
       if (!createRes.ok) {
         const data = await createRes.json()

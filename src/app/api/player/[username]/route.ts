@@ -43,6 +43,7 @@ export async function GET(
       .eq('user_id', profile.user_id)
       .eq('status', 'completed')
       .eq('flagged', false)
+      .is('group_session_id', null)
       .not('score', 'is', null)
       .gt('score', 0)
       .order('score', { ascending: false })
@@ -74,6 +75,7 @@ export async function GET(
       .from('game_turns')
       .select('game_type_id')
       .eq('utc_day', today)
+      .is('group_session_id', null)
 
     if (cycleStartTime) {
       todayTurnsQuery = todayTurnsQuery.gt('created_at', cycleStartTime)
@@ -107,6 +109,7 @@ export async function GET(
               .eq('game_type_id', dbGameTypeId)
               .eq('status', 'completed')
               .eq('flagged', false)
+              .is('group_session_id', null)
               .gt('score', allTimeScore)
               .limit(200)
           )
@@ -123,6 +126,7 @@ export async function GET(
             .eq('utc_day', today)
             .eq('status', 'completed')
             .eq('flagged', false)
+            .is('group_session_id', null)
             .gt('score', todayScore)
             .limit(200)
 

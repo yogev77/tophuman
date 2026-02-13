@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
         .eq('game_type_id', gameType)
         .eq('status', 'completed')
         .eq('flagged', false)
+        .is('group_session_id', null)
         .not('score', 'is', null)
         .order('score', { ascending: false })
         .limit(200) // Get more to group by user
@@ -112,6 +113,7 @@ export async function GET(request: NextRequest) {
         .eq('utc_day', day)
         .eq('status', 'completed')
         .eq('flagged', false)
+        .is('group_session_id', null)
         .not('score', 'is', null)
         .order('score', { ascending: false })
         .limit(200)
@@ -195,6 +197,7 @@ export async function GET(request: NextRequest) {
       .select('user_id')
       .eq('game_type_id', gameType)
       .eq('utc_day', day)
+      .is('group_session_id', null)
 
     if (poolCycleStart) {
       poolQuery = poolQuery.gt('created_at', poolCycleStart)

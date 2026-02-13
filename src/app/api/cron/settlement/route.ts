@@ -129,6 +129,7 @@ async function settleDay(supabase: any, utcDay: string) {
     .select('game_type_id')
     .eq('utc_day', utcDay)
     .eq('status', 'completed')
+    .is('group_session_id', null)
 
   if (!gameTurnsRaw || gameTurnsRaw.length === 0) {
     return {
@@ -243,6 +244,7 @@ async function settleGame(supabase: any, utcDay: string, gameTypeId: string, tre
     .eq('utc_day', utcDay)
     .eq('game_type_id', gameTypeId)
     .eq('status', 'completed')
+    .is('group_session_id', null)
 
   if (cycleStart) {
     turnsQuery = turnsQuery.gt('created_at', cycleStart)
@@ -272,6 +274,7 @@ async function settleGame(supabase: any, utcDay: string, gameTypeId: string, tre
     .eq('game_type_id', gameTypeId)
     .eq('status', 'completed')
     .eq('flagged', false)
+    .is('group_session_id', null)
     .order('score', { ascending: false })
     .limit(1)
 
@@ -294,6 +297,7 @@ async function settleGame(supabase: any, utcDay: string, gameTypeId: string, tre
     .eq('utc_day', utcDay)
     .eq('game_type_id', gameTypeId)
     .eq('status', 'completed')
+    .is('group_session_id', null)
     .neq('user_id', winner.user_id)
     .limit(1000)
 

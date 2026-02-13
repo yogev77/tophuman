@@ -28,6 +28,7 @@ interface GameResult {
 
 interface ColorMatchGameProps {
   onGameComplete?: (result: GameResult) => void
+  groupSessionId?: string
 }
 
 // HSV to RGB conversion
@@ -200,7 +201,7 @@ function ColorPicker({ color, onChange }: {
   )
 }
 
-export function ColorMatchGame({ onGameComplete }: ColorMatchGameProps) {
+export function ColorMatchGame({ onGameComplete, groupSessionId }: ColorMatchGameProps) {
   const { play } = useSound()
   const [phase, setPhase] = useState<GamePhase>('idle')
   const [turnToken, setTurnToken] = useState<string | null>(null)
@@ -225,7 +226,7 @@ export function ColorMatchGame({ onGameComplete }: ColorMatchGameProps) {
       const createRes = await fetch('/api/game/turn/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gameType: 'color_match' }),
+        body: JSON.stringify({ gameType: 'color_match', ...(groupSessionId && { groupSessionId }) }),
       })
       if (!createRes.ok) {
         const data = await createRes.json()

@@ -46,9 +46,10 @@ interface GameResult {
 
 interface ReactionTimeGameProps {
   onGameComplete?: (result: GameResult) => void
+  groupSessionId?: string
 }
 
-export function ReactionTimeGame({ onGameComplete }: ReactionTimeGameProps) {
+export function ReactionTimeGame({ onGameComplete, groupSessionId }: ReactionTimeGameProps) {
   const { play } = useSound()
   const [phase, setPhase] = useState<GamePhase>('idle')
   const [turnToken, setTurnToken] = useState<string | null>(null)
@@ -106,7 +107,7 @@ export function ReactionTimeGame({ onGameComplete }: ReactionTimeGameProps) {
       const createRes = await fetch('/api/game/turn/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gameType: 'reaction_time' }),
+        body: JSON.stringify({ gameType: 'reaction_time', ...(groupSessionId && { groupSessionId }) }),
       })
       if (!createRes.ok) {
         const data = await createRes.json()

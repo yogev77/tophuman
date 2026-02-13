@@ -34,9 +34,10 @@ interface GameResult {
 
 interface NumberChainGameProps {
   onGameComplete?: (result: GameResult) => void
+  groupSessionId?: string
 }
 
-export function NumberChainGame({ onGameComplete }: NumberChainGameProps) {
+export function NumberChainGame({ onGameComplete, groupSessionId }: NumberChainGameProps) {
   const { play } = useSound()
   const [phase, setPhase] = useState<GamePhase>('idle')
   const [turnToken, setTurnToken] = useState<string | null>(null)
@@ -113,7 +114,7 @@ export function NumberChainGame({ onGameComplete }: NumberChainGameProps) {
       const createRes = await fetch('/api/game/turn/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gameType: 'number_chain' }),
+        body: JSON.stringify({ gameType: 'number_chain', ...(groupSessionId && { groupSessionId }) }),
       })
       if (!createRes.ok) {
         const data = await createRes.json()

@@ -45,9 +45,10 @@ interface GameResult {
 
 interface GridlockGameProps {
   onGameComplete?: (result: GameResult) => void
+  groupSessionId?: string
 }
 
-export function GridlockGame({ onGameComplete }: GridlockGameProps) {
+export function GridlockGame({ onGameComplete, groupSessionId }: GridlockGameProps) {
   const { theme } = useTheme()
   const light = theme === 'light'
   const { play } = useSound()
@@ -117,7 +118,7 @@ export function GridlockGame({ onGameComplete }: GridlockGameProps) {
       const createRes = await fetch('/api/game/turn/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gameType: 'gridlock' }),
+        body: JSON.stringify({ gameType: 'gridlock', ...(groupSessionId && { groupSessionId }) }),
       })
       if (!createRes.ok) {
         const data = await createRes.json()

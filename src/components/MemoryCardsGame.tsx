@@ -34,9 +34,10 @@ interface GameResult {
 
 interface MemoryCardsGameProps {
   onGameComplete?: (result: GameResult) => void
+  groupSessionId?: string
 }
 
-export function MemoryCardsGame({ onGameComplete }: MemoryCardsGameProps) {
+export function MemoryCardsGame({ onGameComplete, groupSessionId }: MemoryCardsGameProps) {
   const { theme } = useTheme()
   const light = theme === 'light'
   const { play } = useSound()
@@ -106,7 +107,7 @@ export function MemoryCardsGame({ onGameComplete }: MemoryCardsGameProps) {
       const createRes = await fetch('/api/game/turn/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gameType: 'memory_cards' }),
+        body: JSON.stringify({ gameType: 'memory_cards', ...(groupSessionId && { groupSessionId }) }),
       })
       if (!createRes.ok) {
         const data = await createRes.json()

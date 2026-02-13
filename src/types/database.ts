@@ -200,6 +200,7 @@ export interface Database {
           fraud_signals: Json | null
           flagged: boolean
           ledger_entry_id: string | null
+          group_session_id: string | null
         }
         Insert: {
           id?: string
@@ -221,6 +222,7 @@ export interface Database {
           fraud_signals?: Json | null
           flagged?: boolean
           ledger_entry_id?: string | null
+          group_session_id?: string | null
         }
         Update: {
           id?: string
@@ -242,6 +244,39 @@ export interface Database {
           fraud_signals?: Json | null
           flagged?: boolean
           ledger_entry_id?: string | null
+          group_session_id?: string | null
+        }
+      }
+      group_sessions: {
+        Row: {
+          id: string
+          join_token: string
+          game_type_id: string
+          created_by: string
+          starts_at: string
+          ends_at: string
+          status: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          join_token: string
+          game_type_id: string
+          created_by: string
+          starts_at?: string
+          ends_at: string
+          status?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          join_token?: string
+          game_type_id?: string
+          created_by?: string
+          starts_at?: string
+          ends_at?: string
+          status?: string
+          created_at?: string
         }
       }
       turn_events: {

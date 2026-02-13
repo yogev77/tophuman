@@ -34,11 +34,12 @@ interface GameResult {
 
 interface FollowMeGameProps {
   onGameComplete?: (result: GameResult) => void
+  groupSessionId?: string
 }
 
 const TOTAL_ROUNDS = 3
 
-export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
+export function FollowMeGame({ onGameComplete, groupSessionId }: FollowMeGameProps) {
   const { theme } = useTheme()
   const light = theme === 'light'
   const { play } = useSound()
@@ -143,7 +144,7 @@ export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
       const createRes = await fetch('/api/game/turn/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gameType: 'follow_me' }),
+        body: JSON.stringify({ gameType: 'follow_me', ...(groupSessionId && { groupSessionId }) }),
       })
       if (!createRes.ok) {
         const data = await createRes.json()

@@ -33,6 +33,7 @@ export async function GET() {
       .select('user_id, game_type_id, score, utc_day, created_at')
       .eq('status', 'completed')
       .eq('flagged', false)
+      .is('group_session_id', null)
       .gt('score', 0)
       .order('score', { ascending: false })
 
@@ -50,6 +51,7 @@ export async function GET() {
       .from('game_turns')
       .select('game_type_id')
       .eq('utc_day', today)
+      .is('group_session_id', null)
 
     if (cycleStartTime) {
       poolQuery = poolQuery.gt('created_at', cycleStartTime)

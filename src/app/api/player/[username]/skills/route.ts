@@ -29,6 +29,7 @@ export async function GET(
       .eq('user_id', profile.user_id)
       .eq('status', 'completed')
       .eq('flagged', false)
+      .is('group_session_id', null)
 
     // Aggregate: plays per UI game ID + best score per DB game type
     const playsPerGame = new Map<string, number>()
@@ -52,6 +53,7 @@ export async function GET(
         .in('game_type_id', playedDbIds)
         .eq('status', 'completed')
         .eq('flagged', false)
+        .is('group_session_id', null)
 
       for (const t of allTurns || []) {
         if (!allByGame.has(t.game_type_id)) allByGame.set(t.game_type_id, new Map())

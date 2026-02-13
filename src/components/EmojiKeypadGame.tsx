@@ -33,9 +33,10 @@ interface GameResult {
 
 interface EmojiKeypadGameProps {
   onGameComplete?: (result: GameResult) => void
+  groupSessionId?: string
 }
 
-export function EmojiKeypadGame({ onGameComplete }: EmojiKeypadGameProps) {
+export function EmojiKeypadGame({ onGameComplete, groupSessionId }: EmojiKeypadGameProps) {
   const { play } = useSound()
   const [phase, setPhase] = useState<GamePhase>('idle')
   const [turnToken, setTurnToken] = useState<string | null>(null)
@@ -96,7 +97,7 @@ export function EmojiKeypadGame({ onGameComplete }: EmojiKeypadGameProps) {
       const createRes = await fetch('/api/game/turn/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gameType: 'emoji_keypad' }),
+        body: JSON.stringify({ gameType: 'emoji_keypad', ...(groupSessionId && { groupSessionId }) }),
       })
       if (!createRes.ok) {
         const data = await createRes.json()

@@ -2,7 +2,7 @@
 
 import { use } from 'react'
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { notFound } from 'next/navigation'
+import { notFound, useRouter } from 'next/navigation'
 import { formatCountdown } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
 import { useCreditsNotification } from '@/components/CreditsNotificationProvider'
@@ -33,6 +33,7 @@ import {
   Copy,
   Check,
   RefreshCw,
+  Users,
 } from 'lucide-react'
 import { C, CC } from '@/lib/currency'
 import { GAMES, toDbGameTypeId, getSkillForGame } from '@/lib/skills'
@@ -155,6 +156,7 @@ export default function GamePage({ params }: { params: Promise<{ type: string }>
 }
 
 function GamePageContent({ gameType }: { gameType: string }) {
+  const router = useRouter()
   const { user, loading: authLoading } = useAuth()
   const { balance, dailyGrantAvailable, refreshBalance, referralCode, loading: creditsLoading } = useCreditsNotification()
 
@@ -167,6 +169,8 @@ function GamePageContent({ gameType }: { gameType: string }) {
   const gameContainerRef = useRef<HTMLDivElement>(null)
   const [gameKey, setGameKey] = useState(0)
   const [leaderboardRefreshKey, setLeaderboardRefreshKey] = useState(0)
+  const [gameCompleted, setGameCompleted] = useState(false)
+  const [creatingGroup, setCreatingGroup] = useState(false)
 
   const fetchPoolSize = useCallback(async () => {
     try {
@@ -195,8 +199,29 @@ function GamePageContent({ gameType }: { gameType: string }) {
   const handleGameComplete = () => {
     refreshBalance()
     fetchPoolSize()
+    setGameCompleted(true)
     // Trigger immediate leaderboard refresh after a short delay to let the server process the score
     setTimeout(() => setLeaderboardRefreshKey(k => k + 1), 500)
+  }
+
+  const handleCreateGroup = async () => {
+    if (creatingGroup) return
+    setCreatingGroup(true)
+    try {
+      const res = await fetch('/api/group-play/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gameType }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        router.push(`/group/${data.joinToken}`)
+      }
+    } catch {
+      // silent
+    } finally {
+      setCreatingGroup(false)
+    }
   }
 
   // Auto-start game after restart (gameKey > 0 means it's a restart, not initial mount)
@@ -336,7 +361,30 @@ function GamePageContent({ gameType }: { gameType: string }) {
           )}
         </div>
 
-        <div>
+        <div className="space-y-4">
+          {/* Group Play Section */}
+          <div className="bg-white dark:bg-slate-800 rounded-xl p-4">
+            <div className="flex items-start gap-3 mb-3">
+              <div className="p-2 bg-purple-500/20 rounded-lg shrink-0">
+                <Users className="w-5 h-5 text-purple-500 dark:text-purple-400" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-1">Group Play</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Challenge friends to a private 10-minute battle. Separate pool and leaderboard. Share the link to invite!
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleCreateGroup}
+              disabled={creatingGroup}
+              className="w-full flex items-center justify-center gap-2 bg-purple-500 hover:bg-purple-400 text-white font-bold py-2.5 rounded-lg transition text-sm disabled:opacity-50"
+            >
+              <Users className="w-4 h-4" />
+              {creatingGroup ? 'Creating...' : 'Start Group Play'}
+            </button>
+          </div>
+
           <Leaderboard
             gameType={toDbGameTypeId(gameType)}
             gameTypeName={gameDef.name}

@@ -32,9 +32,10 @@ interface GameResult {
 
 interface ImageRotateGameProps {
   onGameComplete?: (result: GameResult) => void
+  groupSessionId?: string
 }
 
-export function ImageRotateGame({ onGameComplete }: ImageRotateGameProps) {
+export function ImageRotateGame({ onGameComplete, groupSessionId }: ImageRotateGameProps) {
   const { play } = useSound()
   const [phase, setPhase] = useState<GamePhase>('idle')
   const [turnToken, setTurnToken] = useState<string | null>(null)
@@ -63,7 +64,7 @@ export function ImageRotateGame({ onGameComplete }: ImageRotateGameProps) {
       const createRes = await fetch('/api/game/turn/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gameType: 'image_rotate' }),
+        body: JSON.stringify({ gameType: 'image_rotate', ...(groupSessionId && { groupSessionId }) }),
       })
       if (!createRes.ok) {
         const data = await createRes.json()

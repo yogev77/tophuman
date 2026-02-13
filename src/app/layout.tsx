@@ -6,6 +6,8 @@ import { ThemeProvider } from '@/hooks/useTheme'
 import { SoundProvider } from '@/hooks/useSound'
 import { CreditsNotificationProvider } from '@/components/CreditsNotificationProvider'
 import { BottomNotificationBar } from '@/components/BottomNotificationBar'
+import { GroupPlayProvider } from '@/components/GroupPlayProvider'
+import { GroupPlayBar } from '@/components/GroupPlayBar'
 import { Toaster } from 'sonner'
 
 const recursive = Recursive({
@@ -51,10 +53,13 @@ export default function RootLayout({
         <ThemeProvider>
           <SoundProvider>
           <CreditsNotificationProvider>
+          <GroupPlayProvider>
             <Header />
+            <GroupPlayBar />
             <main className="pb-14">{children}</main>
             <BottomNotificationBar />
             <Toaster position="bottom-right" theme="dark" toastOptions={{ duration: 4000 }} />
+          </GroupPlayProvider>
           </CreditsNotificationProvider>
           </SoundProvider>
         </ThemeProvider>

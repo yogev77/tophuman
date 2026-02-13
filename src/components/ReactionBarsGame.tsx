@@ -33,6 +33,7 @@ interface GameResult {
 
 interface ReactionBarsGameProps {
   onGameComplete?: (result: GameResult) => void
+  groupSessionId?: string
 }
 
 function getBarWidth(bar: BarSpec, timeMs: number): number {
@@ -40,7 +41,7 @@ function getBarWidth(bar: BarSpec, timeMs: number): number {
   return 50 + 50 * Math.sin(2 * Math.PI * bar.speed * t + bar.startPhase * 2 * Math.PI)
 }
 
-export function ReactionBarsGame({ onGameComplete }: ReactionBarsGameProps) {
+export function ReactionBarsGame({ onGameComplete, groupSessionId }: ReactionBarsGameProps) {
   const { play } = useSound()
   const [phase, setPhase] = useState<GamePhase>('idle')
   const [turnToken, setTurnToken] = useState<string | null>(null)
@@ -71,7 +72,7 @@ export function ReactionBarsGame({ onGameComplete }: ReactionBarsGameProps) {
       const createRes = await fetch('/api/game/turn/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gameType: 'reaction_bars' }),
+        body: JSON.stringify({ gameType: 'reaction_bars', ...(groupSessionId && { groupSessionId }) }),
       })
       if (!createRes.ok) {
         const data = await createRes.json()

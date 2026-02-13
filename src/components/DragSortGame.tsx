@@ -37,9 +37,10 @@ interface GameResult {
 
 interface DragSortGameProps {
   onGameComplete?: (result: GameResult) => void
+  groupSessionId?: string
 }
 
-export function DragSortGame({ onGameComplete }: DragSortGameProps) {
+export function DragSortGame({ onGameComplete, groupSessionId }: DragSortGameProps) {
   const { theme } = useTheme()
   const light = theme === 'light'
   const { play } = useSound()
@@ -74,7 +75,7 @@ export function DragSortGame({ onGameComplete }: DragSortGameProps) {
       const createRes = await fetch('/api/game/turn/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gameType: 'drag_sort' }),
+        body: JSON.stringify({ gameType: 'drag_sort', ...(groupSessionId && { groupSessionId }) }),
       })
       if (!createRes.ok) {
         const data = await createRes.json()

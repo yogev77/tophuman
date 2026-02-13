@@ -30,12 +30,13 @@ interface GameResult {
 
 interface AudioPatternGameProps {
   onGameComplete?: (result: GameResult) => void
+  groupSessionId?: string
 }
 
 const BUTTON_COLORS = ['bg-red-500', 'bg-green-500', 'bg-blue-500', 'bg-yellow-500']
 const BUTTON_ACTIVE_COLORS = ['bg-red-300', 'bg-green-300', 'bg-blue-300', 'bg-yellow-300']
 
-export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
+export function AudioPatternGame({ onGameComplete, groupSessionId }: AudioPatternGameProps) {
   const { enabled: soundEnabled } = useSound()
   const [phase, setPhase] = useState<GamePhase>('idle')
   const [turnToken, setTurnToken] = useState<string | null>(null)
@@ -103,7 +104,7 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
       const createRes = await fetch('/api/game/turn/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gameType: 'audio_pattern' }),
+        body: JSON.stringify({ gameType: 'audio_pattern', ...(groupSessionId && { groupSessionId }) }),
       })
       if (!createRes.ok) {
         const data = await createRes.json()

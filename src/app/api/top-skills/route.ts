@@ -31,6 +31,7 @@ export async function GET() {
       .select('user_id, game_type_id, score, utc_day, created_at')
       .eq('status', 'completed')
       .eq('flagged', false)
+      .is('group_session_id', null)
       .gt('score', 0)
 
     if (error || !turns || turns.length === 0) {

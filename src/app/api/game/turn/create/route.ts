@@ -18,6 +18,7 @@ import { generateGridlockTurnSpec, getGridlockClientSpec, DEFAULT_GRIDLOCK_CONFI
 import { generateReactionBarsTurnSpec, getReactionBarsClientSpec, DEFAULT_REACTION_BARS_CONFIG } from '@/lib/game/reaction-bars'
 import { generateImagePuzzleTurnSpec, getImagePuzzleClientSpec, DEFAULT_IMAGE_PUZZLE_CONFIG } from '@/lib/game/image-puzzle'
 import { generateDrawMeTurnSpec, getDrawMeClientSpec, DEFAULT_DRAW_ME_CONFIG } from '@/lib/game/draw-me'
+import { createServiceClient } from '@/lib/supabase/server'
 import crypto from 'crypto'
 
 export async function POST(request: Request) {
@@ -27,6 +28,7 @@ export async function POST(request: Request) {
     // Get game type from request body
     const body = await request.json().catch(() => ({}))
     const requestedGameType = body.gameType as string | undefined
+    const groupSessionId = body.groupSessionId as string | undefined
 
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
@@ -99,6 +101,31 @@ export async function POST(request: Request) {
 
     if (!VALID_GAME_TYPES.has(activeGameType)) {
       return NextResponse.json({ error: 'Invalid game type' }, { status: 400 })
+    }
+
+    // Validate group session if provided
+    if (groupSessionId) {
+      const service = createServiceClient()
+      const { data: groupSession } = await service
+        .from('group_sessions')
+        .select('id, game_type_id, status, ends_at')
+        .eq('id', groupSessionId)
+        .single()
+
+      if (!groupSession) {
+        return NextResponse.json({ error: 'Group session not found' }, { status: 400 })
+      }
+      if (groupSession.status !== 'live') {
+        return NextResponse.json({ error: 'Group session has ended' }, { status: 400 })
+      }
+      if (new Date(groupSession.ends_at) < new Date()) {
+        return NextResponse.json({ error: 'Group session has expired' }, { status: 400 })
+      }
+      // The DB game type must match (compare using the DB game type IDs)
+      const dbGameType = activeGameType === 'emoji_keypad' ? 'emoji_keypad_sequence' : activeGameType
+      if (groupSession.game_type_id !== dbGameType) {
+        return NextResponse.json({ error: 'Game type mismatch' }, { status: 400 })
+      }
     }
 
     const today = new Date().toISOString().split('T')[0]
@@ -271,6 +298,7 @@ export async function POST(request: Request) {
         spec: spec,
         expires_at: expiresAt.toISOString(),
         status: 'pending',
+        group_session_id: groupSessionId || null,
       })
       .select()
       .single()

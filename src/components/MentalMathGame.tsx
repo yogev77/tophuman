@@ -35,9 +35,10 @@ interface GameResult {
 
 interface MentalMathGameProps {
   onGameComplete?: (result: GameResult) => void
+  groupSessionId?: string
 }
 
-export function MentalMathGame({ onGameComplete }: MentalMathGameProps) {
+export function MentalMathGame({ onGameComplete, groupSessionId }: MentalMathGameProps) {
   const { play } = useSound()
   const [phase, setPhase] = useState<GamePhase>('idle')
   const [turnToken, setTurnToken] = useState<string | null>(null)
@@ -64,7 +65,7 @@ export function MentalMathGame({ onGameComplete }: MentalMathGameProps) {
       const createRes = await fetch('/api/game/turn/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gameType: 'mental_math' }),
+        body: JSON.stringify({ gameType: 'mental_math', ...(groupSessionId && { groupSessionId }) }),
       })
       if (!createRes.ok) {
         const data = await createRes.json()
