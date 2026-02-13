@@ -8,6 +8,7 @@ interface ClaimedItem {
   type: string
   amount: number
   gameTypeId?: string
+  groupSessionId?: string
 }
 
 const GAME_NAMES: Record<string, string> = {
@@ -77,12 +78,16 @@ export function ClaimSuccessModal({ isOpen, onClose, amount, newBalance, reason,
     }
   }
 
-  const getItemLabel = (type: string) => {
+  const getItemLabel = (type: string, isGroup?: boolean) => {
     switch (type) {
       case 'prize_win':
-        return { label: '1st Place Prize', icon: <Trophy className="w-4 h-4 text-yellow-400" /> }
+        return isGroup
+          ? { label: 'Group Play Prize', icon: <Trophy className="w-4 h-4 text-purple-400" /> }
+          : { label: '1st Place Prize', icon: <Trophy className="w-4 h-4 text-yellow-400" /> }
       case 'rebate':
-        return { label: 'Credit Back', icon: <Coins className="w-4 h-4 text-blue-400" /> }
+        return isGroup
+          ? { label: 'Group Play · Credit Back', icon: <Coins className="w-4 h-4 text-purple-400" /> }
+          : { label: 'Credit Back', icon: <Coins className="w-4 h-4 text-blue-400" /> }
       case 'daily_grant':
         return { label: 'Daily Claim', icon: <Gift className="w-4 h-4 text-green-400" /> }
       case 'referral_bonus':
@@ -148,7 +153,7 @@ export function ClaimSuccessModal({ isOpen, onClose, amount, newBalance, reason,
           {claimedItems && claimedItems.length > 0 ? (
             <div className="space-y-2 mb-3">
               {claimedItems.map((item, index) => {
-                const { label, icon } = getItemLabel(item.type)
+                const { label, icon } = getItemLabel(item.type, !!item.groupSessionId)
                 const gameName = item.gameTypeId ? GAME_NAMES[item.gameTypeId] : null
                 return (
                   <div key={index} className="flex items-center justify-between text-sm">

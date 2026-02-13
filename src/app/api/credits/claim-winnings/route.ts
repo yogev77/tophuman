@@ -63,7 +63,9 @@ export async function POST() {
 
     for (const claim of pendingClaims) {
       const eventType = EVENT_TYPE_MAP[claim.claim_type] || claim.claim_type
-      const gameTypeId = (claim.metadata as Record<string, unknown>)?.game_type_id as string | undefined
+      const claimMeta = (claim.metadata as Record<string, unknown>) || {}
+      const gameTypeId = claimMeta.game_type_id as string | undefined
+      const groupSessionId = claimMeta.group_session_id as string | undefined
 
       // Atomically mark claim as claimed FIRST (prevents double-claim race condition)
       // If two requests arrive simultaneously, only one UPDATE will match the IS NULL condition
@@ -80,7 +82,9 @@ export async function POST() {
       }
 
       // Now safe to insert ledger entry (claim is locked)
-      const ledgerMetadata = gameTypeId ? { game_type_id: gameTypeId } : undefined
+      const ledgerMetadata: Record<string, unknown> = {}
+      if (gameTypeId) ledgerMetadata.game_type_id = gameTypeId
+      if (groupSessionId) ledgerMetadata.group_session_id = groupSessionId
       const { data: ledgerEntry, error: ledgerError } = await supabase
         .from('credit_ledger')
         .insert({
@@ -90,7 +94,7 @@ export async function POST() {
           utc_day: today,
           reference_id: claim.settlement_id,
           reference_type: 'settlement',
-          ...(ledgerMetadata && { metadata: ledgerMetadata }),
+          ...(Object.keys(ledgerMetadata).length > 0 && { metadata: ledgerMetadata }),
         })
         .select('id')
         .single()
@@ -111,6 +115,7 @@ export async function POST() {
         type: claim.claim_type,
         amount: claim.amount,
         ...(gameTypeId && { gameTypeId }),
+        ...(groupSessionId && { groupSessionId }),
       })
       totalClaimed += claim.amount
     }

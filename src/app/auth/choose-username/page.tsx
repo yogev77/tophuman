@@ -25,18 +25,16 @@ function ChooseUsernameContent() {
         return
       }
       // Check if user already has a real username (not auto-generated)
-      const res = await fetch('/api/profile/set-initial-username', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: 'test_probe' }),
-      })
-      // If 400 "Username already set" → user already has a real username
-      if (res.status === 400) {
-        const data = await res.json()
-        if (data.error === 'Username already set') {
-          router.replace('/')
-          return
-        }
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('id', user.id)
+        .single()
+
+      if (profile && !/^player_[a-f0-9]{8}$/.test(profile.username)) {
+        // Already has a real username, skip to home
+        router.replace('/')
+        return
       }
       setCheckingAuth(false)
     }

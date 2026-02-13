@@ -6,17 +6,12 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   ArrowLeft,
-  Share2,
-  Check,
   Trophy,
-  Users,
-  Play,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useCreditsNotification } from '@/components/CreditsNotificationProvider'
 import { GAMES, toUiGameId, getSkillForGame } from '@/lib/skills'
 import { GAME_ICONS } from '@/lib/game-icons'
-import { GameThumbnail } from '@/components/GameThumbnail'
 import { GroupPlayLeaderboard } from '@/components/GroupPlayLeaderboard'
 import { GroupSessionBar } from '@/components/GroupSessionBar'
 import { EmojiKeypadGame } from '@/components/EmojiKeypadGame'
@@ -65,6 +60,7 @@ interface SessionData {
   gameTypeId: string
   createdBy: string
   creatorName: string
+  creatorUsername: string | null
   startsAt: string
   endsAt: string
   status: string
@@ -89,12 +85,11 @@ export default function GroupPage({ params }: { params: Promise<{ token: string 
   const [session, setSession] = useState<SessionData | null>(null)
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [playerCount, setPlayerCount] = useState(0)
+  const [turnCount, setTurnCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [mode, setMode] = useState<'lobby' | 'play'>('lobby')
   const [gameKey, setGameKey] = useState(0)
   const [leaderboardRefreshKey, setLeaderboardRefreshKey] = useState(0)
-  const [copied, setCopied] = useState(false)
   const [creatingNew, setCreatingNew] = useState(false)
   const gameContainerRef = useRef<HTMLDivElement>(null)
 
@@ -113,12 +108,17 @@ export default function GroupPage({ params }: { params: Promise<{ token: string 
       setSession(data.session)
       setLeaderboard(data.leaderboard)
       setPlayerCount(data.playerCount)
+      setTurnCount(data.turnCount || 0)
+      // Refresh balance when session ended/settled (picks up pending claims)
+      if (data.session.status === 'ended' || data.session.status === 'settled') {
+        refreshBalance()
+      }
     } catch {
       setError('Failed to load session')
     } finally {
       setLoading(false)
     }
-  }, [token])
+  }, [token, refreshBalance])
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -126,7 +126,7 @@ export default function GroupPage({ params }: { params: Promise<{ token: string 
     }
   }, [fetchSession, authLoading, user])
 
-  const isEnded = session ? (session.status === 'ended' || new Date(session.endsAt) < new Date()) : false
+  const isEnded = session ? (session.status === 'ended' || session.status === 'settled' || new Date(session.endsAt) < new Date()) : false
   const uiGameId = session ? toUiGameId(session.gameTypeId) : null
   const gameDef = uiGameId ? GAMES[uiGameId] : null
   const GameIcon = uiGameId ? (GAME_ICONS[uiGameId] || GAME_ICONS.emoji_keypad) : GAME_ICONS.emoji_keypad
@@ -134,52 +134,10 @@ export default function GroupPage({ params }: { params: Promise<{ token: string 
 
   const handleGameComplete = () => {
     refreshBalance()
-    setTimeout(() => setLeaderboardRefreshKey(k => k + 1), 500)
-  }
-
-  const handleJoinAndPlay = () => {
-    setMode('play')
-    setGameKey(k => k + 1)
-  }
-
-  const handlePlayAgain = () => {
-    setGameKey(k => k + 1)
-  }
-
-  // Auto-start game after restart
-  useEffect(() => {
-    if (mode === 'play' && gameKey > 0 && gameContainerRef.current) {
-      const btn = gameContainerRef.current.querySelector('button')
-      if (btn instanceof HTMLButtonElement) btn.click()
-    }
-  }, [gameKey, mode])
-
-  const handleCopy = async () => {
-    try {
-      const url = `${window.location.origin}/group/${token}`
-      await navigator.clipboard.writeText(url)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch {
-      // silent
-    }
-  }
-
-  const handleShare = async () => {
-    const url = `${window.location.origin}/group/${token}`
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `Group Play: ${gameDef?.name || 'Game'}`,
-          text: `Join my group play session on Podium Arena!`,
-          url,
-        })
-      } catch {
-        handleCopy()
-      }
-    } else {
-      handleCopy()
-    }
+    setTimeout(() => {
+      setLeaderboardRefreshKey(k => k + 1)
+      fetchSession()
+    }, 500)
   }
 
   const handleStartNewRound = async () => {
@@ -280,9 +238,7 @@ export default function GroupPage({ params }: { params: Promise<{ token: string 
                 </span>
               ) : null })()}
             </div>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">
-              Created by {session.creatorName}
-            </p>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">{gameDef.description}</p>
           </div>
         </div>
       </div>
@@ -312,65 +268,15 @@ export default function GroupPage({ params }: { params: Promise<{ token: string 
       <div className="grid md:grid-cols-3 gap-6">
         {/* Game Area */}
         <div className="md:col-span-2">
-          {mode === 'lobby' && !isEnded ? (
-            <div className="bg-white dark:bg-slate-800 rounded-xl p-6 text-center">
-              <div className="max-w-sm mx-auto mb-6">
-                <GameThumbnail gameId={uiGameId} isPlayable={true} />
-              </div>
-              <p className="text-slate-600 dark:text-slate-300 text-sm mb-6">{gameDef.description}</p>
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-                <button
-                  onClick={handleJoinAndPlay}
-                  className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg transition text-lg"
-                >
-                  <Play className="w-5 h-5" />
-                  Join & Play
-                </button>
-                <button
-                  onClick={handleShare}
-                  className="flex items-center gap-2 border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 font-bold py-3 px-6 rounded-lg transition"
-                >
-                  {copied ? <Check className="w-4 h-4 text-green-500" /> : <Share2 className="w-4 h-4" />}
-                  {copied ? 'Copied!' : 'Share Invite'}
-                </button>
-              </div>
-            </div>
-          ) : mode === 'lobby' && isEnded ? (
-            <div className="bg-white dark:bg-slate-800 rounded-xl p-6 text-center">
-              <div className="max-w-sm mx-auto mb-6">
-                <GameThumbnail gameId={uiGameId} isPlayable={true} />
-              </div>
-              <p className="text-slate-500 dark:text-slate-400 text-sm">This session has ended. Start a new round to keep playing!</p>
-            </div>
-          ) : (
-            <>
-              <div ref={gameContainerRef}>
-                {GameComponent && (
-                  <GameComponent
-                    key={gameKey}
-                    onGameComplete={handleGameComplete}
-                    groupSessionId={session.id}
-                  />
-                )}
-              </div>
-              {!isEnded && (
-                <div className="flex items-center justify-center gap-3 mt-4">
-                  <button
-                    onClick={handlePlayAgain}
-                    className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-2.5 px-6 rounded-lg transition"
-                  >
-                    Play Again
-                  </button>
-                  <button
-                    onClick={() => setMode('lobby')}
-                    className="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition"
-                  >
-                    Back to Lobby
-                  </button>
-                </div>
-              )}
-            </>
-          )}
+          <div ref={gameContainerRef}>
+            {GameComponent && (
+              <GameComponent
+                key={gameKey}
+                onGameComplete={handleGameComplete}
+                groupSessionId={session.id}
+              />
+            )}
+          </div>
         </div>
 
         {/* Session Info + Leaderboard Column */}
@@ -381,12 +287,17 @@ export default function GroupPage({ params }: { params: Promise<{ token: string 
             playerCount={playerCount}
             joinToken={token}
             isEnded={isEnded}
+            creatorName={session.creatorName}
+            creatorUsername={session.creatorUsername}
+            gameName={gameDef.name}
           />
 
           <GroupPlayLeaderboard
             joinToken={token}
             refreshKey={leaderboardRefreshKey}
             isLive={!isEnded}
+            turnCount={turnCount}
+            endsAt={session.endsAt}
           />
 
         </div>

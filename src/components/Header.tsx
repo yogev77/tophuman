@@ -182,9 +182,9 @@ export function Header() {
                       className="tap-highlight text-slate-400 hover:text-white text-sm transition"
                     >
                       <span className="sm:hidden w-9 h-9 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-white font-semibold text-sm">
-                        {userName[0].toUpperCase()}
+                        {(profileUsername || userName)[0].toUpperCase()}
                       </span>
-                      <span className="hidden sm:inline">{userName}</span>
+                      <span className="hidden sm:inline">{profileUsername || userName}</span>
                     </Link>
                     <button
                       onClick={toggleTheme}

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { X, Clock, Users } from 'lucide-react'
 import { useGroupPlay, ActiveGroup } from './GroupPlayProvider'
 import { GAME_ICONS } from '@/lib/game-icons'
-import { C } from '@/lib/currency'
+import { CC } from '@/lib/currency'
 
 function formatTimeRemaining(endsAt: string): string {
   const diff = new Date(endsAt).getTime() - Date.now()
@@ -71,7 +71,7 @@ export function GroupPlayDrawer() {
       >
         <div className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
           {/* Drawer header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700">
+          <div className="max-w-6xl mx-auto flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700">
             <h3 className="text-sm font-bold text-slate-900 dark:text-white">Group Play</h3>
             <button
               onClick={() => setShowDrawer(false)}
@@ -82,7 +82,7 @@ export function GroupPlayDrawer() {
           </div>
 
           {/* Group list */}
-          <div className="max-h-[340px] overflow-y-auto">
+          <div className="max-w-6xl mx-auto max-h-[340px] overflow-y-auto">
             {sorted.map(group => {
               const Icon = GAME_ICONS[group.gameId] || GAME_ICONS.emoji_keypad
               const endingSoon = isEndingSoon(group.endsAt)
@@ -116,7 +116,7 @@ export function GroupPlayDrawer() {
                         <Users className="w-3 h-3" />
                         {group.playerCount}
                       </span>
-                      <span>{group.turnCount} {C}</span>
+                      <span><CC />{group.turnCount}</span>
                     </div>
                   </div>
                 </button>

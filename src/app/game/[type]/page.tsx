@@ -371,7 +371,7 @@ function GamePageContent({ gameType }: { gameType: string }) {
               <div>
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-1">Group Play</h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Challenge friends to a private 10-minute battle. Separate pool and leaderboard. Share the link to invite!
+                  Challenge friends to a private 10-minute battle. Separate pool and leaderboard.
                 </p>
               </div>
             </div>

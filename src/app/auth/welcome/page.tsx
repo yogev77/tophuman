@@ -12,9 +12,9 @@ async function grantCreditsWithRetry(): Promise<boolean> {
     // Profile trigger may be slow — retry once after 1s
     await new Promise((r) => setTimeout(r, 1000))
     const retry = await fetch('/api/credits/grant', { method: 'POST' })
-    return retry.ok || retry.status === 409 // 409 = already granted today
+    return retry.ok || retry.status === 400 || retry.status === 409 // 400/409 = already granted today
   }
-  return res.ok || res.status === 409
+  return res.ok || res.status === 400 || res.status === 409
 }
 
 function WelcomeContent() {

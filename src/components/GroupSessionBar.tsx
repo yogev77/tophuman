@@ -1,24 +1,26 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Check, Users, Clock, Share2 } from 'lucide-react'
+import { Check, Users, Copy, Share2 } from 'lucide-react'
+import Link from 'next/link'
 
 interface GroupSessionBarProps {
   endsAt: string
   playerCount: number
   joinToken: string
   isEnded: boolean
-  turnCount?: number
+  creatorName?: string
+  creatorUsername?: string | null
+  gameName?: string
 }
 
-function formatGroupCountdown(ms: number): string {
-  if (ms <= 0) return '0:00'
-  const minutes = Math.floor(ms / 60000)
-  const seconds = Math.floor((ms % 60000) / 1000)
-  return `${minutes}:${seconds.toString().padStart(2, '0')}`
+function formatTimeLeft(ms: number): string {
+  if (ms <= 0) return '0 minutes'
+  const minutes = Math.ceil(ms / 60000)
+  return `${minutes} minute${minutes !== 1 ? 's' : ''}`
 }
 
-export function GroupSessionBar({ endsAt, playerCount, joinToken, isEnded }: GroupSessionBarProps) {
+export function GroupSessionBar({ endsAt, playerCount, joinToken, isEnded, creatorName, creatorUsername, gameName }: GroupSessionBarProps) {
   const [copied, setCopied] = useState(false)
   const [timeLeft, setTimeLeft] = useState(() => Math.max(0, new Date(endsAt).getTime() - Date.now()))
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -34,11 +36,17 @@ export function GroupSessionBar({ endsAt, playerCount, joinToken, isEnded }: Gro
 
   const handleInvite = async () => {
     const url = `${window.location.origin}/group/${joinToken}`
-    if (navigator.share) {
+    const timeStr = formatTimeLeft(timeLeft)
+    const gameLabel = gameName ? ` playing ${gameName}` : ''
+    const shareText = `Join my Private Group on Podium Arena! We're competing${gameLabel} head-to-head — ${timeStr} left.`
+
+    // Mobile: use native share sheet
+    const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+    if (isMobile && navigator.share) {
       try {
         await navigator.share({
           title: 'Private Group on Podium Arena',
-          text: 'Join my private group play session!',
+          text: shareText,
           url,
         })
         return
@@ -46,10 +54,12 @@ export function GroupSessionBar({ endsAt, playerCount, joinToken, isEnded }: Gro
         // fall through to copy
       }
     }
+
+    // Desktop: copy invite link
     try {
-      await navigator.clipboard.writeText(url)
+      await navigator.clipboard.writeText(`${shareText}\n${url}`)
       setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      setTimeout(() => setCopied(false), 3000)
     } catch {
       // silent
     }
@@ -57,40 +67,35 @@ export function GroupSessionBar({ endsAt, playerCount, joinToken, isEnded }: Gro
 
   return (
     <div className="bg-white dark:bg-slate-800 rounded-xl px-4 py-3">
-      {/* Row 1: Label */}
+      {/* Label */}
       <div className="flex items-center gap-2 mb-2">
         <Users className="w-4 h-4 text-purple-500" />
         <span className="text-sm font-bold text-purple-600 dark:text-purple-400">Private Group</span>
       </div>
 
-      {/* Row 2: Stats + Invite */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex items-center gap-1.5 text-sm">
-          <Clock className="w-3.5 h-3.5 text-slate-400" />
-          {isEnded || timeLeft <= 0 ? (
-            <span className="text-red-400 font-medium">Ended</span>
-          ) : (
-            <span className="text-yellow-500 font-mono font-medium">{formatGroupCountdown(timeLeft)}</span>
-          )}
-        </div>
+      {/* Creator + CTA */}
+      <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+        {creatorName ? (
+          <>Created by {creatorUsername ? (
+            <Link href={`/player/${creatorUsername}`} className="text-yellow-500 hover:text-yellow-400 transition">
+              {creatorName}
+            </Link>
+          ) : creatorName}. </>
+        ) : ''}
+        {isEnded
+          ? 'This session has ended.'
+          : 'Invite friends to compete before time runs out!'}
+      </p>
 
-        <div className="w-px h-4 bg-slate-300 dark:bg-slate-600" />
-
-        <div className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300">
-          <Users className="w-3.5 h-3.5 text-slate-400" />
-          <span>{playerCount}</span>
-        </div>
-
-        <div className="ml-auto">
-          <button
-            onClick={handleInvite}
-            className="flex items-center gap-1.5 text-sm border border-yellow-500 text-yellow-600 dark:text-yellow-400 hover:bg-yellow-500/10 px-3 py-1.5 rounded-lg transition"
-          >
-            {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Share2 className="w-3.5 h-3.5" />}
-            {copied ? 'Copied!' : 'Invite'}
-          </button>
-        </div>
-      </div>
+      {!isEnded && (
+        <button
+          onClick={handleInvite}
+          className="w-full flex items-center justify-center gap-1.5 text-sm border border-yellow-500 text-yellow-600 dark:text-yellow-400 hover:bg-yellow-500/10 px-3 py-2 rounded-lg transition"
+        >
+          {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+          {copied ? 'Invite copied!' : 'Invite Friends'}
+        </button>
+      )}
     </div>
   )
 }

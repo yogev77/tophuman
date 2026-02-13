@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Crown } from 'lucide-react'
 import Link from 'next/link'
+import { CC } from '@/lib/currency'
 
 interface LeaderboardEntry {
   rank: number
@@ -18,13 +19,24 @@ interface GroupPlayLeaderboardProps {
   joinToken: string
   refreshKey?: number
   isLive?: boolean
+  turnCount?: number
+  endsAt?: string
 }
 
-export function GroupPlayLeaderboard({ joinToken, refreshKey, isLive = true }: GroupPlayLeaderboardProps) {
+function formatGroupCountdown(ms: number): string {
+  if (ms <= 0) return '0:00'
+  const minutes = Math.floor(ms / 60000)
+  const seconds = Math.floor((ms % 60000) / 1000)
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`
+}
+
+export function GroupPlayLeaderboard({ joinToken, refreshKey, isLive = true, turnCount = 0, endsAt }: GroupPlayLeaderboardProps) {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [playerCount, setPlayerCount] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [timeLeft, setTimeLeft] = useState(() => endsAt ? Math.max(0, new Date(endsAt).getTime() - Date.now()) : 0)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const fetchLeaderboard = useCallback(async () => {
     try {
@@ -54,6 +66,17 @@ export function GroupPlayLeaderboard({ joinToken, refreshKey, isLive = true }: G
     }
   }, [fetchLeaderboard, isLive])
 
+  // Countdown timer
+  useEffect(() => {
+    if (!endsAt) return
+    timerRef.current = setInterval(() => {
+      setTimeLeft(Math.max(0, new Date(endsAt).getTime() - Date.now()))
+    }, 1000)
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+    }
+  }, [endsAt])
+
   const crownColor = (rank: number) => {
     if (rank === 1) return 'text-yellow-400'
     if (rank === 2) return 'text-slate-300'
@@ -61,8 +84,28 @@ export function GroupPlayLeaderboard({ joinToken, refreshKey, isLive = true }: G
     return ''
   }
 
+  const isEnded = timeLeft <= 0
+
   return (
     <div className="bg-white dark:bg-slate-800 rounded-xl p-4">
+      {/* Group Pool row */}
+      <div className="flex items-center justify-between mb-3 pb-3 border-b border-slate-200 dark:border-slate-700">
+        <div>
+          <span className="text-sm font-bold text-purple-600 dark:text-purple-400">
+            Group Pool: <CC />{turnCount}
+          </span>
+        </div>
+        <div className="text-right">
+          {isEnded ? (
+            <span className="text-sm font-medium text-red-400">Ended</span>
+          ) : (
+            <span className="text-sm font-mono font-medium text-purple-600 dark:text-purple-400">
+              {formatGroupCountdown(timeLeft)}
+            </span>
+          )}
+        </div>
+      </div>
+
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-lg font-bold text-slate-900 dark:text-white font-title">Group Standings</h3>
         <span className="text-xs text-slate-500 dark:text-slate-400">{playerCount} player{playerCount !== 1 ? 's' : ''}</span>

@@ -588,6 +588,7 @@ interface LedgerEntry {
 interface HistoryGroupedEntry {
   event_type: string
   gameTypeId?: string
+  isGroupPlay?: boolean
   totalAmount: number
   count: number
 }
@@ -608,14 +609,16 @@ function groupHistoryEntries(entries: LedgerEntry[]): { utc_day: string; entries
   for (const entry of entries) {
     if (!dayMap.has(entry.utc_day)) dayMap.set(entry.utc_day, new Map())
     const typeMap = dayMap.get(entry.utc_day)!
-    const gameTypeId = (entry.metadata as Record<string, unknown>)?.game_type_id as string | undefined
-    const groupKey = gameTypeId ? `${entry.event_type}:${gameTypeId}` : entry.event_type
+    const meta = (entry.metadata as Record<string, unknown>) || {}
+    const gameTypeId = meta.game_type_id as string | undefined
+    const isGroupPlay = !!meta.group_session_id
+    const groupKey = `${entry.event_type}:${gameTypeId || ''}:${isGroupPlay ? 'group' : ''}`
     const existing = typeMap.get(groupKey)
     if (existing) {
       existing.totalAmount += entry.amount
       existing.count += 1
     } else {
-      typeMap.set(groupKey, { event_type: entry.event_type, gameTypeId, totalAmount: entry.amount, count: 1 })
+      typeMap.set(groupKey, { event_type: entry.event_type, gameTypeId, isGroupPlay, totalAmount: entry.amount, count: 1 })
     }
   }
   const days: { utc_day: string; entries: HistoryGroupedEntry[] }[] = []
@@ -694,18 +697,22 @@ function HistoryTab() {
             <div className="bg-slate-800 rounded-xl overflow-hidden">
               {day.entries.map((grouped, idx) => {
                 const config = getHistoryEventConfig(grouped.event_type, grouped.totalAmount)
-                const Icon = config.icon
+                const Icon = grouped.isGroupPlay ? Users : config.icon
+                const iconColor = grouped.isGroupPlay ? 'text-purple-400' : config.colorClass
                 const isPositive = grouped.totalAmount >= 0
                 const gameName = grouped.gameTypeId ? getGameName(grouped.gameTypeId) : null
+                const label = grouped.isGroupPlay
+                  ? (grouped.event_type === 'prize_win' ? 'Group Play Prize' : 'Group Play · Credit Back')
+                  : config.label
 
                 return (
-                  <div key={`${grouped.event_type}-${grouped.gameTypeId || idx}`} className={`px-4 py-3 flex items-center gap-3${idx > 0 ? ' border-t border-light-divider' : ''}`}>
-                    <div className={`p-2 rounded-lg bg-slate-700/50 ${config.colorClass}`}>
+                  <div key={`${grouped.event_type}-${grouped.gameTypeId || idx}-${grouped.isGroupPlay ? 'g' : ''}`} className={`px-4 py-3 flex items-center gap-3${idx > 0 ? ' border-t border-light-divider' : ''}`}>
+                    <div className={`p-2 rounded-lg bg-slate-700/50 ${iconColor}`}>
                       <Icon className="w-4 h-4" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-sm text-white font-medium">
-                        {config.label}{gameName ? ` · ${gameName}` : ''}{grouped.count > 1 ? ` x${grouped.count}` : ''}
+                        {label}{gameName ? ` · ${gameName}` : ''}{grouped.count > 1 ? ` x${grouped.count}` : ''}
                       </div>
                     </div>
                     <div className={`text-sm font-semibold tabular-nums ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
@@ -1057,11 +1064,12 @@ function PlayerProfileContent() {
         </Link>
         <div className="flex-1 min-w-0">
           <h1 className="text-3xl font-bold text-white font-title">{data.displayName}</h1>
-          {data.joinedAt && (
-            <p className="text-sm text-slate-400">
-              Joined {new Date(data.joinedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-            </p>
-          )}
+          <p className="text-sm text-slate-400">
+            @{data.username}
+            {data.joinedAt && (
+              <> · Joined {new Date(data.joinedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</>
+            )}
+          </p>
         </div>
         {isOwnProfile && (
           <button
