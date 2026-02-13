@@ -24,6 +24,7 @@ import { GridlockGame } from '@/components/GridlockGame'
 import { ReactionBarsGame } from '@/components/ReactionBarsGame'
 import { ImagePuzzleGame } from '@/components/ImagePuzzleGame'
 import { DrawMeGame } from '@/components/DrawMeGame'
+import { BeatMatchGame } from '@/components/BeatMatchGame'
 import { Leaderboard } from '@/components/Leaderboard'
 import Link from 'next/link'
 import {
@@ -58,6 +59,7 @@ const GAME_COMPONENTS: Record<string, React.ComponentType<{ onGameComplete?: () 
   reaction_bars: ReactionBarsGame,
   image_puzzle: ImagePuzzleGame,
   draw_me: DrawMeGame,
+  beat_match: BeatMatchGame,
 }
 
 function OutOfCreditsView({ referralCode }: { referralCode: string | null }) {

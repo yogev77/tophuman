@@ -230,6 +230,14 @@ export const GAMES: Record<string, GameDef> = {
     iconColors: { bg: 'bg-green-500/20', icon: 'text-green-500' },
     dbGameTypeId: 'draw_me',
   },
+  beat_match: {
+    id: 'beat_match',
+    name: 'Beat Match',
+    description: 'Listen to the beat pattern, then tap it back in rhythm.',
+    skill: 'pattern',
+    iconColors: { bg: 'bg-green-500/20', icon: 'text-green-500' },
+    dbGameTypeId: 'beat_match',
+  },
 }
 
 export const GAME_LIST = Object.values(GAMES)

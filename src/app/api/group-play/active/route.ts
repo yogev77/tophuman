@@ -68,6 +68,7 @@ export async function GET() {
       .from('game_turns')
       .select('group_session_id, user_id')
       .in('group_session_id', userSessionIds2)
+      .eq('status', 'completed')
 
     const sessionStats: Record<string, { players: Set<string>; turns: number }> = {}
     for (const t of allTurns || []) {

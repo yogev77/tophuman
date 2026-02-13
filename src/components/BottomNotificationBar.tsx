@@ -3,7 +3,7 @@
 import { useCreditsNotification } from './CreditsNotificationProvider'
 import { useAuth } from '@/hooks/useAuth'
 import { X, Trophy, Gift, Loader2 } from 'lucide-react'
-import { C } from '@/lib/currency'
+import { CC } from '@/lib/currency'
 
 export function BottomNotificationBar() {
   const { user } = useAuth()
@@ -27,9 +27,6 @@ export function BottomNotificationBar() {
 
   // Prioritize showing winnings over daily grant
   const isPrizeWinning = hasPendingClaims
-  const message = isPrizeWinning
-    ? `You won ${pendingTotal} ${C}Credits!`
-    : 'Daily credits ready to claim.'
   const buttonText = isPrizeWinning ? 'Claim Winnings' : 'Claim Credits'
 
   return (
@@ -45,10 +42,10 @@ export function BottomNotificationBar() {
           ) : (
             <Gift className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
           )}
-          <p className="text-sm text-slate-600 dark:text-slate-300">
-            <span className={`font-semibold ${isPrizeWinning ? 'text-yellow-100 dark:text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
-              {message}
-            </span>
+          <p className={`text-sm font-semibold ${isPrizeWinning ? 'text-yellow-100 dark:text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
+            {isPrizeWinning
+              ? <>You won {pendingTotal} <CC />Credits!</>
+              : 'Daily credits ready to claim.'}
           </p>
         </div>
         <div className="flex items-center gap-3 shrink-0">

@@ -18,6 +18,7 @@ import { validateGridlockTurn, GridlockTurnSpec } from '@/lib/game/gridlock'
 import { validateReactionBarsTurn, ReactionBarsTurnSpec } from '@/lib/game/reaction-bars'
 import { validateImagePuzzleTurn, ImagePuzzleTurnSpec } from '@/lib/game/image-puzzle'
 import { validateDrawMeTurn, DrawMeTurnSpec } from '@/lib/game/draw-me'
+import { validateBeatMatchTurn, BeatMatchTurnSpec } from '@/lib/game/beat-match'
 
 export async function POST(request: NextRequest) {
   try {
@@ -200,6 +201,11 @@ export async function POST(request: NextRequest) {
       case 'draw_me': {
         const spec = turn.spec as unknown as DrawMeTurnSpec
         result = validateDrawMeTurn(spec, baseEvents)
+        break
+      }
+      case 'beat_match': {
+        const spec = turn.spec as unknown as BeatMatchTurnSpec
+        result = validateBeatMatchTurn(spec, baseEvents)
         break
       }
       default: {

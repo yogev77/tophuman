@@ -6,7 +6,7 @@ import Link from 'next/link'
 import {
   Target,
   Pencil,
-  Gamepad2,
+  Radar,
   ArrowLeft,
   Crown,
   Trophy,
@@ -1103,7 +1103,7 @@ function PlayerProfileContent() {
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <Gamepad2 className="w-4 h-4" />
+            <Radar className="w-4 h-4" />
             Skills
           </button>
           {isOwnProfile && (

@@ -35,6 +35,7 @@ function renderGame(gameId: string) {
     case 'reaction_bars': return <ReactionBars />
     case 'image_puzzle': return <ImagePuzzle />
     case 'draw_me': return <DrawMe />
+    case 'beat_match': return <BeatMatch />
     default: return <DefaultThumb />
   }
 }
@@ -46,22 +47,18 @@ function ReactionTime() {
   return (
     <>
       <rect width="480" height="200" rx="8" className="fill-yellow-100 dark:fill-yellow-900/20" />
-      <circle cx="240" cy="100" r="70" className="fill-yellow-300/30 dark:fill-yellow-500/15" />
-      <path d="M252,30 L222,105 L244,105 L228,170 L268,88 L246,88 Z" className="fill-yellow-400" />
-      <path d="M252,30 L222,105 L244,105 L228,170 L268,88 L246,88 Z" fill="none" strokeWidth="3" strokeLinejoin="round" className="stroke-yellow-500" />
-      {/* Green pill left */}
-      <rect x="60" y="70" width="70" height="28" rx="14" className="fill-green-400/80" />
-      <rect x="72" y="79" width="12" height="10" rx="3" className="fill-white/60" />
-      <rect x="90" y="79" width="26" height="10" rx="3" className="fill-white/40" />
-      {/* Red pill right */}
-      <rect x="350" y="70" width="70" height="28" rx="14" className="fill-red-400/80" />
-      <rect x="362" y="79" width="12" height="10" rx="3" className="fill-white/60" />
-      <rect x="380" y="79" width="26" height="10" rx="3" className="fill-white/40" />
-      {/* Timer arcs */}
-      <circle cx="100" cy="150" r="20" fill="none" strokeWidth="4" className="stroke-yellow-300/50" />
-      <path d="M100 130 A20 20 0 0 1 120 150" fill="none" strokeWidth="4" className="stroke-yellow-500" />
-      <circle cx="380" cy="150" r="20" fill="none" strokeWidth="4" className="stroke-yellow-300/50" />
-      <path d="M380 130 A20 20 0 1 0 360 150" fill="none" strokeWidth="4" className="stroke-yellow-500" />
+      {/* Green "TAP" circle */}
+      <circle cx="160" cy="88" r="52" className="fill-green-400/30 dark:fill-green-500/15" />
+      <circle cx="160" cy="88" r="44" className="fill-green-500" />
+      <text x="160" y="96" textAnchor="middle" fontSize="20" fontWeight="bold" className="fill-white">TAP</text>
+      {/* Red "SKIP" circle */}
+      <circle cx="320" cy="88" r="52" className="fill-red-400/30 dark:fill-red-500/15" />
+      <circle cx="320" cy="88" r="44" className="fill-red-500" />
+      <line x1="298" y1="66" x2="342" y2="110" strokeWidth="5" strokeLinecap="round" className="stroke-white/70" />
+      <line x1="342" y1="66" x2="298" y2="110" strokeWidth="5" strokeLinecap="round" className="stroke-white/70" />
+      {/* Millisecond readout */}
+      <rect x="175" y="158" width="130" height="30" rx="6" className="fill-slate-300/60 dark:fill-slate-600/40" />
+      <text x="240" y="179" textAnchor="middle" fontSize="16" fontWeight="bold" fontFamily="monospace" className="fill-yellow-600 dark:fill-yellow-400">238ms</text>
     </>
   )
 }
@@ -508,6 +505,40 @@ function DrawMe() {
       <circle cx="290" cy="140" r="6" className="fill-green-500" />
       <circle cx="420" cy="50" r="6" className="fill-red-500" />
       <text x="355" y="175" textAnchor="middle" className="fill-slate-400/80" fontSize="10" fontWeight="bold">REFERENCE</text>
+    </>
+  )
+}
+
+/* ─── Beat Match ─── */
+function BeatMatch() {
+  return (
+    <>
+      <rect width="480" height="200" rx="8" className="fill-green-100 dark:fill-green-900/20" />
+      {/* 4 tone pads in 2x2 grid — grayscale base */}
+      <rect x="160" y="30" width="68" height="68" rx="16" className="fill-slate-200 dark:fill-slate-600" />
+      <rect x="252" y="30" width="68" height="68" rx="16" className="fill-slate-200 dark:fill-slate-600" />
+      <rect x="160" y="102" width="68" height="68" rx="16" className="fill-slate-200 dark:fill-slate-600" />
+      <rect x="252" y="102" width="68" height="68" rx="16" className="fill-slate-200 dark:fill-slate-600" />
+      {/* Active neon highlight on top-left pad */}
+      <rect x="160" y="30" width="68" height="68" rx="16" fill="#4ade80" opacity="0.9" />
+      {/* Color dot identifiers on each pad */}
+      <circle cx="194" cy="88" r="4" fill="#4ade80" />
+      <circle cx="286" cy="88" r="4" fill="#22d3ee" />
+      <circle cx="194" cy="160" r="4" fill="#fbbf24" />
+      <circle cx="286" cy="160" r="4" fill="#f472b6" />
+      {/* Beat pattern dots */}
+      <circle cx="80" cy="60" r="6" fill="#4ade80" />
+      <circle cx="80" cy="90" r="6" className="fill-slate-300 dark:fill-slate-500" />
+      <circle cx="80" cy="120" r="6" fill="#22d3ee" />
+      <circle cx="80" cy="150" r="6" fill="#4ade80" />
+      {/* Connecting line */}
+      <line x1="80" y1="66" x2="80" y2="84" strokeWidth="2" className="stroke-slate-300 dark:stroke-slate-500" />
+      <line x1="80" y1="96" x2="80" y2="114" strokeWidth="2" className="stroke-slate-300 dark:stroke-slate-500" />
+      <line x1="80" y1="126" x2="80" y2="144" strokeWidth="2" className="stroke-slate-300 dark:stroke-slate-500" />
+      {/* Neon glow waves */}
+      <path d="M370 80 Q380 100 370 120" fill="none" strokeWidth="3" stroke="#4ade80" opacity="0.6" />
+      <path d="M380 70 Q395 100 380 130" fill="none" strokeWidth="3" stroke="#4ade80" opacity="0.35" />
+      <path d="M390 60 Q410 100 390 140" fill="none" strokeWidth="3" stroke="#4ade80" opacity="0.15" />
     </>
   )
 }

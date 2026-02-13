@@ -20,11 +20,25 @@ import {
   TrendingUp,
   Sun,
   Moon,
+  Radar,
+  Zap,
+  Cog,
+  Crosshair as CrosshairIcon,
+  Brain,
+  Shapes,
 } from 'lucide-react'
 import { C, CC } from '@/lib/currency'
 import { GameThumbnail } from '@/components/GameThumbnail'
 import { GAMES, SKILLS, SKILL_LIST, getSkillForGame, SkillId } from '@/lib/skills'
 import { GAME_ICONS } from '@/lib/game-icons'
+
+const SKILL_ICONS: Record<SkillId, typeof Zap> = {
+  reflex: Zap,
+  logic: Cog,
+  focus: CrosshairIcon,
+  memory: Brain,
+  pattern: Shapes,
+}
 
 
 interface TopPlayerEntry {
@@ -282,15 +296,15 @@ export default function HomePage() {
   const [topSkillsAllTime, setTopSkillsAllTime] = useState<TopSkillEntry[]>([])
 
   const [siteTab, setSiteTab] = useState<'games' | 'topCharts'>('games')
-  const [viewMode, setViewMode] = useState<'list' | 'icons'>(() => {
+  const [viewMode, setViewMode] = useState<'list' | 'icons' | 'skills'>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('gameViewMode')
-      if (saved === 'list' || saved === 'icons') return saved
-      return window.innerWidth < 640 ? 'icons' : 'list'
+      if (saved === 'list' || saved === 'icons' || saved === 'skills') return saved
+      return 'skills'
     }
-    return 'list'
+    return 'skills'
   })
-  const setAndSaveViewMode = (mode: 'list' | 'icons') => {
+  const setAndSaveViewMode = (mode: 'list' | 'icons' | 'skills') => {
     setViewMode(mode)
     localStorage.setItem('gameViewMode', mode)
   }
@@ -395,6 +409,16 @@ export default function HomePage() {
     )
     observer.observe(sentinel)
     return () => observer.disconnect()
+  }, [])
+
+  const rotatedSkillList = useMemo(() => {
+    const offset = typeof window !== 'undefined'
+      ? parseInt(localStorage.getItem('skillRotation') || '0', 10) % SKILL_LIST.length
+      : 0
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('skillRotation', String((offset + 1) % SKILL_LIST.length))
+    }
+    return [...SKILL_LIST.slice(offset), ...SKILL_LIST.slice(0, offset)]
   }, [])
 
   const playableGames = useMemo(() => {
@@ -560,20 +584,70 @@ export default function HomePage() {
       {siteTab === 'games' && (
         <div className="mt-6">
           {loading ? (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[1, 2, 3, 4, 5, 6].map(i => (
-                <div key={i} className="bg-slate-800 rounded-xl p-6 animate-pulse">
-                  <div className="h-12 w-12 bg-slate-700 rounded-lg mb-3"></div>
-                  <div className="h-5 bg-slate-700 rounded w-2/3 mb-2"></div>
-                  <div className="h-4 bg-slate-700 rounded w-full mb-4"></div>
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="h-12 bg-slate-700 rounded"></div>
-                    <div className="h-12 bg-slate-700 rounded"></div>
-                    <div className="h-12 bg-slate-700 rounded"></div>
-                  </div>
+            <>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-white font-title">Play Now</h2>
+                <div className="flex bg-slate-800 rounded-lg p-0.5">
+                  <button
+                    onClick={() => setAndSaveViewMode('list')}
+                    className={`px-3 py-1.5 rounded-md transition ${viewMode === 'list' ? 'bg-yellow-500 text-slate-900' : 'text-slate-400 hover:text-white'}`}
+                    aria-label="List view"
+                  >
+                    <List className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setAndSaveViewMode('icons')}
+                    className={`px-3 py-1.5 rounded-md transition ${viewMode === 'icons' ? 'bg-yellow-500 text-slate-900' : 'text-slate-400 hover:text-white'}`}
+                    aria-label="Icon view"
+                  >
+                    <Grid3X3 className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setAndSaveViewMode('skills')}
+                    className={`px-3 py-1.5 rounded-md transition ${viewMode === 'skills' ? 'bg-yellow-500 text-slate-900' : 'text-slate-400 hover:text-white'}`}
+                    aria-label="Skills view"
+                  >
+                    <Radar className="w-4 h-4" />
+                  </button>
                 </div>
-              ))}
-            </div>
+              </div>
+              <div className="space-y-6 mb-10">
+                {rotatedSkillList.map(skill => {
+                  const skillGameDefs = Object.values(GAMES).filter(g => g.skill === skill.id)
+                  if (skillGameDefs.length === 0) return null
+                  const SkillIcon = SKILL_ICONS[skill.id]
+                  return (
+                    <div key={skill.id}>
+                      <div className="flex items-center gap-2.5 mb-3">
+                        <div className={`w-8 h-8 rounded-full ${skill.colors.bg} flex items-center justify-center`}>
+                          <SkillIcon className={`w-4 h-4 ${skill.colors.textLight} dark:${skill.colors.text}`} />
+                        </div>
+                        <h3 className={`text-lg font-bold ${skill.colors.textLight} dark:${skill.colors.text}`}>{skill.name}</h3>
+                      </div>
+                      <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+                        {skillGameDefs.map(gameDef => {
+                          const Icon = GAME_ICONS[gameDef.id] || Target
+                          return (
+                            <div
+                              key={gameDef.id}
+                              className="flex flex-col items-center text-center p-3 rounded-xl bg-white dark:bg-slate-800"
+                            >
+                              <div className={`p-3 rounded-2xl mb-2 ${gameDef.iconColors.bg}`}>
+                                <Icon className={`w-7 h-7 ${gameDef.iconColors.icon}`} />
+                              </div>
+                              <span className="text-xs font-medium text-slate-900 dark:text-white leading-tight line-clamp-2">{gameDef.name}</span>
+                              <div className="flex items-center gap-1 mt-1 animate-pulse">
+                                <div className="h-2.5 w-14 bg-slate-200 dark:bg-slate-700 rounded" />
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </>
           ) : data ? (
             <>
               {/* Active Games */}
@@ -596,6 +670,13 @@ export default function HomePage() {
                       >
                         <Grid3X3 className="w-4 h-4" />
                       </button>
+                      <button
+                        onClick={() => setAndSaveViewMode('skills')}
+                        className={`px-3 py-1.5 rounded-md transition ${viewMode === 'skills' ? 'bg-yellow-500 text-slate-900' : 'text-slate-400 hover:text-white'}`}
+                        aria-label="Skills view"
+                      >
+                        <Radar className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
 
@@ -609,7 +690,7 @@ export default function HomePage() {
                         />
                       ))}
                     </div>
-                  ) : (
+                  ) : viewMode === 'icons' ? (
                     <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3 mb-10">
                       {playableGames.map(game => {
                         const Icon = GAME_ICONS[game.id] || Target
@@ -637,6 +718,50 @@ export default function HomePage() {
                               )}
                             </div>
                           </Link>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <div className="space-y-6 mb-10">
+                      {rotatedSkillList.map(skill => {
+                        const skillGames = playableGames.filter(g => GAMES[g.id]?.skill === skill.id)
+                        if (skillGames.length === 0) return null
+                        const SkillIcon = SKILL_ICONS[skill.id]
+                        return (
+                          <div key={skill.id}>
+                            <div className="flex items-center gap-2.5 mb-3">
+                              <div className={`w-8 h-8 rounded-full ${skill.colors.bg} flex items-center justify-center`}>
+                                <SkillIcon className={`w-4 h-4 ${skill.colors.textLight} dark:${skill.colors.text}`} />
+                              </div>
+                              <h3 className={`text-lg font-bold ${skill.colors.textLight} dark:${skill.colors.text}`}>{skill.name}</h3>
+                            </div>
+                            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+                              {skillGames.map(game => {
+                                const Icon = GAME_ICONS[game.id] || Target
+                                const colors = GAMES[game.id]?.iconColors || GAMES.emoji_keypad.iconColors
+                                return (
+                                  <Link
+                                    key={game.id}
+                                    href={`/game/${game.id}`}
+                                    className="flex flex-col items-center text-center p-3 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-transform duration-150 hover:scale-105 active:scale-95"
+                                  >
+                                    <div className={`p-3 rounded-2xl mb-2 ${colors.bg}`}>
+                                      <Icon className={`w-7 h-7 ${colors.icon}`} />
+                                    </div>
+                                    <span className="text-xs font-medium text-slate-900 dark:text-white leading-tight line-clamp-2">{game.name}</span>
+                                    <div className="flex items-center gap-1 mt-0.5 max-w-full">
+                                      <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                                        {game.todayStats.topPlayerName || 'No leader'}
+                                      </span>
+                                      {game.poolSize > 0 && (
+                                        <span className="text-[10px] font-semibold text-yellow-500 dark:text-yellow-400 shrink-0"><CC />{game.poolSize}</span>
+                                      )}
+                                    </div>
+                                  </Link>
+                                )
+                              })}
+                            </div>
+                          </div>
                         )
                       })}
                     </div>

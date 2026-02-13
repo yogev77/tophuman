@@ -32,6 +32,7 @@ import { GridlockGame } from '@/components/GridlockGame'
 import { ReactionBarsGame } from '@/components/ReactionBarsGame'
 import { ImagePuzzleGame } from '@/components/ImagePuzzleGame'
 import { DrawMeGame } from '@/components/DrawMeGame'
+import { BeatMatchGame } from '@/components/BeatMatchGame'
 
 const GAME_COMPONENTS: Record<string, React.ComponentType<{ onGameComplete?: () => void; groupSessionId?: string }>> = {
   emoji_keypad: EmojiKeypadGame,
@@ -52,6 +53,7 @@ const GAME_COMPONENTS: Record<string, React.ComponentType<{ onGameComplete?: () 
   reaction_bars: ReactionBarsGame,
   image_puzzle: ImagePuzzleGame,
   draw_me: DrawMeGame,
+  beat_match: BeatMatchGame,
 }
 
 interface SessionData {
@@ -125,6 +127,18 @@ export default function GroupPage({ params }: { params: Promise<{ token: string 
       fetchSession()
     }
   }, [fetchSession, authLoading, user])
+
+  // Auto-refetch when session timer expires (triggers lazy settlement + claim bar)
+  useEffect(() => {
+    if (!session || session.status !== 'live') return
+    const msLeft = new Date(session.endsAt).getTime() - Date.now()
+    if (msLeft <= 0) {
+      fetchSession()
+      return
+    }
+    const timer = setTimeout(() => fetchSession(), msLeft + 500)
+    return () => clearTimeout(timer)
+  }, [session, fetchSession])
 
   const isEnded = session ? (session.status === 'ended' || session.status === 'settled' || new Date(session.endsAt) < new Date()) : false
   const uiGameId = session ? toUiGameId(session.gameTypeId) : null

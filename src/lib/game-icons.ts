@@ -17,6 +17,7 @@ import {
   BarChartHorizontal,
   Puzzle,
   Brush,
+  Drum,
   LucideIcon,
 } from 'lucide-react'
 
@@ -39,4 +40,5 @@ export const GAME_ICONS: Record<string, LucideIcon> = {
   reaction_bars: BarChartHorizontal,
   image_puzzle: Puzzle,
   draw_me: Brush,
+  beat_match: Drum,
 }
