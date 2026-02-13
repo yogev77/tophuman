@@ -88,7 +88,7 @@ export interface GameDef {
 export const GAMES: Record<string, GameDef> = {
   emoji_keypad: {
     id: 'emoji_keypad',
-    name: 'Emoji Sequence',
+    name: 'Sequence',
     description: 'Memorize and repeat the emoji pattern',
     skill: 'memory',
     iconColors: { bg: 'bg-purple-500/20', icon: 'text-purple-500' },
@@ -96,7 +96,7 @@ export const GAMES: Record<string, GameDef> = {
   },
   image_rotate: {
     id: 'image_rotate',
-    name: 'Puzzle Rotation',
+    name: 'Puzzle Spin',
     description: 'Rotate tiles to complete the image',
     skill: 'logic',
     iconColors: { bg: 'bg-blue-600/20', icon: 'text-blue-500' },
@@ -144,7 +144,7 @@ export const GAMES: Record<string, GameDef> = {
   },
   visual_diff: {
     id: 'visual_diff',
-    name: 'Spot Difference',
+    name: 'Spot the Diff',
     description: 'Find the differences between the two images.',
     skill: 'focus',
     iconColors: { bg: 'bg-red-500/20', icon: 'text-red-500' },
@@ -152,7 +152,7 @@ export const GAMES: Record<string, GameDef> = {
   },
   audio_pattern: {
     id: 'audio_pattern',
-    name: 'Audio Pattern',
+    name: 'Simon Says',
     description: 'Listen to the pattern, then repeat it.',
     skill: 'pattern',
     iconColors: { bg: 'bg-green-500/20', icon: 'text-green-500' },

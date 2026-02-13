@@ -1,10 +1,8 @@
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
-import { validateUsername } from '@/lib/username-validation'
+import { validateUsername, AUTO_USERNAME_PATTERN } from '@/lib/username-validation'
 
-const RATE_LIMIT_MS = 24 * 60 * 60 * 1000 // 24 hours
-
-export async function PATCH(request: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -22,11 +20,12 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: validation.message }, { status: 400 })
     }
 
-    // Get current profile
     const serviceClient = await createServiceClient()
+
+    // Get current profile — must have an auto-generated username
     const { data: profile, error: profileError } = await serviceClient
       .from('profiles')
-      .select('username, username_changed_at')
+      .select('username')
       .eq('id', user.id)
       .single()
 
@@ -34,22 +33,9 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
     }
 
-    // Check if same username
-    if (profile.username.toLowerCase() === username.toLowerCase()) {
-      return NextResponse.json({ error: 'This is already your username' }, { status: 400 })
-    }
-
-    // Check rate limit
-    if (profile.username_changed_at) {
-      const lastChange = new Date(profile.username_changed_at).getTime()
-      const now = Date.now()
-      if (now - lastChange < RATE_LIMIT_MS) {
-        const hoursLeft = Math.ceil((RATE_LIMIT_MS - (now - lastChange)) / (60 * 60 * 1000))
-        return NextResponse.json(
-          { error: `You can change your username again in ${hoursLeft} hours` },
-          { status: 429 }
-        )
-      }
+    // Only allow if current username is auto-generated (prevents abuse)
+    if (!AUTO_USERNAME_PATTERN.test(profile.username)) {
+      return NextResponse.json({ error: 'Username already set' }, { status: 400 })
     }
 
     // Check availability (case-insensitive)
@@ -65,24 +51,23 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Username is already taken' }, { status: 400 })
     }
 
-    // Update username
+    // Update username — do NOT set username_changed_at (doesn't burn 24h rate limit)
     const { error: updateError } = await serviceClient
       .from('profiles')
       .update({
         username,
-        username_changed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
       .eq('id', user.id)
 
     if (updateError) {
-      console.error('Username update error:', updateError)
-      return NextResponse.json({ error: 'Failed to update username' }, { status: 500 })
+      console.error('Initial username set error:', updateError)
+      return NextResponse.json({ error: 'Failed to set username' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true, username })
   } catch (err) {
-    console.error('Username update error:', err)
+    console.error('Initial username set error:', err)
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 }

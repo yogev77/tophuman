@@ -881,6 +881,8 @@ function SkillsTab({ username }: { username: string }) {
 
   if (!skills) return null
 
+  const totalAllPlays = skills.reduce((s, sk) => s + sk.totalPlays, 0)
+
   return (
     <div className="space-y-6">
       <SkillRadarChart skills={skills} />
@@ -898,14 +900,24 @@ function SkillsTab({ username }: { username: string }) {
 
           return (
             <div key={skill.skillId} className="bg-white dark:bg-slate-800 rounded-xl p-4">
-              {/* Header: icon + name + level badge */}
+              {/* Header: icon + name + rank + level badge */}
               <div className="flex items-center gap-3 mb-3">
                 <div className={`w-10 h-10 rounded-full ${def.colors.bg} flex items-center justify-center shrink-0`}>
                   <Icon className={`w-[18px] h-[18px] ${def.colors.textLight} dark:${def.colors.text}`} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
-                    <span className="font-semibold text-slate-900 dark:text-white">{skill.name}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-slate-900 dark:text-white">{skill.name}</span>
+                      {skill.totalPlays > 0 && (
+                        <span className="flex items-center gap-1 text-sm font-semibold text-slate-500 dark:text-slate-400">
+                          {skill.rank <= 3 && (
+                            <Crown className={`w-3.5 h-3.5 ${skill.rank === 1 ? 'text-yellow-400' : skill.rank === 2 ? 'text-slate-400' : 'text-orange-400'}`} />
+                          )}
+                          #{skill.rank} All Time
+                        </span>
+                      )}
+                    </div>
                     <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full text-white ${def.colors.dot}`}>
                       Lv.{skill.level}
                     </span>
@@ -934,14 +946,7 @@ function SkillsTab({ username }: { username: string }) {
                 <span>
                   {skill.totalPlays} plays · {isMax ? 'Max level' : `${playsToNext} to Lv.${skill.level + 1}`}
                 </span>
-                {skill.totalPlays > 0 && (
-                  <span className="flex items-center gap-1">
-                    {skill.rank <= 3 && (
-                      <Crown className={`w-3 h-3 ${skill.rank === 1 ? 'text-yellow-400' : skill.rank === 2 ? 'text-slate-400' : 'text-orange-400'}`} />
-                    )}
-                    #{skill.rank}{skill.totalPlayers > 0 ? ` of ${skill.totalPlayers}` : ''}
-                  </span>
-                )}
+                <span>{totalAllPlays > 0 ? `${Math.round(skill.totalPlays / totalAllPlays * 100)}% of plays` : ''}{skill.totalPlays > 0 ? ` · Rank #${skill.rank} of ${skill.totalPlayers}` : ''}</span>
               </div>
             </div>
           )
@@ -949,7 +954,7 @@ function SkillsTab({ username }: { username: string }) {
       </div>
 
       {/* How to read this */}
-      <div className="text-[11px] text-slate-400 dark:text-slate-500 leading-relaxed space-y-1 px-1">
+      <div className="text-sm text-slate-400 dark:text-slate-500 leading-relaxed space-y-1.5 px-1">
         <p className="font-medium text-slate-500 dark:text-slate-400">How to read your skills</p>
         <p>The <strong>radar chart</strong> gives a quick overview of your strengths across all five skill categories.</p>
         <p>Each <strong>strength score</strong> (0–100) is based on your best game scores compared to other players on the platform — not how many games you played. A score of 75 means you outperform 75% of players in that skill.</p>
@@ -1070,7 +1075,7 @@ function PlayerProfileContent() {
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex gap-1 bg-white dark:bg-slate-800 rounded-xl p-1 mb-8 lg:inline-flex">
+      <div className="flex gap-1 bg-white dark:bg-slate-800 rounded-xl p-1 mb-8 lg:w-fit lg:mx-auto">
           <button
             onClick={() => setActiveTab('profile')}
             className={`flex-1 lg:flex-initial flex items-center justify-center lg:justify-start gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition ${

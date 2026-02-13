@@ -3,24 +3,37 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
-import { Trophy } from 'lucide-react'
+import { Trophy, AlertCircle } from 'lucide-react'
 import { Spinner } from '@/components/Spinner'
+
+async function grantCreditsWithRetry(): Promise<boolean> {
+  const res = await fetch('/api/credits/grant', { method: 'POST' })
+  if (res.status === 404) {
+    // Profile trigger may be slow — retry once after 1s
+    await new Promise((r) => setTimeout(r, 1000))
+    const retry = await fetch('/api/credits/grant', { method: 'POST' })
+    return retry.ok || retry.status === 409 // 409 = already granted today
+  }
+  return res.ok || res.status === 409
+}
 
 function WelcomeContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [status, setStatus] = useState('Processing...')
+  const [failed, setFailed] = useState(false)
 
   useEffect(() => {
-    const processReferral = async () => {
+    const processWelcome = async () => {
       const referralCode = localStorage.getItem('referralCode')
       const next = searchParams.get('next') || '/'
 
-      // Auto-grant first daily credits so new users start with a balance
-      try {
-        await fetch('/api/credits/grant', { method: 'POST' })
-      } catch (err) {
-        console.error('Auto-grant error:', err)
+      // Auto-grant first daily credits with retry
+      const grantOk = await grantCreditsWithRetry()
+      if (!grantOk) {
+        setFailed(true)
+        setStatus('Something went wrong setting up your account.')
+        return
       }
 
       if (referralCode) {
@@ -35,7 +48,6 @@ function WelcomeContent() {
           if (res.ok) {
             setStatus('Referral bonus applied! Redirecting...')
           }
-          // Clear the referral code regardless of success
           localStorage.removeItem('referralCode')
         } catch (err) {
           console.error('Referral error:', err)
@@ -48,15 +60,33 @@ function WelcomeContent() {
       }, 1500)
     }
 
-    processReferral()
+    processWelcome()
   }, [router, searchParams])
+
+  if (failed) {
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center px-4">
+        <div className="bg-white dark:bg-slate-800 rounded-xl p-8 max-w-md w-full text-center">
+          <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">Setup Issue</h2>
+          <p className="text-slate-500 dark:text-slate-300 mb-6">{status}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg transition"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4">
-      <div className="bg-slate-800 rounded-xl p-8 max-w-md w-full text-center">
+      <div className="bg-white dark:bg-slate-800 rounded-xl p-8 max-w-md w-full text-center">
         <Trophy className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
-        <h2 className="text-2xl font-bold text-white mb-4">Welcome to Podium Arena!</h2>
-        <p className="text-slate-300 mb-4">Your email has been verified.</p>
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">Welcome to Podium Arena!</h2>
+        <p className="text-slate-500 dark:text-slate-300 mb-4">Your account is ready!</p>
         <div className="flex items-center justify-center gap-2 text-blue-400">
           <Spinner size="sm" />
           <span>{status}</span>

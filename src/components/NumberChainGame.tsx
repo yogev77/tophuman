@@ -332,8 +332,8 @@ export function NumberChainGame({ onGameComplete }: NumberChainGameProps) {
 
       {phase === 'completed' && result && (
         <div className="text-center py-8">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-red-500/20 flex items-center justify-center">
-            <Hash className="w-10 h-10 text-red-400" />
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-blue-600/20 flex items-center justify-center">
+            <Hash className="w-10 h-10 text-blue-500" />
           </div>
           <h3 className="text-2xl font-bold text-green-400 mb-4">Chain Complete!</h3>
           <div className="bg-slate-900/50 rounded-lg max-w-xs mx-auto mb-6">
@@ -362,8 +362,8 @@ export function NumberChainGame({ onGameComplete }: NumberChainGameProps) {
 
       {phase === 'failed' && (
         <div className="text-center py-8">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-red-500/20 flex items-center justify-center">
-            <Hash className="w-10 h-10 text-red-400" />
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-blue-600/20 flex items-center justify-center">
+            <Hash className="w-10 h-10 text-blue-500" />
           </div>
           <h3 className="text-2xl font-bold text-red-400 mb-4">
             {result?.reason === 'incomplete' ? "Time's Up!" : 'Game Over'}

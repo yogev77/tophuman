@@ -25,7 +25,10 @@ import {
   LayoutDashboard,
   ChevronDown,
   ChevronRight,
+  Mail,
+  Send,
 } from 'lucide-react'
+import { EMAIL_TEMPLATES } from '@/lib/email-templates'
 
 interface DailyStats {
   utcDay: string
@@ -151,15 +154,15 @@ const GAME_ICON_COLORS: Record<string, { bg: string; icon: string }> = {
 }
 
 const GAME_OPTIONS: GameOption[] = [
-  { id: 'emoji_keypad', icon: Target, name: 'Emoji Keypad', desc: 'Memorize & tap sequence' },
-  { id: 'image_rotate', icon: RotateCw, name: 'Image Rotate', desc: 'Rotate tiles to restore' },
+  { id: 'emoji_keypad', icon: Target, name: 'Sequence', desc: 'Memorize & tap sequence' },
+  { id: 'image_rotate', icon: RotateCw, name: 'Puzzle Spin', desc: 'Rotate tiles to restore' },
   { id: 'reaction_time', icon: Zap, name: 'Reaction Tap', desc: 'Test your reflexes' },
   { id: 'whack_a_mole', icon: Hammer, name: 'Whack-a-Mole', desc: 'Hit the moles!' },
   { id: 'typing_speed', icon: Keyboard, name: 'Typing Speed', desc: 'Type the phrase fast' },
   { id: 'mental_math', icon: Calculator, name: 'Mental Math', desc: 'Solve math problems' },
   { id: 'color_match', icon: Palette, name: 'Color Match', desc: 'Match RGB colors' },
-  { id: 'visual_diff', icon: ScanEye, name: 'Spot Difference', desc: 'Find the differences' },
-  { id: 'audio_pattern', icon: Music, name: 'Audio Pattern', desc: 'Repeat the sound pattern' },
+  { id: 'visual_diff', icon: ScanEye, name: 'Spot the Diff', desc: 'Find the differences' },
+  { id: 'audio_pattern', icon: Music, name: 'Simon Says', desc: 'Repeat the sound pattern' },
   { id: 'drag_sort', icon: GripVertical, name: 'Drag & Sort', desc: 'Sort items in order' },
   { id: 'follow_me', icon: Pencil, name: 'Follow Me', desc: 'Trace the path accurately' },
   { id: 'duck_shoot', icon: Crosshair, name: 'Target Shoot', desc: 'Hit the moving targets' },
@@ -176,7 +179,7 @@ function gameDisplayName(id: string | null): string {
   return GAME_NAME_MAP[id] || id
 }
 
-type Tab = 'dashboard' | 'treasury'
+type Tab = 'dashboard' | 'treasury' | 'notifications'
 
 const EVENT_TYPE_STYLES: Record<string, { label: string; color: string }> = {
   daily_grant: { label: 'Daily Grant', color: 'bg-green-500/20 text-green-400' },
@@ -237,6 +240,35 @@ export default function AdminPage() {
   const [snapshotsTotal, setSnapshotsTotal] = useState(0)
   const [snapshotsLoading, setSnapshotsLoading] = useState(false)
   const [recordingSnapshot, setRecordingSnapshot] = useState(false)
+
+  // Notifications tab state
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
+  const [testEmail, setTestEmail] = useState('')
+  const [sendingTest, setSendingTest] = useState(false)
+  const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null)
+
+  const sendTestEmail = async () => {
+    if (!selectedTemplate || !testEmail) return
+    setSendingTest(true)
+    setTestResult(null)
+    try {
+      const res = await fetch('/api/admin/send-test-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ templateId: selectedTemplate, targetEmail: testEmail }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setTestResult({ ok: true, message: `Test email sent to ${testEmail}` })
+      } else {
+        setTestResult({ ok: false, message: data.error || 'Failed to send' })
+      }
+    } catch {
+      setTestResult({ ok: false, message: 'Network error' })
+    } finally {
+      setSendingTest(false)
+    }
+  }
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -624,6 +656,17 @@ export default function AdminPage() {
         >
           <Vault className="w-4 h-4" />
           Treasury
+        </button>
+        <button
+          onClick={() => setActiveTab('notifications')}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition ${
+            activeTab === 'notifications'
+              ? 'bg-slate-700 text-white'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <Mail className="w-4 h-4" />
+          Notifications
         </button>
       </div>
 
@@ -1350,6 +1393,96 @@ export default function AdminPage() {
             )}
           </div>
 
+        </>
+      )}
+
+      {activeTab === 'notifications' && (
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Template List */}
+            <div>
+              <h2 className="text-xl font-bold text-white mb-4">Email Templates</h2>
+              <p className="text-slate-400 text-sm mb-4">
+                Templates are configured in Supabase Dashboard &rarr; Authentication &rarr; Email Templates.
+                Send a test to see the actual email users receive.
+              </p>
+              <div className="space-y-3">
+                {EMAIL_TEMPLATES.map((t) => (
+                  <div
+                    key={t.id}
+                    onClick={() => { setSelectedTemplate(t.id); setTestResult(null) }}
+                    className={`p-4 rounded-xl border cursor-pointer transition ${
+                      selectedTemplate === t.id
+                        ? 'border-yellow-500/50 bg-yellow-500/5'
+                        : 'border-slate-700 bg-slate-800 hover:border-slate-600'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 mb-1">
+                      <Mail className={`w-5 h-5 ${selectedTemplate === t.id ? 'text-yellow-400' : 'text-slate-400'}`} />
+                      <span className="font-bold text-white">{t.name}</span>
+                    </div>
+                    <p className="text-xs text-slate-500 ml-8 mt-1">{t.description}</p>
+                    <div className="ml-8 mt-2">
+                      <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded font-mono">
+                        {t.supabaseEvent}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Send Test */}
+            <div>
+              {selectedTemplate ? (
+                <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
+                  <h3 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
+                    <Send className="w-5 h-5 text-yellow-400" />
+                    Send Test: {EMAIL_TEMPLATES.find(t => t.id === selectedTemplate)?.name}
+                  </h3>
+                  <p className="text-sm text-slate-400 mb-5">
+                    {EMAIL_TEMPLATES.find(t => t.id === selectedTemplate)?.description}
+                  </p>
+                  <p className="text-xs text-slate-500 mb-4">
+                    Triggers a real Supabase <span className="font-mono text-slate-400">{EMAIL_TEMPLATES.find(t => t.id === selectedTemplate)?.supabaseEvent}</span> event.
+                    For magic link and recovery, use an existing user&apos;s email.
+                  </p>
+                  <div>
+                    <label className="block text-sm text-slate-300 mb-2">Send to</label>
+                    <div className="flex gap-3">
+                      <input
+                        type="email"
+                        value={testEmail}
+                        onChange={(e) => setTestEmail(e.target.value)}
+                        placeholder="you@example.com"
+                        className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-white text-sm"
+                      />
+                      <button
+                        onClick={sendTestEmail}
+                        disabled={sendingTest || !testEmail}
+                        className="bg-yellow-500 hover:bg-yellow-400 disabled:bg-slate-600 text-slate-900 font-bold py-2 px-5 rounded-lg text-sm transition whitespace-nowrap"
+                      >
+                        {sendingTest ? 'Sending...' : 'Send Test'}
+                      </button>
+                    </div>
+                  </div>
+                  {testResult && (
+                    <div className={`mt-4 p-3 rounded-lg text-sm ${
+                      testResult.ok
+                        ? 'bg-green-500/20 border border-green-500/30 text-green-400'
+                        : 'bg-red-500/20 border border-red-500/30 text-red-400'
+                    }`}>
+                      <div>{testResult.message}</div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-64 bg-slate-800 rounded-xl border border-slate-700">
+                  <p className="text-slate-500">Select a template to send a test</p>
+                </div>
+              )}
+            </div>
+          </div>
         </>
       )}
     </div>

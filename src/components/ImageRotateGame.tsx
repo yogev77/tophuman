@@ -159,12 +159,11 @@ export function ImageRotateGame({ onGameComplete }: ImageRotateGameProps) {
         clearInterval(timerRef.current)
         timerRef.current = null
       }
-      // Change phase to prevent further rotations
-      setPhase('checking')
-      // Small delay for the last rotation animation, then complete
+      // Let the user see the completed puzzle, then transition
       setTimeout(() => {
+        setPhase('checking')
         completeGame()
-      }, 100)
+      }, 1000)
     }
   }
 
@@ -325,8 +324,8 @@ export function ImageRotateGame({ onGameComplete }: ImageRotateGameProps) {
 
       {phase === 'completed' && result && (
         <div className="text-center py-8">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-sky-500/20 flex items-center justify-center">
-            <RotateCw className="w-10 h-10 text-sky-400" />
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-blue-600/20 flex items-center justify-center">
+            <RotateCw className="w-10 h-10 text-blue-500" />
           </div>
           <h3 className="text-2xl font-bold text-green-400 mb-4">Puzzle Solved!</h3>
           <div className="bg-slate-900/50 rounded-lg max-w-xs mx-auto mb-6">
@@ -355,14 +354,14 @@ export function ImageRotateGame({ onGameComplete }: ImageRotateGameProps) {
             <button onClick={startGame} className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 rounded-lg transition">Play Again</button>
             <Link href="/" className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 rounded-lg transition text-center">New Game</Link>
           </div>
-          <ShareScore gameName="Image Rotate" score={result.score || 0} rank={result.rank} />
+          <ShareScore gameName="Puzzle Spin" score={result.score || 0} rank={result.rank} />
         </div>
       )}
 
       {phase === 'failed' && (
         <div className="text-center py-8">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-sky-500/20 flex items-center justify-center">
-            <RotateCw className="w-10 h-10 text-sky-400" />
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-blue-600/20 flex items-center justify-center">
+            <RotateCw className="w-10 h-10 text-blue-500" />
           </div>
           <h3 className="text-2xl font-bold text-red-400 mb-4">
             {result?.reason === 'timeout' ? 'Time\'s Up!' : 'Failed!'}

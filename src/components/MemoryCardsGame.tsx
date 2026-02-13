@@ -375,8 +375,8 @@ export function MemoryCardsGame({ onGameComplete }: MemoryCardsGameProps) {
 
       {phase === 'completed' && result && (
         <div className="text-center py-8">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-fuchsia-500/20 flex items-center justify-center">
-            <LayoutGrid className="w-10 h-10 text-fuchsia-400" />
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-purple-500/20 flex items-center justify-center">
+            <LayoutGrid className="w-10 h-10 text-purple-500" />
           </div>
           <h3 className={`text-2xl font-bold mb-4 ${
             spec && totalMatches >= spec.rounds.reduce((sum, r) => sum + r.numPairs, 0)
@@ -415,8 +415,8 @@ export function MemoryCardsGame({ onGameComplete }: MemoryCardsGameProps) {
 
       {phase === 'failed' && (
         <div className="text-center py-8">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-fuchsia-500/20 flex items-center justify-center">
-            <LayoutGrid className="w-10 h-10 text-fuchsia-400" />
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-purple-500/20 flex items-center justify-center">
+            <LayoutGrid className="w-10 h-10 text-purple-500" />
           </div>
           <h3 className="text-2xl font-bold text-red-400 mb-4">Time&apos;s Up!</h3>
           <p className="text-slate-300 mb-6">

@@ -395,8 +395,8 @@ export function ReactionTimeGame({ onGameComplete }: ReactionTimeGameProps) {
 
       {phase === 'completed' && result && (
         <div className="text-center py-6 sm:py-8">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-amber-500/20 flex items-center justify-center">
-            <Zap className="w-10 h-10 text-amber-400" />
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-yellow-500/20 flex items-center justify-center">
+            <Zap className="w-10 h-10 text-yellow-500" />
           </div>
           <h3 className="text-xl sm:text-2xl font-bold text-green-400 mb-4">Great Job!</h3>
           <div className="bg-slate-900/50 rounded-lg max-w-xs mx-auto mb-6">
@@ -431,8 +431,8 @@ export function ReactionTimeGame({ onGameComplete }: ReactionTimeGameProps) {
 
       {phase === 'failed' && (
         <div className="text-center py-8">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-amber-500/20 flex items-center justify-center">
-            <Zap className="w-10 h-10 text-amber-400" />
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-yellow-500/20 flex items-center justify-center">
+            <Zap className="w-10 h-10 text-yellow-500" />
           </div>
           <h3 className="text-2xl font-bold text-red-400 mb-4">Game Over</h3>
           <p className="text-slate-300 mb-6">

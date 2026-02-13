@@ -170,10 +170,12 @@ export function ReactionBarsGame({ onGameComplete }: ReactionBarsGameProps) {
     const nextBar = activeBar + 1
     if (nextBar >= spec.bars.length) {
       play('success')
-      // All bars stopped, complete game
+      // All bars stopped — let the user see the result before transitioning
       if (timerRef.current) clearInterval(timerRef.current)
-      setPhase('checking')
-      setTimeout(() => completeGame(turnToken), 200)
+      setTimeout(() => {
+        setPhase('checking')
+        setTimeout(() => completeGame(turnToken), 200)
+      }, 1000)
     } else {
       setActiveBar(nextBar)
     }
@@ -332,8 +334,8 @@ export function ReactionBarsGame({ onGameComplete }: ReactionBarsGameProps) {
 
       {phase === 'completed' && result && (
         <div className="text-center py-8">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-purple-500/20 flex items-center justify-center">
-            <BarChartHorizontal className="w-10 h-10 text-purple-400" />
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-yellow-500/20 flex items-center justify-center">
+            <BarChartHorizontal className="w-10 h-10 text-yellow-500" />
           </div>
           <h3 className="text-2xl font-bold text-green-500 dark:text-green-400 mb-4">Great Timing!</h3>
           <div className="bg-slate-100 dark:bg-slate-900/50 rounded-lg max-w-xs mx-auto mb-6">
@@ -362,8 +364,8 @@ export function ReactionBarsGame({ onGameComplete }: ReactionBarsGameProps) {
 
       {phase === 'failed' && (
         <div className="text-center py-8">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-purple-500/20 flex items-center justify-center">
-            <BarChartHorizontal className="w-10 h-10 text-purple-400" />
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-yellow-500/20 flex items-center justify-center">
+            <BarChartHorizontal className="w-10 h-10 text-yellow-500" />
           </div>
           <h3 className="text-2xl font-bold text-red-500 dark:text-red-400 mb-4">
             {result?.reason === 'timeout' ? "Time's Up!" : 'Failed!'}

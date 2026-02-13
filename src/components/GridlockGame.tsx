@@ -524,13 +524,13 @@ export function GridlockGame({ onGameComplete }: GridlockGameProps) {
 
       {(phase === 'play' || phase === 'round_complete') && spec && (
         <div>
-          {phase === 'round_complete' && (
-            <div className="text-center py-4 mb-4">
+          <div className="h-8 flex items-center justify-center mb-2">
+            {phase === 'round_complete' && (
               <p className="text-green-500 font-bold text-lg animate-pulse">
                 Round {currentRound + 1} Complete!
               </p>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Grid */}
           <div className="flex justify-center">
@@ -647,8 +647,8 @@ export function GridlockGame({ onGameComplete }: GridlockGameProps) {
 
       {phase === 'completed' && result && (
         <div className="text-center py-8">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-blue-500/20 flex items-center justify-center">
-            <ParkingSquare className="w-10 h-10 text-blue-400" />
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-red-500/20 flex items-center justify-center">
+            <ParkingSquare className="w-10 h-10 text-red-500" />
           </div>
           <h3 className="text-2xl font-bold text-green-500 mb-4">Puzzle Solved!</h3>
           <div className="bg-slate-900/50 rounded-lg max-w-xs mx-auto mb-6">
@@ -673,8 +673,8 @@ export function GridlockGame({ onGameComplete }: GridlockGameProps) {
 
       {phase === 'failed' && (
         <div className="text-center py-8">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-blue-500/20 flex items-center justify-center">
-            <ParkingSquare className="w-10 h-10 text-blue-400" />
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-red-500/20 flex items-center justify-center">
+            <ParkingSquare className="w-10 h-10 text-red-500" />
           </div>
           <h3 className="text-2xl font-bold text-red-500 mb-4">
             {result?.reason === 'no_rounds_completed' ? "Time's Up!" : 'Game Over'}

@@ -285,8 +285,8 @@ export function TypingSpeedGame({ onGameComplete }: TypingSpeedGameProps) {
 
       {phase === 'completed' && result && (
         <div className="text-center py-8">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-violet-500/20 flex items-center justify-center">
-            <Keyboard className="w-10 h-10 text-violet-400" />
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-green-500/20 flex items-center justify-center">
+            <Keyboard className="w-10 h-10 text-green-500" />
           </div>
           <h3 className="text-2xl font-bold text-green-400 mb-4">Well Done!</h3>
           <div className="bg-slate-900/50 rounded-lg max-w-xs mx-auto mb-6">
@@ -321,8 +321,8 @@ export function TypingSpeedGame({ onGameComplete }: TypingSpeedGameProps) {
 
       {phase === 'failed' && (
         <div className="text-center py-8">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-violet-500/20 flex items-center justify-center">
-            <Keyboard className="w-10 h-10 text-violet-400" />
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-green-500/20 flex items-center justify-center">
+            <Keyboard className="w-10 h-10 text-green-500" />
           </div>
           <h3 className="text-2xl font-bold text-red-400 mb-4">Failed!</h3>
           <p className="text-slate-300 mb-6">

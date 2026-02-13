@@ -7,7 +7,6 @@ import { useTheme } from '@/hooks/useTheme'
 import Link from 'next/link'
 import {
   Target,
-  Clock,
   Lock,
   Crown,
   List,
@@ -134,7 +133,7 @@ function TopPlayersTicker({ games }: { games: GameInfo[] }) {
 
     return (
       <div key={game.id} className="flex items-center gap-2 px-4 whitespace-nowrap">
-        <Link href={`/game?type=${game.id}`} className={`p-1.5 rounded ${iconColors.bg} hover:opacity-80 transition`}>
+        <Link href={`/game/${game.id}`} className={`p-1.5 rounded ${iconColors.bg} hover:opacity-80 transition`}>
           <Icon className={`w-4 h-4 ${iconColors.icon}`} />
         </Link>
         <Crown className="w-3 h-3 text-yellow-400" />
@@ -165,7 +164,7 @@ function TopPlayersTicker({ games }: { games: GameInfo[] }) {
   )
 }
 
-function GameTile({ game, msUntilSettlement }: { game: GameInfo; msUntilSettlement: number }) {
+function GameTile({ game }: { game: GameInfo }) {
   const Icon = GAME_ICONS[game.id] || Target
   const iconColors = GAMES[game.id]?.iconColors || GAMES.emoji_keypad.iconColors
   const isPlayable = game.isPlayable
@@ -174,21 +173,15 @@ function GameTile({ game, msUntilSettlement }: { game: GameInfo; msUntilSettleme
 
   const content = (
     <div className="relative">
-      {/* Skill label + settlement timer — top right */}
-      <div className="absolute top-0 right-0 flex flex-col items-end gap-1 z-10">
-        {skill && (
+      {/* Skill label — top right */}
+      {skill && (
+        <div className="absolute top-0 right-0 z-10">
           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${skill.colors.bg} ${skill.colors.text}`}>
             <span className={`w-1.5 h-1.5 rounded-full ${skill.colors.dot}`} />
             {skill.name}
           </span>
-        )}
-        {isPlayable && (
-          <span className="text-[10px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
-            <Clock className="w-3 h-3" />
-            {formatTimeLeft(msUntilSettlement)}
-          </span>
-        )}
-      </div>
+        </div>
+      )}
       <div className="flex items-start gap-3 mb-3">
         <div className={`p-4 rounded-lg shrink-0 ${isPlayable ? iconColors.bg : 'bg-slate-600/30'}`}>
           <Icon className={`w-7 h-7 ${isPlayable ? iconColors.icon : 'text-slate-500'}`} />
@@ -255,7 +248,7 @@ function GameTile({ game, msUntilSettlement }: { game: GameInfo; msUntilSettleme
   if (isPlayable) {
     return (
       <Link
-        href={`/game?type=${game.id}`}
+        href={`/game/${game.id}`}
         className="block bg-slate-800 rounded-xl p-4 transition-transform duration-150 hover:scale-[1.03] active:scale-[0.97] cursor-pointer"
       >
         {content}
@@ -612,7 +605,7 @@ export default function HomePage() {
                         <GameTile
                           key={game.id}
                           game={game}
-                          msUntilSettlement={timeLeft}
+
                         />
                       ))}
                     </div>
@@ -621,22 +614,28 @@ export default function HomePage() {
                       {playableGames.map(game => {
                         const Icon = GAME_ICONS[game.id] || Target
                         const colors = GAMES[game.id]?.iconColors || GAMES.emoji_keypad.iconColors
+                        const skill = getSkillForGame(game.id)
                         return (
                           <Link
                             key={game.id}
-                            href={`/game?type=${game.id}`}
-                            className="flex flex-col items-center text-center p-3 rounded-xl bg-slate-800 hover:bg-slate-700 transition-transform duration-150 hover:scale-105 active:scale-95"
+                            href={`/game/${game.id}`}
+                            className="flex flex-col items-center text-center p-3 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-transform duration-150 hover:scale-105 active:scale-95"
                           >
                             <div className={`p-3 rounded-2xl mb-2 ${colors.bg}`}>
                               <Icon className={`w-7 h-7 ${colors.icon}`} />
                             </div>
-                            <span className="text-xs font-medium text-white leading-tight line-clamp-2">{game.name}</span>
-                            {(() => { const sk = getSkillForGame(game.id); return sk ? (
-                              <span className={`text-[10px] font-medium mt-0.5 ${sk.colors.text}`}>{sk.name}</span>
-                            ) : null })()}
-                            {game.poolSize > 0 && (
-                              <span className="text-xs font-semibold text-yellow-400 mt-0.5"><CC />{game.poolSize}</span>
+                            <span className="text-xs font-medium text-slate-900 dark:text-white leading-tight line-clamp-2">{game.name}</span>
+                            {skill && (
+                              <span className={`text-[10px] font-medium mt-0.5 ${skill.colors.text}`}>{skill.name}</span>
                             )}
+                            <div className="flex items-center gap-1 mt-0.5 max-w-full">
+                              <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                                {game.todayStats.topPlayerName || 'No leader'}
+                              </span>
+                              {game.poolSize > 0 && (
+                                <span className="text-[10px] font-semibold text-yellow-500 dark:text-yellow-400 shrink-0"><CC />{game.poolSize}</span>
+                              )}
+                            </div>
                           </Link>
                         )
                       })}
@@ -654,7 +653,6 @@ export default function HomePage() {
                       <GameTile
                         key={game.id}
                         game={game}
-                        msUntilSettlement={timeLeft}
                       />
                     ))}
                   </div>
@@ -670,7 +668,6 @@ export default function HomePage() {
                       <GameTile
                         key={game.id}
                         game={game}
-                        msUntilSettlement={timeLeft}
                       />
                     ))}
                   </div>
@@ -719,7 +716,7 @@ export default function HomePage() {
                     return (
                       <tr key={entry.gameId} className={i < entries.length - 1 ? 'border-b border-slate-700/50' : ''}>
                         <td className="px-3 sm:px-4 py-3">
-                          <Link href={`/game?type=${entry.gameId}`} className="tap-highlight flex items-center gap-2 sm:gap-3 hover:opacity-80 transition">
+                          <Link href={`/game/${entry.gameId}`} className="tap-highlight flex items-center gap-2 sm:gap-3 hover:opacity-80 transition">
                             <div className={`p-1.5 rounded-lg shrink-0 ${colors.bg}`}>
                               <Icon className={`w-4 h-4 ${colors.icon}`} />
                             </div>

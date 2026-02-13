@@ -321,8 +321,8 @@ export function VisualDiffGame({ onGameComplete }: VisualDiffGameProps) {
 
       {phase === 'completed' && result && (
         <div className="text-center py-8">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-teal-500/20 flex items-center justify-center">
-            <ScanEye className="w-10 h-10 text-teal-400" />
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-red-500/20 flex items-center justify-center">
+            <ScanEye className="w-10 h-10 text-red-500" />
           </div>
           <h3 className="text-2xl font-bold text-green-400 mb-4">Sharp Eyes!</h3>
           <div className="bg-slate-900/50 rounded-lg max-w-xs mx-auto mb-6">
@@ -352,14 +352,14 @@ export function VisualDiffGame({ onGameComplete }: VisualDiffGameProps) {
               New Game
             </Link>
           </div>
-          <ShareScore gameName="Visual Diff" score={result.score || 0} rank={result.rank} />
+          <ShareScore gameName="Spot the Diff" score={result.score || 0} rank={result.rank} />
         </div>
       )}
 
       {phase === 'failed' && (
         <div className="text-center py-8">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-teal-500/20 flex items-center justify-center">
-            <ScanEye className="w-10 h-10 text-teal-400" />
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-red-500/20 flex items-center justify-center">
+            <ScanEye className="w-10 h-10 text-red-500" />
           </div>
           <h3 className="text-2xl font-bold text-red-400 mb-4">Failed!</h3>
           <p className="text-slate-300 mb-6">

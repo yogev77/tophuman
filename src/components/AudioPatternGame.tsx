@@ -396,8 +396,8 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
 
       {phase === 'completed' && result && (
         <div className="text-center py-8">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-indigo-500/20 flex items-center justify-center">
-            <Music className="w-10 h-10 text-indigo-400" />
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-green-500/20 flex items-center justify-center">
+            <Music className="w-10 h-10 text-green-500" />
           </div>
           <h3 className={`text-2xl font-bold mb-4 ${result.correct && result.correct >= (result.total || 0) ? 'text-green-400' : 'text-yellow-400'}`}>
             {result.correct && result.correct >= (result.total || 0) ? 'Perfect Pattern!' : `Level ${(result.correct || 0) + 1} reached!`}
@@ -422,14 +422,14 @@ export function AudioPatternGame({ onGameComplete }: AudioPatternGameProps) {
             <button onClick={startGame} className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 rounded-lg transition">Play Again</button>
             <Link href="/" className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 rounded-lg transition text-center">New Game</Link>
           </div>
-          <ShareScore gameName="Audio Pattern" score={result.score || 0} rank={result.rank} />
+          <ShareScore gameName="Simon Says" score={result.score || 0} rank={result.rank} />
         </div>
       )}
 
       {phase === 'failed' && (
         <div className="text-center py-8">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-indigo-500/20 flex items-center justify-center">
-            <Music className="w-10 h-10 text-indigo-400" />
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-green-500/20 flex items-center justify-center">
+            <Music className="w-10 h-10 text-green-500" />
           </div>
           <h3 className="text-2xl font-bold text-red-400 mb-4">No Score</h3>
           <p className="text-slate-300 mb-6">

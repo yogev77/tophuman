@@ -31,9 +31,10 @@ interface CachedData {
 interface LeaderboardProps {
   gameType: string
   gameTypeName: string
+  refreshKey?: number
 }
 
-export function Leaderboard({ gameType, gameTypeName }: LeaderboardProps) {
+export function Leaderboard({ gameType, gameTypeName, refreshKey }: LeaderboardProps) {
   const [period, setPeriod] = useState<'today' | 'alltime'>('today')
   const [initialLoading, setInitialLoading] = useState(true)
   const cache = useRef<Record<string, CachedData>>({})
@@ -74,6 +75,17 @@ export function Leaderboard({ gameType, gameTypeName }: LeaderboardProps) {
     init()
     return () => { cancelled = true }
   }, [fetchPeriod]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Immediate refresh when refreshKey changes (e.g. after game complete)
+  useEffect(() => {
+    if (refreshKey === undefined || refreshKey === 0) return
+    fetchPeriod(period).then(data => {
+      if (data) {
+        setEntries(data.entries)
+        setPool(data.pool)
+      }
+    })
+  }, [refreshKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Periodic refresh of current tab
   useEffect(() => {

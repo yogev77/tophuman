@@ -1,50 +1,6 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
-
-const RESERVED_USERNAMES = [
-  'admin',
-  'administrator',
-  'support',
-  'system',
-  'tophuman',
-  'moderator',
-  'mod',
-  'staff',
-  'help',
-  'info',
-  'contact',
-  'root',
-  'null',
-  'undefined',
-]
-
-function validateUsername(username: string): { valid: boolean; message?: string } {
-  if (!username) {
-    return { valid: false, message: 'Username is required' }
-  }
-
-  if (username.length < 3) {
-    return { valid: false, message: 'Username must be at least 3 characters' }
-  }
-
-  if (username.length > 20) {
-    return { valid: false, message: 'Username must be 20 characters or less' }
-  }
-
-  if (!/^[a-zA-Z]/.test(username)) {
-    return { valid: false, message: 'Username must start with a letter' }
-  }
-
-  if (!/^[a-zA-Z][a-zA-Z0-9_]*$/.test(username)) {
-    return { valid: false, message: 'Username can only contain letters, numbers, and underscores' }
-  }
-
-  if (RESERVED_USERNAMES.includes(username.toLowerCase())) {
-    return { valid: false, message: 'This username is reserved' }
-  }
-
-  return { valid: true }
-}
+import { validateUsername } from '@/lib/username-validation'
 
 export async function GET(request: NextRequest) {
   try {

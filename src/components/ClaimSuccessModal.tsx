@@ -11,15 +11,15 @@ interface ClaimedItem {
 }
 
 const GAME_NAMES: Record<string, string> = {
-  emoji_keypad_sequence: 'Emoji Sequence',
-  image_rotate: 'Puzzle Rotation',
+  emoji_keypad_sequence: 'Sequence',
+  image_rotate: 'Puzzle Spin',
   reaction_time: 'Reaction Tap',
   whack_a_mole: 'Whack-a-Mole',
   typing_speed: 'Typing Speed',
   mental_math: 'Mental Math',
   color_match: 'Color Match',
-  visual_diff: 'Spot Difference',
-  audio_pattern: 'Audio Pattern',
+  visual_diff: 'Spot the Diff',
+  audio_pattern: 'Simon Says',
   drag_sort: 'Drag & Sort',
   follow_me: 'Follow Me',
   duck_shoot: 'Target Shoot',

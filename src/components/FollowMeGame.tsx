@@ -447,8 +447,8 @@ export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
 
       {phase === 'completed' && result && (
         <div className="text-center py-8">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-cyan-500/20 flex items-center justify-center">
-            <Pencil className="w-10 h-10 text-cyan-400" />
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-red-500/20 flex items-center justify-center">
+            <Pencil className="w-10 h-10 text-red-500" />
           </div>
           <h3 className="text-2xl font-bold text-green-400 mb-4">Great Tracing!</h3>
           <div className="bg-slate-900/50 rounded-lg max-w-xs mx-auto mb-6">
@@ -490,8 +490,8 @@ export function FollowMeGame({ onGameComplete }: FollowMeGameProps) {
 
       {phase === 'failed' && (
         <div className="text-center py-8">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-cyan-500/20 flex items-center justify-center">
-            <Pencil className="w-10 h-10 text-cyan-400" />
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-red-500/20 flex items-center justify-center">
+            <Pencil className="w-10 h-10 text-red-500" />
           </div>
           <h3 className="text-2xl font-bold text-red-400 mb-4">Not Quite!</h3>
           <p className="text-slate-300 mb-6">
