@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { useCreditsNotification } from '@/components/CreditsNotificationProvider'
 import { useTheme } from '@/hooks/useTheme'
@@ -356,13 +356,52 @@ export default function HomePage() {
     return () => observer.disconnect()
   }, [])
 
-  const rotatedSkillList = useMemo(() => {
-    const offset = typeof window !== 'undefined'
-      ? parseInt(localStorage.getItem('skillRotation') || '0', 10) % SKILL_LIST.length
-      : 0
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('skillRotation', String((offset + 1) % SKILL_LIST.length))
+  // Save scroll position so returning from game page restores it
+  const scrollTick = useRef(false)
+  const handleScroll = useCallback(() => {
+    if (scrollTick.current) return
+    scrollTick.current = true
+    requestAnimationFrame(() => {
+      sessionStorage.setItem('homeScrollY', String(window.scrollY))
+      scrollTick.current = false
+    })
+  }, [])
+
+  useEffect(() => {
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [handleScroll])
+
+  // Restore scroll position — set min-height on body so there's room, then scroll
+  useEffect(() => {
+    const saved = sessionStorage.getItem('homeScrollY')
+    if (saved) {
+      const y = parseInt(saved, 10)
+      if (y > 0) {
+        document.body.style.minHeight = `${y + window.innerHeight}px`
+        window.scrollTo(0, y)
+      }
     }
+  }, [])
+
+  // Clear body min-height once real content has loaded
+  useEffect(() => {
+    if (data) document.body.style.minHeight = ''
+  }, [data])
+
+  const rotatedSkillList = useMemo(() => {
+    if (typeof window === 'undefined') return SKILL_LIST
+    const now = Date.now()
+    const lastVisit = parseInt(localStorage.getItem('skillRotationTs') || '0', 10)
+    const offset = parseInt(localStorage.getItem('skillRotation') || '0', 10) % SKILL_LIST.length
+    // Rotate only if 10+ minutes since last visit
+    if (now - lastVisit > 10 * 60 * 1000) {
+      const next = (offset + 1) % SKILL_LIST.length
+      localStorage.setItem('skillRotation', String(next))
+      localStorage.setItem('skillRotationTs', String(now))
+      return [...SKILL_LIST.slice(next), ...SKILL_LIST.slice(0, next)]
+    }
+    localStorage.setItem('skillRotationTs', String(now))
     return [...SKILL_LIST.slice(offset), ...SKILL_LIST.slice(0, offset)]
   }, [])
 
@@ -423,7 +462,7 @@ export default function HomePage() {
       <div ref={stickySentinelRef} className="h-0" />
 
       {/* Sticky Site Tab Controller */}
-      <div className="sticky top-0 z-30 -mx-4 px-4 py-2 bg-slate-900/95 backdrop-blur-sm">
+      <div className={`sticky top-0 z-30 -mx-4 px-4 py-2 bg-slate-900/95 backdrop-blur-sm ${isSticky ? 'sticky-bar-enter border-b border-slate-800' : ''}`}>
         <div className="relative flex items-center justify-center">
           {/* Logo - absolutely positioned left, visible when stuck */}
           <Link href="/" className={`absolute left-0 hidden items-center gap-2 text-lg font-bold text-white font-title transition-opacity duration-200 ${isSticky ? 'xl:flex opacity-100' : 'xl:hidden opacity-0'}`}>
@@ -568,8 +607,8 @@ export default function HomePage() {
                                 <Icon className={`w-7 h-7 ${gameDef.iconColors.icon}`} />
                               </div>
                               <span className="text-xs font-medium text-slate-900 dark:text-white leading-tight line-clamp-2">{gameDef.name}</span>
-                              <div className="flex items-center gap-1 mt-1 animate-pulse">
-                                <div className="h-2.5 w-14 bg-slate-200 dark:bg-slate-700 rounded" />
+                              <div className="flex items-center gap-1 mt-0.5">
+                                <span className="text-[10px] text-slate-400 dark:text-slate-500 animate-pulse">· · ·</span>
                               </div>
                             </div>
                           )
@@ -656,7 +695,10 @@ export default function HomePage() {
                   ) : (
                     <div className="space-y-6 mb-10">
                       {rotatedSkillList.map(skill => {
-                        const skillGames = playableGames.filter(g => GAMES[g.id]?.skill === skill.id)
+                        const playableIds = new Set(playableGames.map(g => g.id))
+                        const skillGames = Object.keys(GAMES)
+                          .filter(id => GAMES[id].skill === skill.id && playableIds.has(id))
+                          .map(id => playableGames.find(g => g.id === id)!)
                         if (skillGames.length === 0) return null
                         const SkillIcon = SKILL_ICONS[skill.id]
                         return (

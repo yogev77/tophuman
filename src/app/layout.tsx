@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Recursive } from 'next/font/google'
 import { ViewTransitions } from 'next-view-transitions'
 import './globals.css'
+import { Link } from 'next-view-transitions'
 import { Header } from '@/components/Header'
 import { ThemeProvider } from '@/hooks/useTheme'
 import { SoundProvider } from '@/hooks/useSound'
@@ -59,6 +60,12 @@ export default function RootLayout({
               <Header />
               <GroupPlayBar />
               <main className="pb-14">{children}</main>
+              <footer className="border-t border-slate-200 dark:border-slate-800">
+                <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-sm text-slate-500 dark:text-slate-500">
+                  <span>&copy; 2026 Podium Arena &middot; For entertainment purposes only.</span>
+                  <Link href="/terms" className="hover:text-slate-700 dark:hover:text-slate-300 transition-colors">Terms of Use</Link>
+                </div>
+              </footer>
               <BottomNotificationBar />
               <Toaster position="bottom-right" theme="dark" toastOptions={{ duration: 4000 }} />
             </GroupPlayProvider>

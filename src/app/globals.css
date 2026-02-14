@@ -229,6 +229,15 @@ html.light .text-green-400 {
   to { opacity: 1; }
 }
 
+@keyframes slideDown {
+  from { transform: translateY(-100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.sticky-bar-enter {
+  animation: slideDown 0.25s ease-out;
+}
+
 /* Tap/press feedback — buttons shrink on press */
 button:not(:disabled):active {
   transform: scale(0.97);
