@@ -38,7 +38,7 @@ export function GroupSessionBar({ endsAt, playerCount, joinToken, isEnded, creat
     const url = `${window.location.origin}/group/${joinToken}`
     const timeStr = formatTimeLeft(timeLeft)
     const gameLabel = gameName ? ` playing ${gameName}` : ''
-    const shareText = `Join my Private Group on Podium Arena! We're competing${gameLabel} head-to-head — ${timeStr} left.`
+    const shareText = `Join my Private Group on Podium Arena! We're competing${gameLabel} head-to-head \u23F1\uFE0F ${timeStr} left.`
 
     // Mobile: use native share sheet
     const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0
@@ -57,7 +57,7 @@ export function GroupSessionBar({ endsAt, playerCount, joinToken, isEnded, creat
 
     // Desktop: copy invite link
     try {
-      await navigator.clipboard.writeText(`${shareText}\n${url}`)
+      await navigator.clipboard.writeText(`${shareText}\n\n${url}`)
       setCopied(true)
       setTimeout(() => setCopied(false), 3000)
     } catch {

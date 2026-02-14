@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Crown } from 'lucide-react'
-import { formatCredits, formatTime } from '@/lib/utils'
+import { formatCredits, formatCountdown } from '@/lib/utils'
 import { Link } from 'next-view-transitions'
 import { CC } from '@/lib/currency'
 
@@ -32,9 +32,11 @@ interface LeaderboardProps {
   gameType: string
   gameTypeName: string
   refreshKey?: number
+  poolSize?: number | null
+  msUntilSettlement?: number
 }
 
-export function Leaderboard({ gameType, gameTypeName, refreshKey }: LeaderboardProps) {
+export function Leaderboard({ gameType, gameTypeName, refreshKey, poolSize, msUntilSettlement }: LeaderboardProps) {
   const [period, setPeriod] = useState<'today' | 'alltime'>('today')
   const [initialLoading, setInitialLoading] = useState(true)
   const cache = useRef<Record<string, CachedData>>({})
@@ -119,12 +121,12 @@ export function Leaderboard({ gameType, gameTypeName, refreshKey }: LeaderboardP
 
   if (initialLoading) {
     return (
-      <div className="bg-slate-800 rounded-xl p-4 sm:p-6">
-        <div className="animate-pulse">
+      <div className="bg-slate-800 rounded-xl overflow-hidden">
+        <div className="animate-pulse p-4">
           <div className="h-6 bg-slate-700 rounded w-1/3 mb-4"></div>
           <div className="space-y-3">
             {[1, 2, 3, 4, 5].map(i => (
-              <div key={i} className="h-12 bg-slate-700 rounded"></div>
+              <div key={i} className="h-10 bg-slate-700 rounded"></div>
             ))}
           </div>
         </div>
@@ -133,54 +135,49 @@ export function Leaderboard({ gameType, gameTypeName, refreshKey }: LeaderboardP
   }
 
   return (
-    <div className="bg-slate-800 rounded-xl p-4 sm:p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold text-white font-title">{gameTypeName}</h2>
-      </div>
-
+    <div className="bg-slate-800 rounded-xl overflow-hidden">
       {/* Period Tabs */}
-      <div className="flex gap-1 mb-4 bg-slate-900/50 rounded-xl p-1 w-fit">
-        <button
-          onClick={() => handlePeriodChange('today')}
-          className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition ${
-            period === 'today'
-              ? 'bg-slate-700 text-white'
-              : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          Today
-        </button>
-        <button
-          onClick={() => handlePeriodChange('alltime')}
-          className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition ${
-            period === 'alltime'
-              ? 'bg-slate-700 text-white'
-              : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          All Time
-        </button>
+      <div className="px-4 pt-4 pb-0 flex justify-center">
+        <div className="flex gap-1 bg-slate-900/50 rounded-xl p-1 w-fit">
+          <button
+            onClick={() => handlePeriodChange('today')}
+            className={`px-5 py-2 rounded-lg text-sm font-semibold transition ${
+              period === 'today'
+                ? 'bg-slate-700 text-white'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            Today
+          </button>
+          <button
+            onClick={() => handlePeriodChange('alltime')}
+            className={`px-5 py-2 rounded-lg text-sm font-semibold transition ${
+              period === 'alltime'
+                ? 'bg-slate-700 text-white'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            All Time
+          </button>
+        </div>
       </div>
 
-      {period === 'today' && pool && (
-        <div className="grid grid-cols-3 text-center bg-slate-900/50 rounded-lg mb-4">
-          <div className="py-2.5 px-1">
-            <div className="text-lg font-bold text-yellow-400">
-              {formatCredits(pool.totalCredits)}
+      {/* Pool info bar — below tabs, Today only */}
+      {poolSize != null && poolSize > 0 && period === 'today' && (
+        <div className="flex items-start justify-between px-4 pt-3 pb-3">
+          <div className="min-w-0">
+            <p className="text-lg font-bold text-yellow-400 font-title">
+              <CC />{poolSize.toLocaleString()} Game Pool
+            </p>
+            <div className="text-[10px] text-slate-400 mt-0.5">
+              50% Winner &ndash; 30% Back &ndash; 20% Treasury
             </div>
-            <div className="text-[10px] text-slate-500"><CC />Credit Pool</div>
           </div>
-          <div className="py-2.5 px-1">
-            <div className="text-lg font-bold text-blue-400">
-              {pool.uniquePlayers}
-            </div>
-            <div className="text-[10px] text-slate-500">Players</div>
-          </div>
-          <div className="py-2.5 px-1">
-            <div className="text-lg font-bold text-green-400">
-              {pool.totalTurns}
-            </div>
-            <div className="text-[10px] text-slate-500">Turns</div>
+          <div className="text-right shrink-0">
+            <p className="text-base font-bold text-yellow-400 font-title">
+              {formatCountdown(msUntilSettlement || 0)}
+            </p>
+            <div className="text-[10px] text-slate-400 mt-0.5">till settlement</div>
           </div>
         </div>
       )}
@@ -192,61 +189,52 @@ export function Leaderboard({ gameType, gameTypeName, refreshKey }: LeaderboardP
             : 'No games played yet.'}
         </div>
       ) : (
-        <div className="space-y-2">
-          {entries.map((entry) => (
-            <div
-              key={entry.userId}
-              className={`flex items-center justify-between p-3 rounded-lg ${
-                entry.rank === 1
-                  ? 'bg-yellow-500/20 border border-yellow-500/30'
-                  : entry.rank === 2
-                  ? 'bg-slate-400/20 border border-slate-400/30'
-                  : entry.rank === 3
-                  ? 'bg-orange-500/20 border border-orange-500/30'
-                  : 'bg-slate-700/50'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <span
-                  className={`w-7 h-7 flex items-center justify-center rounded-full text-sm font-bold ${
-                    entry.rank === 1
-                      ? 'bg-yellow-500 text-black'
-                      : entry.rank === 2
-                      ? 'bg-slate-400 text-black'
-                      : entry.rank === 3
-                      ? 'bg-orange-500 text-black'
-                      : 'bg-slate-600 text-white'
-                  }`}
-                >
-                  {entry.rank}
-                </span>
-                <div>
-                  <div className="font-medium text-white text-sm flex items-center gap-1.5">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-slate-700">
+              <th className="text-left text-xs text-slate-400 font-medium pl-4 pr-1 py-2 w-8">#</th>
+              <th className="text-left text-xs text-slate-400 font-medium px-2 py-2">Player</th>
+              <th className="text-right text-xs text-slate-400 font-medium px-2 py-2">Score</th>
+              <th className="text-right text-xs text-slate-400 font-medium pl-2 pr-4 py-2">Turns</th>
+            </tr>
+          </thead>
+          <tbody>
+            {entries.map((entry, i) => (
+              <tr key={entry.userId} className={i < entries.length - 1 ? 'border-b border-slate-700/50' : ''}>
+                <td className="pl-4 pr-1 py-2.5">
+                  <span className={`text-sm font-bold ${
+                    entry.rank === 1 ? 'text-yellow-400'
+                    : entry.rank === 2 ? 'text-slate-400'
+                    : entry.rank === 3 ? 'text-orange-400'
+                    : 'text-slate-500'
+                  }`}>
+                    {entry.rank}
+                  </span>
+                </td>
+                <td className="px-2 py-2.5">
+                  <div className="flex items-center gap-1.5">
                     {entry.username ? (
-                      <Link href={`/player/${entry.username}`} className="tap-highlight hover:text-yellow-400 transition">
+                      <Link href={`/player/${entry.username}`} className="tap-highlight text-white text-sm font-medium hover:text-yellow-400 transition truncate">
                         {entry.displayName}
                       </Link>
                     ) : (
-                      entry.displayName
+                      <span className="text-white text-sm font-medium truncate">{entry.displayName}</span>
                     )}
-                    {entry.rank === 1 && <Crown className="w-3.5 h-3.5 text-yellow-400" />}
-                    {entry.rank === 2 && <Crown className="w-3.5 h-3.5 text-slate-400" />}
-                    {entry.rank === 3 && <Crown className="w-3.5 h-3.5 text-orange-400" />}
+                    {entry.rank === 1 && <Crown className="w-3.5 h-3.5 text-yellow-400 shrink-0" />}
+                    {entry.rank === 2 && <Crown className="w-3.5 h-3.5 text-slate-400 shrink-0" />}
+                    {entry.rank === 3 && <Crown className="w-3.5 h-3.5 text-orange-400 shrink-0" />}
                   </div>
-                  <div className="text-xs text-slate-400">
-                    {entry.turnsPlayed} turn{entry.turnsPlayed !== 1 ? 's' : ''}
-                  </div>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="font-bold text-white text-sm">{entry.bestScore.toLocaleString()}</div>
-                <div className="text-xs text-slate-400">
-                  {entry.bestTimeMs ? formatTime(entry.bestTimeMs) : '-'}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+                </td>
+                <td className="px-2 py-2.5 text-right">
+                  <span className="text-green-400 font-bold text-sm">{entry.bestScore.toLocaleString()}</span>
+                </td>
+                <td className="pl-2 pr-4 py-2.5 text-right">
+                  <span className="text-slate-400 text-xs">{entry.turnsPlayed}</span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       )}
     </div>
   )

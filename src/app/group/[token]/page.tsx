@@ -5,8 +5,8 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Link } from 'next-view-transitions'
 import {
-  ArrowLeft,
   Trophy,
+  Gamepad2,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useCreditsNotification } from '@/components/CreditsNotificationProvider'
@@ -237,16 +237,13 @@ export default function GroupPage({ params }: { params: Promise<{ token: string 
     <div className="max-w-6xl mx-auto px-4 py-8 overflow-x-hidden select-none">
       {/* Header */}
       <div className="mb-6">
-        <div className="flex items-start gap-3">
-          <Link href={`/game/${uiGameId}`} className="text-slate-400 hover:text-slate-900 dark:hover:text-white transition mt-1">
-            <ArrowLeft className="h-6 w-6" />
-          </Link>
-          <div className={`p-3 ${iconColors.bg} rounded-xl`}>
+        <Link href="/" className="flex items-start gap-3 min-w-0 group">
+          <div className={`p-3 ${iconColors.bg} rounded-xl shrink-0`}>
             <GameIcon className={`w-10 h-10 ${iconColors.icon}`} />
           </div>
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-white font-title">{gameDef.name}</h1>
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-white font-title group-hover:text-slate-300 transition">{gameDef.name}</h1>
               {(() => { const skill = getSkillForGame(uiGameId); return skill ? (
                 <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${skill.colors.bg} ${skill.colors.text}`}>
                   <span className={`w-1.5 h-1.5 rounded-full ${skill.colors.dot}`} />
@@ -256,7 +253,7 @@ export default function GroupPage({ params }: { params: Promise<{ token: string 
             </div>
             <p className="text-slate-500 dark:text-slate-400 text-sm">{gameDef.description}</p>
           </div>
-        </div>
+        </Link>
       </div>
 
       {/* Session Ended Banner */}
@@ -292,6 +289,15 @@ export default function GroupPage({ params }: { params: Promise<{ token: string 
                 groupSessionId={session.id}
               />
             )}
+          </div>
+          <div className="mt-3">
+            <Link
+              href="/"
+              className="w-full flex items-center justify-center gap-2 border-2 border-slate-300 dark:border-slate-600 hover:border-slate-400 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-semibold py-2.5 rounded-lg transition text-base"
+            >
+              <Gamepad2 className="w-5 h-5" />
+              All Games
+            </Link>
           </div>
         </div>
 

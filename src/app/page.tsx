@@ -234,13 +234,35 @@ export default function HomePage() {
   const [isSticky, setIsSticky] = useState(false)
   const stickySentinelRef = useRef<HTMLDivElement>(null)
   const [copied, setCopied] = useState(false)
-  const [topPlayersAllTime, setTopPlayersAllTime] = useState<TopPlayerEntry[]>([])
-  const [topPlayersToday, setTopPlayersToday] = useState<TopPlayerEntry[]>([])
+  const [topPlayersAllTime, setTopPlayersAllTime] = useState<TopPlayerEntry[]>(() => {
+    if (typeof window === 'undefined') return []
+    try { const c = sessionStorage.getItem('topPlayersAllTime'); return c ? JSON.parse(c) : [] } catch { return [] }
+  })
+  const [topPlayersToday, setTopPlayersToday] = useState<TopPlayerEntry[]>(() => {
+    if (typeof window === 'undefined') return []
+    try { const c = sessionStorage.getItem('topPlayersToday'); return c ? JSON.parse(c) : [] } catch { return [] }
+  })
   const [topPlayersTab, setTopPlayersTab] = useState<'allTime' | 'today'>('today')
-  const [topSkillsToday, setTopSkillsToday] = useState<TopSkillEntry[]>([])
-  const [topSkillsAllTime, setTopSkillsAllTime] = useState<TopSkillEntry[]>([])
+  const [topSkillsToday, setTopSkillsToday] = useState<TopSkillEntry[]>(() => {
+    if (typeof window === 'undefined') return []
+    try { const c = sessionStorage.getItem('topSkillsToday'); return c ? JSON.parse(c) : [] } catch { return [] }
+  })
+  const [topSkillsAllTime, setTopSkillsAllTime] = useState<TopSkillEntry[]>(() => {
+    if (typeof window === 'undefined') return []
+    try { const c = sessionStorage.getItem('topSkillsAllTime'); return c ? JSON.parse(c) : [] } catch { return [] }
+  })
 
-  const [siteTab, setSiteTab] = useState<'games' | 'topCharts'>('games')
+  const [siteTab, setSiteTab] = useState<'games' | 'topCharts'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = sessionStorage.getItem('homeSiteTab')
+      if (saved === 'games' || saved === 'topCharts') return saved
+    }
+    return 'games'
+  })
+  const setAndSaveSiteTab = (tab: 'games' | 'topCharts') => {
+    setSiteTab(tab)
+    sessionStorage.setItem('homeSiteTab', tab)
+  }
   const [viewMode, setViewMode] = useState<'list' | 'icons' | 'skills'>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('gameViewMode')
@@ -256,6 +278,7 @@ export default function HomePage() {
   const sharePopupRef = useRef<HTMLDivElement>(null)
 
   const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/auth/signup` : ''
+  const shareText = 'Compete across 5 mind skills on Podium Arena. Clock resets daily.'
 
   // Click outside to close popup
   useEffect(() => {
@@ -268,29 +291,17 @@ export default function HomePage() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const handleCopy = async () => {
+  const handleInvite = async () => {
+    const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+    if (isMobile && navigator.share) {
+      try { await navigator.share({ title: 'Podium Arena', text: shareText, url: shareUrl }); return } catch {}
+    }
     try {
-      await navigator.clipboard.writeText(shareUrl)
+      await navigator.clipboard.writeText(`${shareText}\n\n${shareUrl}`)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch (err) {
       console.error('Failed to copy:', err)
-    }
-  }
-
-  const handleShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'Join Podium Arena!',
-          text: `Play skill games and win ${C}Credits! Join using my link:`,
-          url: shareUrl,
-        })
-      } catch {
-        handleCopy()
-      }
-    } else {
-      handleCopy()
     }
   }
 
@@ -315,16 +326,16 @@ export default function HomePage() {
     fetch('/api/top-players')
       .then(res => res.ok ? res.json() : null)
       .then(data => {
-        if (data?.allTime) setTopPlayersAllTime(data.allTime)
-        if (data?.today) setTopPlayersToday(data.today)
+        if (data?.allTime) { setTopPlayersAllTime(data.allTime); try { sessionStorage.setItem('topPlayersAllTime', JSON.stringify(data.allTime)) } catch {} }
+        if (data?.today) { setTopPlayersToday(data.today); try { sessionStorage.setItem('topPlayersToday', JSON.stringify(data.today)) } catch {} }
       })
       .catch(() => {})
 
     fetch('/api/top-skills')
       .then(res => res.ok ? res.json() : null)
       .then(data => {
-        if (data?.today) setTopSkillsToday(data.today)
-        if (data?.allTime) setTopSkillsAllTime(data.allTime)
+        if (data?.today) { setTopSkillsToday(data.today); try { sessionStorage.setItem('topSkillsToday', JSON.stringify(data.today)) } catch {} }
+        if (data?.allTime) { setTopSkillsAllTime(data.allTime); try { sessionStorage.setItem('topSkillsAllTime', JSON.stringify(data.allTime)) } catch {} }
       })
       .catch(() => {})
 
@@ -464,16 +475,19 @@ export default function HomePage() {
       {/* Sticky Site Tab Controller */}
       <div className={`sticky top-0 z-30 -mx-4 px-4 py-2 bg-slate-900/95 backdrop-blur-sm ${isSticky ? 'sticky-bar-enter border-b border-slate-800' : ''}`}>
         <div className="relative flex items-center justify-center">
-          {/* Logo - absolutely positioned left, visible when stuck */}
-          <Link href="/" className={`absolute left-0 hidden items-center gap-2 text-lg font-bold text-white font-title transition-opacity duration-200 ${isSticky ? 'xl:flex opacity-100' : 'xl:hidden opacity-0'}`}>
+          {/* Logo - absolutely positioned left, visible when stuck — scrolls to top */}
+          <button
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            className={`absolute left-0 hidden items-center gap-2 text-lg font-bold text-white font-title transition-opacity duration-200 cursor-pointer ${isSticky ? 'xl:flex opacity-100' : 'xl:hidden opacity-0'}`}
+          >
             <Trophy className="w-5 h-5 text-yellow-400" />
             Podium Arena
-          </Link>
+          </button>
 
           {/* Tabs */}
           <div className="flex gap-1 bg-slate-800 rounded-xl p-1 w-full md:w-1/2">
             <button
-              onClick={() => setSiteTab('games')}
+              onClick={() => setAndSaveSiteTab('games')}
               className={`flex-1 flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition ${
                 siteTab === 'games'
                   ? 'bg-yellow-500 text-slate-900'
@@ -484,7 +498,7 @@ export default function HomePage() {
               Games
             </button>
             <button
-              onClick={() => setSiteTab('topCharts')}
+              onClick={() => setAndSaveSiteTab('topCharts')}
               className={`flex-1 flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition ${
                 siteTab === 'topCharts'
                   ? 'bg-yellow-500 text-slate-900'
@@ -582,42 +596,75 @@ export default function HomePage() {
                   </button>
                 </div>
               </div>
-              <div className="space-y-6 mb-10">
-                {rotatedSkillList.map(skill => {
-                  const skillGameDefs = Object.values(GAMES).filter(g => g.skill === skill.id)
-                  if (skillGameDefs.length === 0) return null
-                  const SkillIcon = SKILL_ICONS[skill.id]
-                  return (
-                    <div key={skill.id}>
-                      <div className="flex items-center gap-2.5 mb-3">
-                        <div className={`w-8 h-8 rounded-full ${skill.colors.bg} flex items-center justify-center`}>
-                          <SkillIcon className={`w-4 h-4 ${skill.colors.textLight} dark:${skill.colors.text}`} />
+              {viewMode === 'list' ? (
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
+                  {Object.values(GAMES).map(gameDef => (
+                    <div key={gameDef.id} className="bg-white dark:bg-slate-800 rounded-xl p-4 animate-pulse">
+                      <div className="h-[83px] bg-slate-200 dark:bg-slate-700 rounded-lg mb-3" />
+                      <div className="flex items-center gap-2">
+                        <div className={`p-1.5 rounded-lg ${gameDef.iconColors.bg}`}>
+                          {(() => { const Icon = GAME_ICONS[gameDef.id] || Target; return <Icon className={`w-4 h-4 ${gameDef.iconColors.icon}`} /> })()}
                         </div>
-                        <h3 className={`text-lg font-bold ${skill.colors.textLight} dark:${skill.colors.text}`}>{skill.name}</h3>
-                      </div>
-                      <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
-                        {skillGameDefs.map(gameDef => {
-                          const Icon = GAME_ICONS[gameDef.id] || Target
-                          return (
-                            <div
-                              key={gameDef.id}
-                              className="flex flex-col items-center text-center p-3 rounded-xl bg-white dark:bg-slate-800"
-                            >
-                              <div className={`p-3 rounded-2xl mb-2 ${gameDef.iconColors.bg}`}>
-                                <Icon className={`w-7 h-7 ${gameDef.iconColors.icon}`} />
-                              </div>
-                              <span className="text-xs font-medium text-slate-900 dark:text-white leading-tight line-clamp-2">{gameDef.name}</span>
-                              <div className="flex items-center gap-1 mt-0.5">
-                                <span className="text-[10px] text-slate-400 dark:text-slate-500 animate-pulse">· · ·</span>
-                              </div>
-                            </div>
-                          )
-                        })}
+                        <span className="text-sm font-semibold text-slate-900 dark:text-white">{gameDef.name}</span>
                       </div>
                     </div>
-                  )
-                })}
-              </div>
+                  ))}
+                </div>
+              ) : viewMode === 'icons' ? (
+                <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3 mb-10">
+                  {Object.values(GAMES).map(gameDef => {
+                    const Icon = GAME_ICONS[gameDef.id] || Target
+                    return (
+                      <div key={gameDef.id} className="flex flex-col items-center text-center p-3 rounded-xl bg-white dark:bg-slate-800">
+                        <div className={`p-3 rounded-2xl mb-2 ${gameDef.iconColors.bg}`}>
+                          <Icon className={`w-7 h-7 ${gameDef.iconColors.icon}`} />
+                        </div>
+                        <span className="text-xs font-medium text-slate-900 dark:text-white leading-tight line-clamp-2">{gameDef.name}</span>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <span className="text-[10px] text-slate-400 dark:text-slate-500 animate-pulse">· · ·</span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="space-y-6 mb-10">
+                  {rotatedSkillList.map(skill => {
+                    const skillGameDefs = Object.values(GAMES).filter(g => g.skill === skill.id)
+                    if (skillGameDefs.length === 0) return null
+                    const SkillIcon = SKILL_ICONS[skill.id]
+                    return (
+                      <div key={skill.id}>
+                        <div className="flex items-center gap-2.5 mb-3">
+                          <div className={`w-8 h-8 rounded-full ${skill.colors.bg} flex items-center justify-center`}>
+                            <SkillIcon className={`w-4 h-4 ${skill.colors.textLight} dark:${skill.colors.text}`} />
+                          </div>
+                          <h3 className={`text-lg font-bold ${skill.colors.textLight} dark:${skill.colors.text}`}>{skill.name}</h3>
+                        </div>
+                        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+                          {skillGameDefs.map(gameDef => {
+                            const Icon = GAME_ICONS[gameDef.id] || Target
+                            return (
+                              <div
+                                key={gameDef.id}
+                                className="flex flex-col items-center text-center p-3 rounded-xl bg-white dark:bg-slate-800"
+                              >
+                                <div className={`p-3 rounded-2xl mb-2 ${gameDef.iconColors.bg}`}>
+                                  <Icon className={`w-7 h-7 ${gameDef.iconColors.icon}`} />
+                                </div>
+                                <span className="text-xs font-medium text-slate-900 dark:text-white leading-tight line-clamp-2">{gameDef.name}</span>
+                                <div className="flex items-center gap-1 mt-0.5">
+                                  <span className="text-[10px] text-slate-400 dark:text-slate-500 animate-pulse">· · ·</span>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </>
           ) : data ? (
             <>
@@ -848,21 +895,76 @@ export default function HomePage() {
           )
         }
 
+        const renderSkillRows = (entries: TopSkillEntry[], title: string, showPool?: boolean) => (
+          <div>
+            <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-3">{title}</h4>
+            <div className="bg-white dark:bg-slate-800 rounded-xl overflow-hidden">
+              <table className="w-full">
+                <tbody>
+                  {SKILL_LIST.map((skill, i) => {
+                    const entry = entries.find(e => e.skillId === skill.id)
+                    const hasLeader = !!entry?.playerName
+                    const SkillIcon = SKILL_ICONS[skill.id]
+
+                    return (
+                      <tr key={skill.id} className={i < SKILL_LIST.length - 1 ? 'border-b border-slate-100 dark:border-slate-700/50' : ''}>
+                        <td className="px-3 sm:px-4 py-3 w-1/2">
+                          <div className="flex items-center gap-2 sm:gap-3">
+                            <div className={`w-8 h-8 rounded-full ${skill.colors.bg} flex items-center justify-center shrink-0`}>
+                              <SkillIcon className={`w-4 h-4 ${skill.colors.textLight} dark:${skill.colors.text}`} />
+                            </div>
+                            <span className={`text-sm font-semibold ${skill.colors.textLight} dark:${skill.colors.text}`}>{skill.name}</span>
+                          </div>
+                        </td>
+                        <td className="px-3 sm:px-4 py-3">
+                          {hasLeader ? (
+                            entry!.playerUsername ? (
+                              <Link href={`/player/${entry!.playerUsername}`} className="tap-highlight text-slate-500 text-sm hover:text-yellow-400 transition">
+                                {entry!.playerName}
+                              </Link>
+                            ) : (
+                              <span className="text-slate-500 text-sm">{entry!.playerName}</span>
+                            )
+                          ) : (
+                            <span className="text-xs text-slate-400 dark:text-slate-500">No leader yet</span>
+                          )}
+                        </td>
+                        <td className="px-2 py-3 text-right">
+                          {hasLeader && (
+                            <span className={`text-sm font-bold tabular-nums ${skill.colors.textLight} dark:${skill.colors.text}`}>{abbreviateNumber(entry!.skillScore)}</span>
+                          )}
+                        </td>
+                        {showPool && <td className="px-3 sm:px-4 py-3"></td>}
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )
+
         return (
           <div className="mt-6">
-            {/* Desktop: side by side */}
+            {/* Desktop: side by side columns, each with table + skills */}
             <div className="hidden lg:grid lg:grid-cols-2 lg:gap-6">
               <div>
                 <h3 className="text-sm font-medium text-slate-400 mb-3 text-center uppercase tracking-wider">Today</h3>
                 {renderTable(topPlayersToday, ' today', true)}
+                <div className="mt-6">
+                  {renderSkillRows(topSkillsToday, 'Top Skills Today', true)}
+                </div>
               </div>
               <div>
                 <h3 className="text-sm font-medium text-slate-400 mb-3 text-center uppercase tracking-wider">All Time</h3>
                 {renderTable(topPlayersAllTime, '')}
+                <div className="mt-6">
+                  {renderSkillRows(topSkillsAllTime, 'Top Skills All Time')}
+                </div>
               </div>
             </div>
 
-            {/* Mobile: tabs */}
+            {/* Mobile: tabs — table + skills follow the active tab */}
             <div className="lg:hidden">
               <div className="flex justify-center gap-2 mb-4">
                 <button
@@ -891,108 +993,12 @@ export default function HomePage() {
                 topPlayersTab === 'today' ? ' today' : '',
                 topPlayersTab === 'today'
               )}
-            </div>
-
-            {/* Top Skills */}
-            <div className="mt-12">
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white font-title">Top Skills</h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Bragging rights only.</p>
-
-              {/* Desktop: 5 tiles showing both today + all-time */}
-              <div className="hidden lg:grid lg:grid-cols-5 gap-3">
-                {SKILL_LIST.map(skill => {
-                  const todayEntry = topSkillsToday.find(e => e.skillId === skill.id)
-                  const allTimeEntry = topSkillsAllTime.find(e => e.skillId === skill.id)
-                  const hasAnyLeader = todayEntry?.playerName || allTimeEntry?.playerName
-                  const linkTarget = todayEntry?.playerUsername
-                    ? `/player/${todayEntry.playerUsername}`
-                    : allTimeEntry?.playerUsername
-                      ? `/player/${allTimeEntry.playerUsername}`
-                      : null
-
-                  const card = (
-                    <div className={`rounded-xl p-4 bg-white dark:bg-slate-800 border-l-2 ${skill.colors.border} ${hasAnyLeader ? '' : 'opacity-60'} ${linkTarget ? 'hover:scale-[1.02] hover:shadow-md transition-transform duration-150' : ''}`}>
-                      <div className="flex items-center gap-2 mb-3">
-                        <span className={`w-2.5 h-2.5 rounded-full ${skill.colors.dot}`} />
-                        <span className={`text-sm font-semibold ${skill.colors.textLight} dark:${skill.colors.text}`}>{skill.name}</span>
-                      </div>
-
-                      {todayEntry?.playerName ? (
-                        <div className="mb-3">
-                          <div className="text-sm font-medium text-slate-900 dark:text-white truncate">{todayEntry.playerName}</div>
-                          <div className="text-[11px] text-slate-500 dark:text-slate-400">#1 Today</div>
-                          <div className={`text-xs font-medium mt-0.5 ${skill.colors.textLight} dark:${skill.colors.text}`}>{abbreviateNumber(todayEntry.skillScore)}</div>
-                        </div>
-                      ) : (
-                        <div className="mb-3">
-                          <div className="text-xs text-slate-400 dark:text-slate-500">No leader yet today.</div>
-                          <div className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">Play to become the first.</div>
-                        </div>
-                      )}
-
-                      {allTimeEntry?.playerName ? (
-                        <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
-                          <div className="text-sm font-medium text-slate-900 dark:text-white truncate">{allTimeEntry.playerName}</div>
-                          <div className="text-[11px] text-slate-500 dark:text-slate-400">#1 All Time</div>
-                          <div className={`text-xs font-medium mt-0.5 ${skill.colors.textLight} dark:${skill.colors.text}`}>{abbreviateNumber(allTimeEntry.skillScore)}</div>
-                        </div>
-                      ) : (
-                        <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
-                          <div className="text-xs text-slate-400 dark:text-slate-500">No leader yet.</div>
-                        </div>
-                      )}
-                    </div>
-                  )
-
-                  return linkTarget ? (
-                    <Link key={skill.id} href={linkTarget} className="tap-highlight">
-                      {card}
-                    </Link>
-                  ) : (
-                    <div key={skill.id}>{card}</div>
-                  )
-                })}
-              </div>
-
-              {/* Mobile: follows topPlayersTab toggle */}
-              <div className="lg:hidden grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {SKILL_LIST.map(skill => {
-                  const entries = topPlayersTab === 'allTime' ? topSkillsAllTime : topSkillsToday
-                  const entry = entries.find(e => e.skillId === skill.id)
-                  const hasLeader = !!entry?.playerName
-                  const label = topPlayersTab === 'allTime' ? '#1 All Time' : '#1 Today'
-                  const emptyMsg = topPlayersTab === 'allTime' ? 'No leader yet.' : 'No leader yet today.'
-
-                  const card = (
-                    <div className={`rounded-xl p-4 bg-white dark:bg-slate-800 border-l-2 ${skill.colors.border} ${hasLeader ? '' : 'opacity-60'} ${hasLeader && entry?.playerUsername ? 'hover:scale-[1.02] hover:shadow-md transition-transform duration-150' : ''}`}>
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className={`w-2.5 h-2.5 rounded-full ${skill.colors.dot}`} />
-                        <span className={`text-sm font-semibold ${skill.colors.textLight} dark:${skill.colors.text}`}>{skill.name}</span>
-                      </div>
-
-                      {hasLeader ? (
-                        <>
-                          <div className="text-sm font-medium text-slate-900 dark:text-white truncate">{entry!.playerName}</div>
-                          <div className="text-[11px] text-slate-500 dark:text-slate-400">{label}</div>
-                          <div className={`text-xs font-medium mt-0.5 ${skill.colors.textLight} dark:${skill.colors.text}`}>{abbreviateNumber(entry!.skillScore)}</div>
-                        </>
-                      ) : (
-                        <>
-                          <div className="text-xs text-slate-400 dark:text-slate-500">{emptyMsg}</div>
-                          <div className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">Play to become the first.</div>
-                        </>
-                      )}
-                    </div>
-                  )
-
-                  return hasLeader && entry?.playerUsername ? (
-                    <Link key={skill.id} href={`/player/${entry.playerUsername}`} className="tap-highlight">
-                      {card}
-                    </Link>
-                  ) : (
-                    <div key={skill.id}>{card}</div>
-                  )
-                })}
+              <div className="mt-6">
+                {renderSkillRows(
+                  topPlayersTab === 'allTime' ? topSkillsAllTime : topSkillsToday,
+                  topPlayersTab === 'today' ? 'Top Skills Today' : 'Top Skills All Time',
+                  topPlayersTab === 'today'
+                )}
               </div>
             </div>
 
@@ -1063,22 +1069,13 @@ export default function HomePage() {
               <p className="text-sm text-slate-400 mb-3 text-left">
                 Get <span className="text-yellow-400 font-bold">100 <CC />Credits</span> when friends join!
               </p>
-              <div className="flex gap-2">
-                <button
-                  onClick={handleCopy}
-                  className="flex-1 flex items-center justify-center gap-2 border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 px-3 py-2 rounded-lg transition text-sm"
-                >
-                  {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
-                  {copied ? 'Copied!' : 'Copy Link'}
-                </button>
-                <button
-                  onClick={handleShare}
-                  className="flex-1 flex items-center justify-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-slate-900 px-3 py-2 rounded-lg transition text-sm"
-                >
-                  <Share2 className="w-4 h-4" />
-                  Share
-                </button>
-              </div>
+              <button
+                onClick={handleInvite}
+                className="w-full flex items-center justify-center gap-2 border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 px-3 py-2 rounded-lg transition text-sm"
+              >
+                {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                {copied ? 'Copied!' : 'Copy Invite'}
+              </button>
             </div>
           </div>
         )}

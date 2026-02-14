@@ -15,9 +15,13 @@ export function Header() {
   const { theme, toggleTheme } = useTheme()
   const pathname = usePathname()
   const isHome = pathname === '/'
+  const isGamePage = pathname.startsWith('/game/')
   const [showCreditsMenu, setShowCreditsMenu] = useState(false)
+  const [drawerClosing, setDrawerClosing] = useState(false)
+  const prevShowRef = useRef(false)
   const [copied, setCopied] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const drawerRef = useRef<HTMLDivElement>(null)
 
   const referralUrl = typeof window !== 'undefined' && referralCode
     ? `${window.location.origin}/auth/signup?ref=${referralCode}`
@@ -28,7 +32,11 @@ export function Header() {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+      const target = event.target as Node
+      if (
+        menuRef.current && !menuRef.current.contains(target) &&
+        (!drawerRef.current || !drawerRef.current.contains(target))
+      ) {
         setShowCreditsMenu(false)
       }
     }
@@ -36,9 +44,25 @@ export function Header() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const handleCopy = async () => {
+  // Animate drawer close on game pages
+  useEffect(() => {
+    if (prevShowRef.current && !showCreditsMenu && isGamePage) {
+      setDrawerClosing(true)
+    } else if (showCreditsMenu) {
+      setDrawerClosing(false)
+    }
+    prevShowRef.current = showCreditsMenu
+  }, [showCreditsMenu, isGamePage])
+
+  const shareText = 'Compete across 5 mind skills on Podium Arena. Clock resets daily.'
+
+  const handleInvite = async () => {
+    const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+    if (isMobile && navigator.share) {
+      try { await navigator.share({ title: 'Podium Arena', text: shareText, url: referralUrl }); return } catch {}
+    }
     try {
-      await navigator.clipboard.writeText(referralUrl)
+      await navigator.clipboard.writeText(`${shareText}\n\n${referralUrl}`)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch (err) {
@@ -46,21 +70,76 @@ export function Header() {
     }
   }
 
-  const handleShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'Join Podium Arena!',
-          text: `Play skill games and win ${C}Credits! Join using my link:`,
-          url: referralUrl,
-        })
-      } catch {
-        handleCopy()
-      }
-    } else {
-      handleCopy()
-    }
-  }
+  const creditsMenuContent = (
+    <>
+      <div className="p-4 border-b border-slate-700">
+        <div className="text-center">
+          <span className="text-3xl font-bold text-yellow-400">{balance}</span>
+          <span className="text-slate-400 ml-2"><CC />Credits</span>
+        </div>
+      </div>
+
+      {hasPendingClaims && (
+        <button
+          onClick={() => {
+            claimCredits()
+            setShowCreditsMenu(false)
+          }}
+          disabled={isClaiming}
+          className={`w-full px-4 py-3 flex items-center gap-3 transition text-left ring-1 ring-yellow-400/30 ${isClaiming ? 'opacity-60 cursor-not-allowed' : 'hover:bg-slate-700 animate-pulse-subtle'}`}
+        >
+          {isClaiming ? <Loader2 className="w-5 h-5 text-yellow-400 animate-spin" /> : <Trophy className="w-5 h-5 text-yellow-400" />}
+          <div>
+            <div className="text-yellow-400 font-semibold">{isClaiming ? 'Claiming...' : <>Claim {pendingTotal} <CC />Credits!</>}</div>
+            <div className="text-sm text-slate-400">{isClaiming ? 'Processing your winnings' : 'You have unclaimed winnings'}</div>
+          </div>
+        </button>
+      )}
+
+      {dailyGrantAvailable && !hasPendingClaims && (
+        <button
+          onClick={() => {
+            claimCredits()
+            setShowCreditsMenu(false)
+          }}
+          disabled={isClaiming}
+          className={`w-full px-4 py-3 flex items-center gap-3 transition text-left ring-1 ring-green-400/30 ${isClaiming ? 'opacity-60 cursor-not-allowed' : 'hover:bg-slate-700 animate-pulse-subtle'}`}
+        >
+          {isClaiming ? <Loader2 className="w-5 h-5 text-green-400 animate-spin" /> : <Gift className="w-5 h-5 text-green-400" />}
+          <div>
+            <div className="text-white font-semibold">{isClaiming ? 'Claiming...' : <>Claim Daily <CC />Credits</>}</div>
+            <div className="text-sm text-slate-400">{isClaiming ? 'Processing your credits' : 'Your daily credits are ready'}</div>
+          </div>
+        </button>
+      )}
+
+      <Link
+        href={profileUsername ? `/player/${profileUsername}?tab=history` : '/credits'}
+        onClick={() => setShowCreditsMenu(false)}
+        className="w-full px-4 py-3 flex items-center gap-3 hover:bg-slate-700 transition text-left"
+      >
+        <History className="w-5 h-5 text-slate-400" />
+        <div className="text-white font-semibold">Credit History</div>
+      </Link>
+
+      <div className="p-4 border-t border-slate-700">
+        <div className="flex items-center gap-2 mb-3">
+          <Share2 className="w-4 h-4 text-yellow-400" />
+          <span className="text-white font-semibold">Invite Friends</span>
+        </div>
+        <p className="text-sm text-slate-400 mb-3">
+          Get <span className="text-yellow-400 font-bold">100 <CC />Credits</span> when friends join!
+        </p>
+        <button
+          onClick={handleInvite}
+          className="w-full flex items-center justify-center gap-2 border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 px-3 py-2 rounded-lg transition text-sm"
+        >
+          {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+          {copied ? 'Copied!' : 'Copy Invite'}
+        </button>
+      </div>
+    </>
+  )
 
   return (
     <header className={`${isHome ? '' : 'sticky top-0 z-40 backdrop-blur-sm'} bg-slate-900/95 border-b border-slate-800`}>
@@ -74,9 +153,9 @@ export function Header() {
           <nav className="flex items-center gap-6">
             {!authLoading && user ? (
               <>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 relative" ref={menuRef}>
                   {!creditsLoading && (
-                    <div className="relative" ref={menuRef}>
+                    <div>
                       <button
                         onClick={() => {
                           const wasOpen = showCreditsMenu
@@ -96,86 +175,6 @@ export function Header() {
                           <span className="absolute -top-1 -right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
                         )}
                       </button>
-
-                      {showCreditsMenu && (
-                        <div className="absolute right-0 mt-2 w-72 bg-slate-800 rounded-xl shadow-xl border border-slate-700 z-50 overflow-hidden">
-                          <div className="p-4 border-b border-slate-700">
-                            <div className="text-center">
-                              <span className="text-3xl font-bold text-yellow-400">{balance}</span>
-                              <span className="text-slate-400 ml-2"><CC />Credits</span>
-                            </div>
-                          </div>
-
-                          {hasPendingClaims && (
-                            <button
-                              onClick={() => {
-                                claimCredits()
-                                setShowCreditsMenu(false)
-                              }}
-                              disabled={isClaiming}
-                              className={`w-full px-4 py-3 flex items-center gap-3 transition text-left ring-1 ring-yellow-400/30 ${isClaiming ? 'opacity-60 cursor-not-allowed' : 'hover:bg-slate-700 animate-pulse-subtle'}`}
-                            >
-                              {isClaiming ? <Loader2 className="w-5 h-5 text-yellow-400 animate-spin" /> : <Trophy className="w-5 h-5 text-yellow-400" />}
-                              <div>
-                                <div className="text-yellow-400 font-semibold">{isClaiming ? 'Claiming...' : <>Claim {pendingTotal} <CC />Credits!</>}</div>
-                                <div className="text-sm text-slate-400">{isClaiming ? 'Processing your winnings' : 'You have unclaimed winnings'}</div>
-                              </div>
-                            </button>
-                          )}
-
-                          {dailyGrantAvailable && !hasPendingClaims && (
-                            <button
-                              onClick={() => {
-                                claimCredits()
-                                setShowCreditsMenu(false)
-                              }}
-                              disabled={isClaiming}
-                              className={`w-full px-4 py-3 flex items-center gap-3 transition text-left ring-1 ring-green-400/30 ${isClaiming ? 'opacity-60 cursor-not-allowed' : 'hover:bg-slate-700 animate-pulse-subtle'}`}
-                            >
-                              {isClaiming ? <Loader2 className="w-5 h-5 text-green-400 animate-spin" /> : <Gift className="w-5 h-5 text-green-400" />}
-                              <div>
-                                <div className="text-white font-semibold">{isClaiming ? 'Claiming...' : <>Claim Daily <CC />Credits</>}</div>
-                                <div className="text-sm text-slate-400">{isClaiming ? 'Processing your credits' : 'Your daily credits are ready'}</div>
-                              </div>
-                            </button>
-                          )}
-
-                          <Link
-                            href={profileUsername ? `/player/${profileUsername}?tab=history` : '/credits'}
-                            onClick={() => setShowCreditsMenu(false)}
-                            className="w-full px-4 py-3 flex items-center gap-3 hover:bg-slate-700 transition text-left"
-                          >
-                            <History className="w-5 h-5 text-slate-400" />
-                            <div className="text-white font-semibold">Credit History</div>
-                          </Link>
-
-                          <div className="p-4 border-t border-slate-700">
-                            <div className="flex items-center gap-2 mb-3">
-                              <Share2 className="w-4 h-4 text-yellow-400" />
-                              <span className="text-white font-semibold">Invite Friends</span>
-                            </div>
-                            <p className="text-sm text-slate-400 mb-3">
-                              Get <span className="text-yellow-400 font-bold">100 <CC />Credits</span> when friends join!
-                            </p>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={handleCopy}
-                                className="flex-1 flex items-center justify-center gap-2 border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 px-3 py-2 rounded-lg transition text-sm"
-                              >
-                                {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
-                                {copied ? 'Copied!' : 'Copy Link'}
-                              </button>
-                              <button
-                                onClick={handleShare}
-                                className="flex-1 flex items-center justify-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-slate-900 px-3 py-2 rounded-lg transition text-sm"
-                              >
-                                <Share2 className="w-4 h-4" />
-                                Share
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      )}
                     </div>
                   )}
 
@@ -201,6 +200,12 @@ export function Header() {
                       )}
                     </button>
                   </div>
+
+                  {showCreditsMenu && !isGamePage && (
+                    <div className="absolute right-0 top-full mt-2 w-72 bg-slate-800 rounded-xl shadow-xl border border-slate-700 z-50 overflow-hidden">
+                      {creditsMenuContent}
+                    </div>
+                  )}
                 </div>
               </>
             ) : !authLoading ? (
@@ -227,6 +232,21 @@ export function Header() {
           </nav>
         </div>
       </div>
+
+      {(showCreditsMenu || drawerClosing) && isGamePage && (
+        <div className="absolute left-0 right-0 top-full overflow-hidden z-50">
+          <div
+            ref={drawerRef}
+            onAnimationEnd={() => { if (drawerClosing) setDrawerClosing(false) }}
+            className={`border-t border-slate-700 bg-slate-800 shadow-xl ${drawerClosing ? 'pointer-events-none' : ''}`}
+            style={{ animation: `slideDown 0.2s ${drawerClosing ? 'ease-in reverse forwards' : 'ease-out'}` }}
+          >
+            <div className="max-w-6xl mx-auto px-4 py-3">
+              {creditsMenuContent}
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   )
 }

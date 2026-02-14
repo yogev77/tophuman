@@ -72,30 +72,19 @@ function OutOfCreditsView({ referralCode }: { referralCode: string | null }) {
   const referralUrl = typeof window !== 'undefined' && referralCode
     ? `${window.location.origin}/auth/signup?ref=${referralCode}`
     : ''
+  const shareText = 'Compete across 5 mind skills on Podium Arena. Clock resets daily.'
 
-  const handleCopy = async () => {
+  const handleInvite = async () => {
+    const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+    if (isMobile && navigator.share) {
+      try { await navigator.share({ title: 'Podium Arena', text: shareText, url: referralUrl }); return } catch {}
+    }
     try {
-      await navigator.clipboard.writeText(referralUrl)
+      await navigator.clipboard.writeText(`${shareText}\n\n${referralUrl}`)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch (err) {
       console.error('Failed to copy:', err)
-    }
-  }
-
-  const handleShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'Join Podium Arena!',
-          text: `Play skill games and win ${C}Credits! Join using my link:`,
-          url: referralUrl,
-        })
-      } catch {
-        handleCopy()
-      }
-    } else {
-      handleCopy()
     }
   }
 
@@ -125,22 +114,13 @@ function OutOfCreditsView({ referralCode }: { referralCode: string | null }) {
                 <p className="text-slate-300 text-sm mb-3">
                   Invite friends and earn <span className="text-yellow-400 font-semibold">100 <CC />Credits</span> when they join!
                 </p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleCopy}
-                    className="flex items-center gap-2 border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 px-4 py-2 rounded-lg transition text-sm"
-                  >
-                    {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
-                    {copied ? 'Copied!' : 'Copy Link'}
-                  </button>
-                  <button
-                    onClick={handleShare}
-                    className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-slate-900 px-4 py-2 rounded-lg transition text-sm"
-                  >
-                    <Share2 className="w-4 h-4" />
-                    Share
-                  </button>
-                </div>
+                <button
+                  onClick={handleInvite}
+                  className="flex items-center gap-2 border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 px-4 py-2 rounded-lg transition text-sm"
+                >
+                  {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                  {copied ? 'Copied!' : 'Copy Invite'}
+                </button>
               </div>
             </div>
           </div>
@@ -177,6 +157,7 @@ function GamePageContent({ gameType }: { gameType: string }) {
   const [leaderboardRefreshKey, setLeaderboardRefreshKey] = useState(0)
   const [gameCompleted, setGameCompleted] = useState(false)
   const [creatingGroup, setCreatingGroup] = useState(false)
+  const [inviteCopied, setInviteCopied] = useState(false)
 
   const fetchPoolSize = useCallback(async () => {
     try {
@@ -313,11 +294,19 @@ function GamePageContent({ gameType }: { gameType: string }) {
             <div className={`p-3 ${iconColors.bg} rounded-xl shrink-0`}>
               <GameIcon className={`w-10 h-10 ${iconColors.icon}`} />
             </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-bold text-white font-title group-hover:text-slate-300 transition">{gameDef.name}</h1>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <h1 className="text-2xl font-bold text-white font-title group-hover:text-slate-300 transition truncate">{gameDef.name}</h1>
+                  {(() => { const skill = getSkillForGame(gameType); return skill ? (
+                    <span className={`hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${skill.colors.bg} ${skill.colors.text}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${skill.colors.dot}`} />
+                      {skill.name}
+                    </span>
+                  ) : null })()}
+                </div>
                 {(() => { const skill = getSkillForGame(gameType); return skill ? (
-                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${skill.colors.bg} ${skill.colors.text}`}>
+                  <span className={`md:hidden inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap shrink-0 ${skill.colors.bg} ${skill.colors.text}`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${skill.colors.dot}`} />
                     {skill.name}
                   </span>
@@ -376,30 +365,6 @@ function GamePageContent({ gameType }: { gameType: string }) {
               All Games
             </Link>
           </motion.div>
-          {poolSize !== null && poolSize > 0 && (
-            <motion.div
-              layout
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.25, ease: [0.22, 1, 0.36, 1], layout: { duration: 0.3 } }}
-              className="bg-slate-800 rounded-xl mt-3 py-4 px-6 flex items-start justify-between gap-4"
-            >
-              <div className="min-w-0">
-                <p className="text-xl font-bold text-yellow-400 font-title">
-                  Pool: {poolSize.toLocaleString()} <CC />Credits
-                </p>
-                <div className="text-xs text-slate-400 mt-1">
-                  50% Winner &ndash; 30% Back &ndash; 20% Treasury
-                </div>
-              </div>
-              <div className="text-right shrink-0 pt-1.5">
-                <div className="text-sm font-mono text-yellow-400">
-                  {formatCountdown(msUntilSettlement)}
-                </div>
-                <div className="text-xs text-slate-400">till settlement</div>
-              </div>
-            </motion.div>
-          )}
         </div>
 
         <motion.div
@@ -408,6 +373,14 @@ function GamePageContent({ gameType }: { gameType: string }) {
           transition={{ duration: 0.35, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
           className="space-y-4"
         >
+          <Leaderboard
+            gameType={toDbGameTypeId(gameType)}
+            gameTypeName={gameDef.name}
+            refreshKey={leaderboardRefreshKey}
+            poolSize={poolSize}
+            msUntilSettlement={msUntilSettlement}
+          />
+
           {/* Group Play Section */}
           <div className="bg-white dark:bg-slate-800 rounded-xl p-4">
             <div className="flex items-start gap-3 mb-3">
@@ -431,13 +404,40 @@ function GamePageContent({ gameType }: { gameType: string }) {
             </button>
           </div>
 
-          <Leaderboard
-            gameType={toDbGameTypeId(gameType)}
-            gameTypeName={gameDef.name}
-            refreshKey={leaderboardRefreshKey}
-          />
+          {/* Invite Friends */}
+          {referralCode && (
+            <div className="bg-white dark:bg-slate-800 rounded-xl p-4">
+              <div className="flex items-start gap-3 mb-3">
+                <div className="p-2 bg-yellow-500/20 rounded-lg shrink-0">
+                  <Share2 className="w-5 h-5 text-yellow-500 dark:text-yellow-400" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-1">Invite Friends</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                    Get <span className="text-yellow-400 font-bold">100 <CC />Credits</span> when friends join!
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={async () => {
+                  const url = `${window.location.origin}/auth/signup?ref=${referralCode}`
+                  const text = 'Compete across 5 mind skills on Podium Arena. Clock resets daily.'
+                  const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+                  if (isMobile && navigator.share) {
+                    try { await navigator.share({ title: 'Podium Arena', text, url }); return } catch {}
+                  }
+                  try { await navigator.clipboard.writeText(`${text}\n\n${url}`); setInviteCopied(true); setTimeout(() => setInviteCopied(false), 2000) } catch {}
+                }}
+                className="w-full flex items-center justify-center gap-1.5 text-sm border border-yellow-500 text-yellow-600 dark:text-yellow-400 hover:bg-yellow-500/10 px-3 py-2 rounded-lg transition"
+              >
+                {inviteCopied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+                {inviteCopied ? 'Copied!' : 'Copy Invite'}
+              </button>
+            </div>
+          )}
         </motion.div>
       </div>
+
     </div>
   )
 }
