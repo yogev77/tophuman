@@ -3,7 +3,7 @@
 import { use } from 'react'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import { Link } from 'next-view-transitions'
 import {
   ArrowLeft,
   Trophy,
@@ -33,6 +33,7 @@ import { ReactionBarsGame } from '@/components/ReactionBarsGame'
 import { ImagePuzzleGame } from '@/components/ImagePuzzleGame'
 import { DrawMeGame } from '@/components/DrawMeGame'
 import { BeatMatchGame } from '@/components/BeatMatchGame'
+import { GridRecallGame } from '@/components/GridRecallGame'
 
 const GAME_COMPONENTS: Record<string, React.ComponentType<{ onGameComplete?: () => void; groupSessionId?: string }>> = {
   emoji_keypad: EmojiKeypadGame,
@@ -54,6 +55,7 @@ const GAME_COMPONENTS: Record<string, React.ComponentType<{ onGameComplete?: () 
   image_puzzle: ImagePuzzleGame,
   draw_me: DrawMeGame,
   beat_match: BeatMatchGame,
+  grid_recall: GridRecallGame,
 }
 
 interface SessionData {

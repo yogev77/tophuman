@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { Recursive } from 'next/font/google'
+import { ViewTransitions } from 'next-view-transitions'
 import './globals.css'
 import { Header } from '@/components/Header'
 import { ThemeProvider } from '@/hooks/useTheme'
@@ -48,22 +49,24 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className="dark">
-      <body className={`${recursive.className} ${recursive.variable} bg-slate-100 dark:bg-slate-900 min-h-screen transition-colors`}>
-        <ThemeProvider>
-          <SoundProvider>
-          <CreditsNotificationProvider>
-          <GroupPlayProvider>
-            <Header />
-            <GroupPlayBar />
-            <main className="pb-14">{children}</main>
-            <BottomNotificationBar />
-            <Toaster position="bottom-right" theme="dark" toastOptions={{ duration: 4000 }} />
-          </GroupPlayProvider>
-          </CreditsNotificationProvider>
-          </SoundProvider>
-        </ThemeProvider>
-      </body>
-    </html>
+    <ViewTransitions>
+      <html lang="en" className="dark">
+        <body className={`${recursive.className} ${recursive.variable} bg-slate-100 dark:bg-slate-900 min-h-screen transition-colors`}>
+          <ThemeProvider>
+            <SoundProvider>
+            <CreditsNotificationProvider>
+            <GroupPlayProvider>
+              <Header />
+              <GroupPlayBar />
+              <main className="pb-14">{children}</main>
+              <BottomNotificationBar />
+              <Toaster position="bottom-right" theme="dark" toastOptions={{ duration: 4000 }} />
+            </GroupPlayProvider>
+            </CreditsNotificationProvider>
+            </SoundProvider>
+          </ThemeProvider>
+        </body>
+      </html>
+    </ViewTransitions>
   )
 }

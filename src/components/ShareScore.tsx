@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Share2, Copy, Check } from 'lucide-react'
+import { Share2, Check } from 'lucide-react'
 import { useCredits } from '@/hooks/useCredits'
 import { CC } from '@/lib/currency'
 
@@ -9,9 +9,10 @@ interface ShareScoreProps {
   gameName: string
   score: number
   rank?: number
+  inline?: boolean
 }
 
-export function ShareScore({ gameName, score, rank }: ShareScoreProps) {
+export function ShareScore({ gameName, score, rank, inline }: ShareScoreProps) {
   const [copied, setCopied] = useState(false)
   const { referralCode } = useCredits()
 
@@ -49,6 +50,18 @@ export function ShareScore({ gameName, score, rank }: ShareScoreProps) {
     } else {
       handleCopy()
     }
+  }
+
+  if (inline) {
+    return (
+      <button
+        onClick={handleShare}
+        className="flex items-center justify-center gap-2 border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 rounded-lg transition"
+      >
+        {copied ? <Check className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
+        {copied ? 'Copied!' : 'Share Score'}
+      </button>
+    )
   }
 
   return (

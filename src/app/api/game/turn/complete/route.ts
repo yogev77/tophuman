@@ -19,6 +19,7 @@ import { validateReactionBarsTurn, ReactionBarsTurnSpec } from '@/lib/game/react
 import { validateImagePuzzleTurn, ImagePuzzleTurnSpec } from '@/lib/game/image-puzzle'
 import { validateDrawMeTurn, DrawMeTurnSpec } from '@/lib/game/draw-me'
 import { validateBeatMatchTurn, BeatMatchTurnSpec } from '@/lib/game/beat-match'
+import { validateGridRecallTurn, GridRecallTurnSpec } from '@/lib/game/grid-recall'
 
 export async function POST(request: NextRequest) {
   try {
@@ -206,6 +207,11 @@ export async function POST(request: NextRequest) {
       case 'beat_match': {
         const spec = turn.spec as unknown as BeatMatchTurnSpec
         result = validateBeatMatchTurn(spec, baseEvents)
+        break
+      }
+      case 'grid_recall': {
+        const spec = turn.spec as unknown as GridRecallTurnSpec
+        result = validateGridRecallTurn(spec, baseEvents)
         break
       }
       default: {

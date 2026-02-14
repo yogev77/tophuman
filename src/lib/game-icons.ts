@@ -18,6 +18,7 @@ import {
   Puzzle,
   Brush,
   Drum,
+  Grid2X2,
   LucideIcon,
 } from 'lucide-react'
 
@@ -41,4 +42,5 @@ export const GAME_ICONS: Record<string, LucideIcon> = {
   image_puzzle: Puzzle,
   draw_me: Brush,
   beat_match: Drum,
+  grid_recall: Grid2X2,
 }

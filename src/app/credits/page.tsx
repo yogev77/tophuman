@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import Link from 'next/link'
+import { Link } from 'next-view-transitions'
 import { useCreditsNotification } from '@/components/CreditsNotificationProvider'
 import {
   ArrowLeft,
@@ -203,10 +203,20 @@ export default function CreditsPage() {
       ) : (
         <>
           <div className="space-y-4">
-            {groupEntriesByDay(entries).map((day) => (
+            {(() => {
+              const dayGroups = groupEntriesByDay(entries)
+              let running = balance ?? 0
+              return dayGroups.map((day) => {
+                const endOfDayBalance = running
+                const dayNet = day.entries.reduce((sum, e) => sum + e.totalAmount, 0)
+                running -= dayNet
+                return (
               <div key={day.utc_day}>
-                <div className="text-xs text-slate-400 font-medium mb-2 px-1">
-                  {formatDate(day.utc_day)}
+                <div className="flex items-center justify-between text-xs font-medium mb-2 px-1">
+                  <span className="text-slate-400">{formatDate(day.utc_day)}</span>
+                  <span className="text-slate-500 tabular-nums">
+                    {dayNet >= 0 ? '+' : ''}{dayNet} · Bal {endOfDayBalance}
+                  </span>
                 </div>
                 <div className="bg-slate-800 rounded-xl overflow-hidden">
                   {day.entries.map((grouped, idx) => {
@@ -264,7 +274,9 @@ export default function CreditsPage() {
                   })}
                 </div>
               </div>
-            ))}
+                )
+              })
+            })()}
           </div>
 
           {hasMore && (

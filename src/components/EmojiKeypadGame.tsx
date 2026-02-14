@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import Link from 'next/link'
+
 import { Target } from 'lucide-react'
 import { formatTime } from '@/lib/utils'
 import { ShareScore } from './ShareScore'
 import { Spinner } from '@/components/Spinner'
+import { GameLoading } from '@/components/GameLoading'
 import { CC } from '@/lib/currency'
 import { GameThumbnail } from '@/components/GameThumbnail'
 import { useSound } from '@/hooks/useSound'
@@ -335,17 +336,12 @@ export function EmojiKeypadGame({ onGameComplete, groupSessionId }: EmojiKeypadG
             onClick={startGame}
             className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg text-lg transition"
           >
-            Start Game (1 <CC />Credit)
+            Start (1 <CC />Credit)
           </button>
         </div>
       )}
 
-      {phase === 'loading' && (
-        <div className="text-center py-12">
-          <div className="mx-auto mb-4"><Spinner /></div>
-          <p className="text-slate-300">Preparing game...</p>
-        </div>
-      )}
+      {phase === 'loading' && <GameLoading gameId="emoji_keypad" message="Preparing game..." />}
 
       {phase === 'memorize' && spec && flashIndex >= 0 && (
         <div className="text-center py-8 px-2">
@@ -455,11 +451,8 @@ export function EmojiKeypadGame({ onGameComplete, groupSessionId }: EmojiKeypadG
             >
               Play Again
             </button>
-            <Link href="/" className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 rounded-lg transition text-center">
-              New Game
-            </Link>
+            <ShareScore gameName="Sequence" score={result.score || 0} rank={result.rank} inline />
           </div>
-          <ShareScore gameName="Sequence" score={result.score || 0} rank={result.rank} />
         </div>
       )}
 
@@ -478,16 +471,13 @@ export function EmojiKeypadGame({ onGameComplete, groupSessionId }: EmojiKeypadG
               ? 'You ran out of time.'
               : 'Better luck next time!'}
           </p>
-          <div className="grid grid-cols-2 gap-3 max-w-xs mx-auto">
+          <div className="max-w-xs mx-auto">
             <button
               onClick={startGame}
-              className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 rounded-lg transition"
+              className="w-full bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 rounded-lg transition"
             >
               Try Again
             </button>
-            <Link href="/" className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 rounded-lg transition text-center">
-              New Game
-            </Link>
           </div>
         </div>
       )}

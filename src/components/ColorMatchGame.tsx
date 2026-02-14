@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import Link from 'next/link'
+
 import { Palette } from 'lucide-react'
 import { formatTime } from '@/lib/utils'
 import { ShareScore } from './ShareScore'
 import { Spinner } from '@/components/Spinner'
 import { CC } from '@/lib/currency'
 import { GameThumbnail } from '@/components/GameThumbnail'
+import { GameLoading } from '@/components/GameLoading'
 import { useSound } from '@/hooks/useSound'
 
 type GamePhase = 'idle' | 'loading' | 'play' | 'checking' | 'completed' | 'failed'
@@ -368,17 +369,12 @@ export function ColorMatchGame({ onGameComplete, groupSessionId }: ColorMatchGam
             onClick={startGame}
             className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg text-lg transition"
           >
-            Start Game (1 <CC />Credit)
+            Start (1 <CC />Credit)
           </button>
         </div>
       )}
 
-      {phase === 'loading' && (
-        <div className="text-center py-12">
-          <div className="mx-auto mb-4"><Spinner /></div>
-          <p className="text-slate-300">Preparing game...</p>
-        </div>
-      )}
+      {phase === 'loading' && <GameLoading gameId="color_match" message="Preparing game..." />}
 
       {phase === 'play' && targetColor && (
         <div>
@@ -458,11 +454,8 @@ export function ColorMatchGame({ onGameComplete, groupSessionId }: ColorMatchGam
             >
               Play Again
             </button>
-            <Link href="/" className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 rounded-lg transition text-center">
-              New Game
-            </Link>
+            <ShareScore gameName="Color Match" score={result.score || 0} rank={result.rank} inline />
           </div>
-          <ShareScore gameName="Color Match" score={result.score || 0} rank={result.rank} />
         </div>
       )}
 
@@ -477,16 +470,13 @@ export function ColorMatchGame({ onGameComplete, groupSessionId }: ColorMatchGam
               ? `Accuracy too low: ${Math.round((result.averageAccuracy || 0) * 100)}%`
               : 'Better luck next time!'}
           </p>
-          <div className="grid grid-cols-2 gap-3 max-w-xs mx-auto">
+          <div className="max-w-xs mx-auto">
             <button
               onClick={startGame}
-              className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 rounded-lg transition"
+              className="w-full bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 rounded-lg transition"
             >
               Try Again
             </button>
-            <Link href="/" className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 rounded-lg transition text-center">
-              New Game
-            </Link>
           </div>
         </div>
       )}

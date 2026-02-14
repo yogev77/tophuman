@@ -2,7 +2,9 @@
 
 import { use } from 'react'
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { notFound, useRouter } from 'next/navigation'
+import { notFound } from 'next/navigation'
+import { useTransitionRouter } from 'next-view-transitions'
+import { motion, AnimatePresence } from 'framer-motion'
 import { formatCountdown } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
 import { useCreditsNotification } from '@/components/CreditsNotificationProvider'
@@ -25,16 +27,17 @@ import { ReactionBarsGame } from '@/components/ReactionBarsGame'
 import { ImagePuzzleGame } from '@/components/ImagePuzzleGame'
 import { DrawMeGame } from '@/components/DrawMeGame'
 import { BeatMatchGame } from '@/components/BeatMatchGame'
+import { GridRecallGame } from '@/components/GridRecallGame'
 import { Leaderboard } from '@/components/Leaderboard'
-import Link from 'next/link'
+import { Link } from 'next-view-transitions'
 import {
-  ArrowLeft,
   CalendarCheck,
   Share2,
   Copy,
   Check,
   RefreshCw,
   Users,
+  Gamepad2,
 } from 'lucide-react'
 import { C, CC } from '@/lib/currency'
 import { GAMES, toDbGameTypeId, getSkillForGame } from '@/lib/skills'
@@ -60,6 +63,7 @@ const GAME_COMPONENTS: Record<string, React.ComponentType<{ onGameComplete?: () 
   image_puzzle: ImagePuzzleGame,
   draw_me: DrawMeGame,
   beat_match: BeatMatchGame,
+  grid_recall: GridRecallGame,
 }
 
 function OutOfCreditsView({ referralCode }: { referralCode: string | null }) {
@@ -106,7 +110,7 @@ function OutOfCreditsView({ referralCode }: { referralCode: string | null }) {
           <div>
             <p className="text-slate-300 text-sm">
               Come back tomorrow to claim your <span className="text-yellow-400 font-semibold">free daily <CC />Credits</span>.
-              Daily credits are only available when you visit &mdash; unclaimed days are lost, so don&apos;t miss out!
+              Daily credits are only available when you visit.
             </p>
           </div>
         </div>
@@ -158,7 +162,7 @@ export default function GamePage({ params }: { params: Promise<{ type: string }>
 }
 
 function GamePageContent({ gameType }: { gameType: string }) {
-  const router = useRouter()
+  const router = useTransitionRouter()
   const { user, loading: authLoading } = useAuth()
   const { balance, dailyGrantAvailable, refreshBalance, referralCode, loading: creditsLoading } = useCreditsNotification()
 
@@ -298,29 +302,30 @@ function GamePageContent({ gameType }: { gameType: string }) {
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 overflow-x-hidden select-none">
       {/* Game Header */}
-      <div className="mb-6">
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+        className="mb-6"
+      >
         <div className="flex items-start gap-3">
-          <Link
-            href="/"
-            className="text-slate-400 hover:text-white transition mt-1"
-          >
-            <ArrowLeft className="h-6 w-6" />
-          </Link>
-          <div className={`p-3 ${iconColors.bg} rounded-xl`}>
-            <GameIcon className={`w-10 h-10 ${iconColors.icon}`} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-white font-title">{gameDef.name}</h1>
-              {(() => { const skill = getSkillForGame(gameType); return skill ? (
-                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${skill.colors.bg} ${skill.colors.text}`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${skill.colors.dot}`} />
-                  {skill.name}
-                </span>
-              ) : null })()}
+          <Link href="/" className="flex items-start gap-3 min-w-0 flex-1 group">
+            <div className={`p-3 ${iconColors.bg} rounded-xl shrink-0`}>
+              <GameIcon className={`w-10 h-10 ${iconColors.icon}`} />
             </div>
-            <p className="text-slate-400 text-sm">{gameDef.description}</p>
-          </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-bold text-white font-title group-hover:text-slate-300 transition">{gameDef.name}</h1>
+                {(() => { const skill = getSkillForGame(gameType); return skill ? (
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${skill.colors.bg} ${skill.colors.text}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${skill.colors.dot}`} />
+                    {skill.name}
+                  </span>
+                ) : null })()}
+              </div>
+              <p className="text-slate-400 text-sm">{gameDef.description}</p>
+            </div>
+          </Link>
           {/* Restart button - hidden, will redesign later */}
           {false && <button
             onClick={handleRestart}
@@ -332,19 +337,53 @@ function GamePageContent({ gameType }: { gameType: string }) {
             {C}1
           </button>}
         </div>
-      </div>
+      </motion.div>
 
       <div className="grid md:grid-cols-3 gap-8">
         <div className="md:col-span-2">
-          {!creditsLoading && balance < 1 && !dailyGrantAvailable ? (
-            <OutOfCreditsView referralCode={referralCode} />
-          ) : (balance >= 1 || dailyGrantAvailable) ? (
-            <div ref={gameContainerRef}>
-              <GameComponent key={gameKey} onGameComplete={handleGameComplete} />
-            </div>
-          ) : null}
+          <AnimatePresence mode="wait">
+            {!creditsLoading && (
+              <motion.div
+                key={balance < 1 && !dailyGrantAvailable ? 'no-credits' : 'game'}
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                transition={{ height: { duration: 0.35, ease: [0.22, 1, 0.36, 1] }, opacity: { duration: 0.3, delay: 0.05 } }}
+                style={{ overflow: 'hidden' }}
+              >
+                {balance < 1 && !dailyGrantAvailable ? (
+                  <OutOfCreditsView referralCode={referralCode} />
+                ) : (
+                  <div ref={gameContainerRef}>
+                    <GameComponent key={gameKey} onGameComplete={handleGameComplete} />
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+          {/* All Games button */}
+          <motion.div
+            layout
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.18, ease: [0.22, 1, 0.36, 1], layout: { duration: 0.3 } }}
+            className="mt-3"
+          >
+            <Link
+              href="/"
+              className="w-full flex items-center justify-center gap-2 border-2 border-slate-600 hover:border-slate-400 text-slate-400 hover:text-white font-semibold py-2.5 rounded-lg transition text-base"
+            >
+              <Gamepad2 className="w-5 h-5" />
+              All Games
+            </Link>
+          </motion.div>
           {poolSize !== null && poolSize > 0 && (
-            <div className="bg-slate-800 rounded-xl mt-3 py-4 px-6 flex items-start justify-between gap-4">
+            <motion.div
+              layout
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.25, ease: [0.22, 1, 0.36, 1], layout: { duration: 0.3 } }}
+              className="bg-slate-800 rounded-xl mt-3 py-4 px-6 flex items-start justify-between gap-4"
+            >
               <div className="min-w-0">
                 <p className="text-xl font-bold text-yellow-400 font-title">
                   Pool: {poolSize.toLocaleString()} <CC />Credits
@@ -359,11 +398,16 @@ function GamePageContent({ gameType }: { gameType: string }) {
                 </div>
                 <div className="text-xs text-slate-400">till settlement</div>
               </div>
-            </div>
+            </motion.div>
           )}
         </div>
 
-        <div className="space-y-4">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+          className="space-y-4"
+        >
           {/* Group Play Section */}
           <div className="bg-white dark:bg-slate-800 rounded-xl p-4">
             <div className="flex items-start gap-3 mb-3">
@@ -392,7 +436,7 @@ function GamePageContent({ gameType }: { gameType: string }) {
             gameTypeName={gameDef.name}
             refreshKey={leaderboardRefreshKey}
           />
-        </div>
+        </motion.div>
       </div>
     </div>
   )

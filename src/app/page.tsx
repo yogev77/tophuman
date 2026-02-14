@@ -4,10 +4,9 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { useCreditsNotification } from '@/components/CreditsNotificationProvider'
 import { useTheme } from '@/hooks/useTheme'
-import Link from 'next/link'
+import { Link } from 'next-view-transitions'
 import {
   Target,
-  Lock,
   Crown,
   List,
   Grid3X3,
@@ -29,7 +28,7 @@ import {
 } from 'lucide-react'
 import { C, CC } from '@/lib/currency'
 import { GameThumbnail } from '@/components/GameThumbnail'
-import { GAMES, SKILLS, SKILL_LIST, getSkillForGame, SkillId } from '@/lib/skills'
+import { GAMES, SKILL_LIST, getSkillForGame, SkillId } from '@/lib/skills'
 import { GAME_ICONS } from '@/lib/game-icons'
 
 const SKILL_ICONS: Record<SkillId, typeof Zap> = {
@@ -122,60 +121,6 @@ function formatOpensAt(opensAt: string): string {
 
   // Otherwise show date and time
   return `Opens ${date.toLocaleDateString([], { month: 'short', day: 'numeric' })} ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-}
-
-function TopPlayersTicker({ games }: { games: GameInfo[] }) {
-  const [shouldAnimate, setShouldAnimate] = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const contentRef = useRef<HTMLDivElement>(null)
-
-  const topPlayers = games.filter(g => g.todayStats.topPlayerName && g.todayStats.topScore > 0)
-
-  useEffect(() => {
-    if (containerRef.current && contentRef.current) {
-      const containerWidth = containerRef.current.offsetWidth
-      const contentWidth = contentRef.current.scrollWidth
-      setShouldAnimate(contentWidth > containerWidth)
-    }
-  }, [topPlayers])
-
-  if (topPlayers.length === 0) return null
-
-  const tickerItems = topPlayers.map(game => {
-    const Icon = GAME_ICONS[game.id] || Target
-    const iconColors = GAMES[game.id]?.iconColors || GAMES.emoji_keypad.iconColors
-
-    return (
-      <div key={game.id} className="flex items-center gap-2 px-4 whitespace-nowrap">
-        <Link href={`/game/${game.id}`} className={`p-1.5 rounded ${iconColors.bg} hover:opacity-80 transition`}>
-          <Icon className={`w-4 h-4 ${iconColors.icon}`} />
-        </Link>
-        <Crown className="w-3 h-3 text-yellow-400" />
-        {game.todayStats.topPlayerUsername ? (
-          <Link href={`/player/${game.todayStats.topPlayerUsername}`} className="tap-highlight text-white font-medium hover:text-yellow-400 transition">
-            {game.todayStats.topPlayerName}
-          </Link>
-        ) : (
-          <span className="text-white font-medium">{game.todayStats.topPlayerName}</span>
-        )}
-        <span className="text-green-400 font-bold">{game.todayStats.topScore.toLocaleString()}</span>
-        <span className="text-yellow-400"><CC />{game.poolSize}</span>
-      </div>
-    )
-  })
-
-  return (
-    <div ref={containerRef} className="mb-8 overflow-hidden">
-      <div
-        ref={contentRef}
-        className={`flex items-center py-3 ${shouldAnimate ? 'animate-ticker hover:pause-animation' : 'justify-center'}`}
-        style={shouldAnimate ? { width: 'max-content' } : undefined}
-      >
-        {tickerItems}
-        {shouldAnimate && tickerItems}
-      </div>
-    </div>
-  )
 }
 
 function GameTile({ game }: { game: GameInfo }) {
@@ -453,39 +398,26 @@ export default function HomePage() {
         <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 font-title">
           Daily Mind Battles.
         </h1>
-        <p className="text-xl text-slate-300">
-          Every credit grows the pool. Climb the charts. Claim your share.
-        </p>
       </div>
 
-      {/* Pool Info Bar */}
-      {data && (
-        <div className="bg-white dark:bg-slate-800 rounded-xl px-4 sm:px-5 py-3 sm:py-4 mb-4">
-          <div className="flex items-center justify-around sm:justify-between">
-            <div className="flex-1 text-center hidden sm:block">
-              <div className="text-2xl font-bold text-yellow-400"><CC />{data.pool.totalCredits} Credit Pool</div>
-              <div className="text-xs text-slate-500 dark:text-slate-400">Across All Games Today</div>
-            </div>
-            <div className="h-8 w-px bg-slate-300 dark:bg-slate-600 hidden sm:block"></div>
-            <div className="flex-1 text-center">
-              <div className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">{data.pool.uniquePlayers}</div>
-              <div className="text-xs text-slate-500 dark:text-slate-400">Playing</div>
-            </div>
-            <div className="h-8 w-px bg-slate-300 dark:bg-slate-600 hidden sm:block"></div>
-            <div className="flex-1 text-center">
-              <div className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-400">{formatTimeLeft(timeLeft)}</div>
-              <div className="text-xs text-slate-500 dark:text-slate-400">Until Settlement</div>
-            </div>
+      {/* Today's Stats — reserve 2 lines on mobile, 1 on desktop */}
+      <div className="text-center mb-8 text-base md:text-lg text-slate-500 dark:text-slate-400 min-h-[52px] md:min-h-[32px] flex items-center justify-center">
+        {data ? (
+          <div className="animate-[fadeIn_300ms_ease-out]">
+            <span className="text-yellow-600 dark:text-yellow-400 font-semibold"><CC />{data.pool.totalCredits}</span> Total Pool
+            <span className="mx-3">·</span>
+            <span className="text-slate-900 dark:text-white font-semibold">{data.pool.uniquePlayers}</span> {data.pool.uniquePlayers === 1 ? 'Player' : 'Players'}
+            <br className="md:hidden" /><span className="hidden md:inline mx-3">·</span>
+            Settlement in <span className="text-green-600 dark:text-green-400 font-semibold">{formatTimeLeft(timeLeft)}</span>
           </div>
-          <div className="sm:hidden mt-2 pt-2 border-t border-slate-300 dark:border-slate-700 text-center">
-            <div className="text-xl font-bold text-yellow-400"><CC />{data.pool.totalCredits} Credit Pool</div>
-            <div className="text-xs text-slate-400">Across All Games Today</div>
+        ) : (
+          <div className="flex items-center justify-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" style={{ animationDelay: '0ms' }} />
+            <span className="w-2 h-2 rounded-full bg-white animate-pulse" style={{ animationDelay: '150ms' }} />
+            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" style={{ animationDelay: '300ms' }} />
           </div>
-        </div>
-      )}
-
-      {/* Top Players Ticker */}
-      {data && <TopPlayersTicker games={data.games} />}
+        )}
+      </div>
 
       {/* Sentinel for sticky detection */}
       <div ref={stickySentinelRef} className="h-0" />
@@ -1028,7 +960,8 @@ export default function HomePage() {
 
       {/* See You on the Podium */}
       <div className="mt-16">
-        <h2 className="text-2xl font-bold text-white text-center mb-8 font-title">See You on the Podium</h2>
+        <h2 className="text-2xl font-bold text-white text-center mb-2 font-title">See You on the Podium</h2>
+        <p className="text-center text-slate-300 mb-8">Every credit grows the pool. Climb the charts. Claim your share.</p>
         <div className="bg-slate-800 rounded-xl p-6 md:p-8">
           <div className="grid md:grid-cols-3 md:divide-x md:divide-slate-700">
             <div className="text-center px-6 py-4">

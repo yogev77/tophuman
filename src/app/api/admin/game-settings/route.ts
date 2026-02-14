@@ -15,6 +15,7 @@ const VALID_GAME_TYPES = [
   'follow_me',
   'duck_shoot',
   'beat_match',
+  'grid_recall',
 ]
 
 export async function GET() {

@@ -36,6 +36,7 @@ function renderGame(gameId: string) {
     case 'image_puzzle': return <ImagePuzzle />
     case 'draw_me': return <DrawMe />
     case 'beat_match': return <BeatMatch />
+    case 'grid_recall': return <GridRecall />
     default: return <DefaultThumb />
   }
 }
@@ -539,6 +540,29 @@ function BeatMatch() {
       <path d="M370 80 Q380 100 370 120" fill="none" strokeWidth="3" stroke="#4ade80" opacity="0.6" />
       <path d="M380 70 Q395 100 380 130" fill="none" strokeWidth="3" stroke="#4ade80" opacity="0.35" />
       <path d="M390 60 Q410 100 390 140" fill="none" strokeWidth="3" stroke="#4ade80" opacity="0.15" />
+    </>
+  )
+}
+
+/* ─── Grid Recall ─── */
+function GridRecall() {
+  // 5x5 grid centered: some tiles highlighted in purple
+  const s = 32, g = 5, totalW = 5 * s + 4 * g, totalH = 5 * s + 4 * g
+  const ox = (480 - totalW) / 2, oy = (200 - totalH) / 2
+  const tiles: { x: number; y: number; on: boolean }[] = []
+  for (let r = 0; r < 5; r++) {
+    for (let c = 0; c < 5; c++) {
+      const on = [2, 5, 8, 11, 13, 16, 19, 22].includes(r * 5 + c)
+      tiles.push({ x: ox + c * (s + g), y: oy + r * (s + g), on })
+    }
+  }
+  return (
+    <>
+      <rect width="480" height="200" rx="8" className="fill-purple-100 dark:fill-purple-900/20" />
+      {tiles.map((t, i) => (
+        <rect key={i} x={t.x} y={t.y} width={s} height={s} rx="8"
+          className={t.on ? 'fill-purple-500' : 'fill-slate-200 dark:fill-slate-600'} />
+      ))}
     </>
   )
 }

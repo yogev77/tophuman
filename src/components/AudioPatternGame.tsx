@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import Link from 'next/link'
+
 import { Music } from 'lucide-react'
 import { ShareScore } from './ShareScore'
 import { Spinner } from '@/components/Spinner'
 import { CC } from '@/lib/currency'
 import { GameThumbnail } from '@/components/GameThumbnail'
+import { GameLoading } from '@/components/GameLoading'
 import { useSound } from '@/hooks/useSound'
 
 type GamePhase = 'idle' | 'loading' | 'countdown' | 'listen' | 'play' | 'checking' | 'completed' | 'failed'
@@ -56,10 +57,22 @@ export function AudioPatternGame({ onGameComplete, groupSessionId }: AudioPatter
   const completingRef = useRef(false)
   const turnTokenRef = useRef<string | null>(null)
 
+  // Unlock AudioContext — must be called synchronously during a user gesture
+  const unlockAudio = useCallback(() => {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new AudioContext()
+    } else if (audioContextRef.current.state === 'suspended') {
+      audioContextRef.current.resume()
+    }
+  }, [])
+
   const playTone = useCallback((frequency: number, duration: number) => {
     if (!soundEnabled) return
     if (!audioContextRef.current) {
       audioContextRef.current = new AudioContext()
+    }
+    if (audioContextRef.current.state === 'suspended') {
+      audioContextRef.current.resume()
     }
     const ctx = audioContextRef.current
 
@@ -88,6 +101,9 @@ export function AudioPatternGame({ onGameComplete, groupSessionId }: AudioPatter
   }, [])
 
   const startGame = useCallback(async () => {
+    // Init AudioContext synchronously during user tap — mobile requires this
+    unlockAudio()
+
     setPhase('loading')
     setError(null)
     setUserInput([])
@@ -168,7 +184,8 @@ export function AudioPatternGame({ onGameComplete, groupSessionId }: AudioPatter
       setError(err instanceof Error ? err.message : 'Unknown error')
       setPhase('idle')
     }
-  }, [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unlockAudio])
 
   const playSequence = async (gameSpec: TurnSpec, length?: number) => {
     const seqLength = length || gameSpec.sequence.length
@@ -317,17 +334,12 @@ export function AudioPatternGame({ onGameComplete, groupSessionId }: AudioPatter
             disabled={!soundEnabled}
             className="bg-yellow-500 hover:bg-yellow-400 disabled:bg-yellow-500/30 disabled:text-slate-900/50 text-slate-900 font-bold py-3 px-8 rounded-lg text-lg transition"
           >
-            Start Game (1 <CC />Credit)
+            Start (1 <CC />Credit)
           </button>
         </div>
       )}
 
-      {phase === 'loading' && (
-        <div className="text-center py-12">
-          <div className="mx-auto mb-4"><Spinner /></div>
-          <p className="text-slate-300">Preparing game...</p>
-        </div>
-      )}
+      {phase === 'loading' && <GameLoading gameId="audio_pattern" message="Preparing game..." />}
 
       {(phase === 'countdown' || phase === 'listen' || phase === 'play') && spec && (
         <div className="text-center py-8">
@@ -421,9 +433,8 @@ export function AudioPatternGame({ onGameComplete, groupSessionId }: AudioPatter
           </div>
           <div className="grid grid-cols-2 gap-3 max-w-xs mx-auto">
             <button onClick={startGame} className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 rounded-lg transition">Play Again</button>
-            <Link href="/" className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 rounded-lg transition text-center">New Game</Link>
+            <ShareScore gameName="Simon Says" score={result.score || 0} rank={result.rank} inline />
           </div>
-          <ShareScore gameName="Simon Says" score={result.score || 0} rank={result.rank} />
         </div>
       )}
 
@@ -436,9 +447,8 @@ export function AudioPatternGame({ onGameComplete, groupSessionId }: AudioPatter
           <p className="text-slate-300 mb-6">
             Complete at least a few correct taps to earn points. Listen carefully and try again!
           </p>
-          <div className="grid grid-cols-2 gap-3 max-w-xs mx-auto">
-            <button onClick={startGame} className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 rounded-lg transition">Try Again</button>
-            <Link href="/" className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 rounded-lg transition text-center">New Game</Link>
+          <div className="max-w-xs mx-auto">
+            <button onClick={startGame} className="w-full bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 rounded-lg transition">Try Again</button>
           </div>
         </div>
       )}

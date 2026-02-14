@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Check, Users, Copy, Share2 } from 'lucide-react'
-import Link from 'next/link'
+import { Link } from 'next-view-transitions'
 
 interface GroupSessionBarProps {
   endsAt: string

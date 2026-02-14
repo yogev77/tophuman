@@ -238,6 +238,14 @@ export const GAMES: Record<string, GameDef> = {
     iconColors: { bg: 'bg-green-500/20', icon: 'text-green-500' },
     dbGameTypeId: 'beat_match',
   },
+  grid_recall: {
+    id: 'grid_recall',
+    name: 'Grid Recall',
+    description: 'Memorize the pattern, then tap it back.',
+    skill: 'memory',
+    iconColors: { bg: 'bg-purple-500/20', icon: 'text-purple-500' },
+    dbGameTypeId: 'grid_recall',
+  },
 }
 
 export const GAME_LIST = Object.values(GAMES)

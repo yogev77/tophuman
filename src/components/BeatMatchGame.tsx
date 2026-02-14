@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import Link from 'next/link'
+
 import { Drum } from 'lucide-react'
 import { ShareScore } from './ShareScore'
 import { Spinner } from '@/components/Spinner'
+import { GameLoading } from '@/components/GameLoading'
 import { CC } from '@/lib/currency'
 import { GameThumbnail } from '@/components/GameThumbnail'
 import { useSound } from '@/hooks/useSound'
@@ -65,10 +66,22 @@ export function BeatMatchGame({ onGameComplete, groupSessionId }: BeatMatchGameP
   const completingRef = useRef(false)
   const turnTokenRef = useRef<string | null>(null)
 
+  // Unlock AudioContext — must be called synchronously during a user gesture
+  const unlockAudio = useCallback(() => {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new AudioContext()
+    } else if (audioContextRef.current.state === 'suspended') {
+      audioContextRef.current.resume()
+    }
+  }, [])
+
   const playTone = useCallback((frequency: number, duration: number) => {
     if (!soundEnabled) return
     if (!audioContextRef.current) {
       audioContextRef.current = new AudioContext()
+    }
+    if (audioContextRef.current.state === 'suspended') {
+      audioContextRef.current.resume()
     }
     const ctx = audioContextRef.current
 
@@ -146,6 +159,9 @@ export function BeatMatchGame({ onGameComplete, groupSessionId }: BeatMatchGameP
   }, [onGameComplete])
 
   const startGame = useCallback(async () => {
+    // Init AudioContext synchronously during user tap — mobile requires this
+    unlockAudio()
+
     setPhase('loading')
     setError(null)
     setResult(null)
@@ -221,7 +237,7 @@ export function BeatMatchGame({ onGameComplete, groupSessionId }: BeatMatchGameP
       setError(err instanceof Error ? err.message : 'Unknown error')
       setPhase('idle')
     }
-  }, [runCountdown, playBeatPattern, completeGame, groupSessionId])
+  }, [unlockAudio, runCountdown, playBeatPattern, completeGame, groupSessionId])
 
   const handlePadTap = async (toneIndex: number) => {
     if (phase !== 'play' || !turnToken || !spec) return
@@ -306,21 +322,19 @@ export function BeatMatchGame({ onGameComplete, groupSessionId }: BeatMatchGameP
 
   return (
     <div className="bg-slate-800 rounded-xl p-4 sm:p-6">
-      <div className="flex items-center justify-between mb-6">
-        {(phase === 'play' || phase === 'listen' || phase === 'between') && spec && (
-          <div className="flex items-center gap-4 w-full">
-            <span className="text-slate-400 text-sm">{roundLabel} — {currentBeats} beats</span>
-            <span className={`ml-auto text-2xl font-mono ${timeLeft < 10000 ? 'text-red-400' : 'text-green-400'}`}>
-              {Math.ceil(timeLeft / 1000)}s
-            </span>
-          </div>
-        )}
-      </div>
+      {(phase === 'countdown' || phase === 'listen' || phase === 'play' || phase === 'between') && spec && (
+        <div className="flex items-center justify-between mb-6">
+          <span className="text-slate-400 text-sm">{roundLabel} — {currentBeats} beats</span>
+          <span className={`text-2xl font-mono ${timeLeft < 10000 ? 'text-red-400' : 'text-green-400'}`}>
+            {Math.ceil(timeLeft / 1000)}s
+          </span>
+        </div>
+      )}
 
       {phase === 'idle' && (
         <div className="text-center pb-6">
           <div className="mb-4 max-w-sm mx-auto"><GameThumbnail gameId="beat_match" isPlayable={true} /></div>
-          <p className="text-slate-300 mb-6">
+          <p className="text-slate-300 mb-6 max-w-xs mx-auto">
             Listen to the beat pattern, then tap it back in rhythm. Match the tones and the timing!
           </p>
           {!soundEnabled && (
@@ -333,57 +347,16 @@ export function BeatMatchGame({ onGameComplete, groupSessionId }: BeatMatchGameP
             disabled={!soundEnabled}
             className="bg-yellow-500 hover:bg-yellow-400 disabled:bg-yellow-500/30 disabled:text-slate-900/50 text-slate-900 font-bold py-3 px-8 rounded-lg text-lg transition"
           >
-            Start Game (1 <CC />Credit)
+            Start (1 <CC />Credit)
           </button>
         </div>
       )}
 
-      {phase === 'loading' && (
-        <div className="text-center py-12">
-          <div className="mx-auto mb-4"><Spinner /></div>
-          <p className="text-slate-300">Preparing game...</p>
-        </div>
-      )}
+      {phase === 'loading' && <GameLoading gameId="beat_match" message="Preparing game..." />}
 
       {(phase === 'countdown' || phase === 'listen' || phase === 'play' || phase === 'between') && spec && (
-        <div className="text-center py-6">
-          {/* Status label */}
-          <div className="mb-6 h-8 flex items-center justify-center">
-            {phase === 'countdown' && (
-              <span className="text-white font-bold text-3xl animate-pulse">{countdownNum}</span>
-            )}
-            {phase === 'listen' && (
-              <span className="text-slate-400 text-lg">Listen to the pattern...</span>
-            )}
-            {phase === 'play' && (
-              <span className="text-green-400 text-lg">Your turn! Tap the beats</span>
-            )}
-            {phase === 'between' && (
-              <span className="text-yellow-400 text-lg">Next round...</span>
-            )}
-          </div>
-
-          {/* Beat progress indicators */}
-          <div className="flex justify-center gap-2 mb-6 h-4">
-            {phase === 'listen' && Array.from({ length: currentBeats }).map((_, i) => (
-              <div
-                key={i}
-                className={`w-3 h-3 rounded-full transition-all ${
-                  i <= playingBeatIndex ? PAD_COLORS[spec.rounds[currentRound].beats[i]].dot : 'bg-slate-600'
-                }`}
-              />
-            ))}
-            {phase === 'play' && Array.from({ length: currentBeats }).map((_, i) => (
-              <div
-                key={i}
-                className={`w-3 h-3 rounded-full transition-all ${
-                  i < userTapCount ? 'bg-white' : 'bg-slate-600'
-                }`}
-              />
-            ))}
-          </div>
-
-          {/* Tone pads */}
+        <div className="text-center pt-2 pb-4">
+          {/* Tone pads — primary focus, placed first */}
           <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto px-4">
             {Array.from({ length: spec.toneCount }).map((_, i) => {
               const color = PAD_COLORS[i]
@@ -422,8 +395,44 @@ export function BeatMatchGame({ onGameComplete, groupSessionId }: BeatMatchGameP
             })}
           </div>
 
+          {/* Beat progress indicators */}
+          <div className="flex justify-center gap-2 mt-5 h-4">
+            {phase === 'listen' && Array.from({ length: currentBeats }).map((_, i) => (
+              <div
+                key={i}
+                className={`w-3 h-3 rounded-full transition-all ${
+                  i <= playingBeatIndex ? PAD_COLORS[spec.rounds[currentRound].beats[i]].dot : 'bg-slate-600'
+                }`}
+              />
+            ))}
+            {phase === 'play' && Array.from({ length: currentBeats }).map((_, i) => (
+              <div
+                key={i}
+                className={`w-3 h-3 rounded-full transition-all ${
+                  i < userTapCount ? 'bg-white' : 'bg-slate-600'
+                }`}
+              />
+            ))}
+          </div>
+
+          {/* Status label — fixed line so layout never shifts */}
+          <div className="mt-3 h-7 flex items-center justify-center">
+            {phase === 'countdown' && (
+              <span className="text-white font-bold text-lg animate-pulse">{countdownNum}</span>
+            )}
+            {phase === 'listen' && (
+              <span className="text-slate-400 text-lg">Listen to the pattern...</span>
+            )}
+            {phase === 'play' && (
+              <span className="text-green-400 text-lg">Your turn! Tap the beats</span>
+            )}
+            {phase === 'between' && (
+              <span className="text-yellow-400 text-lg">Next round...</span>
+            )}
+          </div>
+
           {/* Round indicator */}
-          <div className="flex justify-center gap-2 mt-6">
+          <div className="flex justify-center gap-2 mt-3">
             {spec.rounds.map((_, i) => (
               <div
                 key={i}
@@ -469,9 +478,8 @@ export function BeatMatchGame({ onGameComplete, groupSessionId }: BeatMatchGameP
           </div>
           <div className="grid grid-cols-2 gap-3 max-w-xs mx-auto">
             <button onClick={startGame} className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 rounded-lg transition">Play Again</button>
-            <Link href="/" className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 rounded-lg transition text-center">New Game</Link>
+            <ShareScore gameName="Beat Match" score={result.score || 0} rank={result.rank} inline />
           </div>
-          <ShareScore gameName="Beat Match" score={result.score || 0} rank={result.rank} />
         </div>
       )}
 
@@ -484,9 +492,8 @@ export function BeatMatchGame({ onGameComplete, groupSessionId }: BeatMatchGameP
           <p className="text-slate-300 mb-6">
             Listen carefully to the pattern and tap the beats in order. Try again!
           </p>
-          <div className="grid grid-cols-2 gap-3 max-w-xs mx-auto">
-            <button onClick={startGame} className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 rounded-lg transition">Try Again</button>
-            <Link href="/" className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 rounded-lg transition text-center">New Game</Link>
+          <div className="max-w-xs mx-auto">
+            <button onClick={startGame} className="w-full bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 rounded-lg transition">Try Again</button>
           </div>
         </div>
       )}

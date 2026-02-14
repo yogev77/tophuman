@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import Link from 'next/link'
+
 import { Brush } from 'lucide-react'
 import { ShareScore } from './ShareScore'
 import { Spinner } from '@/components/Spinner'
+import { GameLoading } from '@/components/GameLoading'
 import { CC } from '@/lib/currency'
 import { GameThumbnail } from '@/components/GameThumbnail'
 import { useTheme } from '@/hooks/useTheme'
@@ -419,22 +420,17 @@ export function DrawMeGame({ onGameComplete, groupSessionId }: DrawMeGameProps) 
             onClick={startGame}
             className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg text-lg transition"
           >
-            Start Game (1 <CC />Credit)
+            Start (1 <CC />Credit)
           </button>
         </div>
       )}
 
-      {phase === 'loading' && (
-        <div className="text-center py-12">
-          <div className="mx-auto mb-4"><Spinner /></div>
-          <p className="text-slate-600 dark:text-slate-300">Generating paths...</p>
-        </div>
-      )}
+      {phase === 'loading' && <GameLoading gameId="draw_me" message="Generating paths..." />}
 
       {(phase === 'ready' || phase === 'draw') && spec && (
         <div>
           {/* Stacked wide canvases: reference above, draw below */}
-          <div className="flex flex-col gap-2 w-full max-w-lg mx-auto touch-none">
+          <div className="flex flex-col gap-2 w-full max-w-lg lg:max-w-sm mx-auto touch-none">
             {/* Reference canvas (top, read-only) */}
             <div className="border-2 border-blue-500/40 rounded-lg overflow-hidden bg-slate-50 dark:bg-slate-900" style={{ aspectRatio: `${canvasWidth} / ${canvasHeight}` }}>
               <canvas
@@ -507,11 +503,8 @@ export function DrawMeGame({ onGameComplete, groupSessionId }: DrawMeGameProps) 
             >
               Play Again
             </button>
-            <Link href="/" className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 rounded-lg transition text-center">
-              New Game
-            </Link>
+            <ShareScore gameName="Draw Me" score={result.score || 0} rank={result.rank} inline />
           </div>
-          <ShareScore gameName="Draw Me" score={result.score || 0} rank={result.rank} />
         </div>
       )}
 
@@ -530,16 +523,13 @@ export function DrawMeGame({ onGameComplete, groupSessionId }: DrawMeGameProps) 
               ? 'That was too fast to be human!'
               : 'Try to draw more accurately!'}
           </p>
-          <div className="grid grid-cols-2 gap-3 max-w-xs mx-auto">
+          <div className="max-w-xs mx-auto">
             <button
               onClick={startGame}
-              className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 rounded-lg transition"
+              className="w-full bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 rounded-lg transition"
             >
               Try Again
             </button>
-            <Link href="/" className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 rounded-lg transition text-center">
-              New Game
-            </Link>
           </div>
         </div>
       )}

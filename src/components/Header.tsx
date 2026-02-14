@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
-import Link from 'next/link'
+import { Link } from 'next-view-transitions'
 import { useAuth } from '@/hooks/useAuth'
 import { useCreditsNotification } from './CreditsNotificationProvider'
 import { useTheme } from '@/hooks/useTheme'

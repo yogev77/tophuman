@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import Link from 'next/link'
+
 import { ParkingSquare } from 'lucide-react'
 import { formatTime } from '@/lib/utils'
 import { useTheme } from '@/hooks/useTheme'
@@ -10,6 +10,7 @@ import { ShareScore } from './ShareScore'
 import { Spinner } from '@/components/Spinner'
 import { CC } from '@/lib/currency'
 import { GameThumbnail } from '@/components/GameThumbnail'
+import { GameLoading } from '@/components/GameLoading'
 
 type GamePhase = 'idle' | 'loading' | 'play' | 'round_complete' | 'checking' | 'completed' | 'failed'
 
@@ -465,8 +466,8 @@ export function GridlockGame({ onGameComplete, groupSessionId }: GridlockGamePro
   const cellSize = Math.floor(Math.min(320, (typeof window !== 'undefined' ? window.innerWidth - 64 : 320)) / gridSize)
 
   return (
-    <div ref={gameContainerRef} className={`rounded-xl p-4 sm:p-6 ${light ? 'bg-white shadow-md' : 'bg-slate-800'}`}>
-      <div className="mb-3">
+    <div ref={gameContainerRef} className={`rounded-xl p-3 sm:p-6 ${light ? 'bg-white shadow-md' : 'bg-slate-800'}`}>
+      <div className="mb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             {(phase === 'play' || phase === 'round_complete') && spec && (
@@ -497,7 +498,7 @@ export function GridlockGame({ onGameComplete, groupSessionId }: GridlockGamePro
           )}
         </div>
         {(phase === 'play' || phase === 'round_complete') && (
-          <div className={`text-sm mt-1 ${light ? 'text-slate-500' : 'text-slate-400'}`}>{moveCount} moves</div>
+          <div className={`text-sm mt-0.5 ${light ? 'text-slate-500' : 'text-slate-400'}`}>{moveCount} moves</div>
         )}
       </div>
 
@@ -511,23 +512,18 @@ export function GridlockGame({ onGameComplete, groupSessionId }: GridlockGamePro
             onClick={startGame}
             className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg text-lg transition"
           >
-            Start Game (1 <CC />Credit)
+            Start (1 <CC />Credit)
           </button>
         </div>
       )}
 
-      {phase === 'loading' && (
-        <div className="text-center py-12">
-          <div className="mx-auto mb-4"><Spinner /></div>
-          <p className={light ? 'text-slate-600' : 'text-slate-300'}>Building puzzles...</p>
-        </div>
-      )}
+      {phase === 'loading' && <GameLoading gameId="gridlock" message="Building puzzles..." />}
 
       {(phase === 'play' || phase === 'round_complete') && spec && (
         <div>
-          <div className="h-8 flex items-center justify-center mb-2">
+          <div className="h-7 flex items-center justify-center mb-1">
             {phase === 'round_complete' && (
-              <p className="text-green-500 font-bold text-lg animate-pulse">
+              <p className="text-green-500 font-bold text-sm animate-pulse">
                 Round {currentRound + 1} Complete!
               </p>
             )}
@@ -666,9 +662,8 @@ export function GridlockGame({ onGameComplete, groupSessionId }: GridlockGamePro
           </div>
           <div className="grid grid-cols-2 gap-3 max-w-xs mx-auto">
             <button onClick={startGame} className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 rounded-lg transition">Play Again</button>
-            <Link href="/" className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 rounded-lg transition text-center">New Game</Link>
+            <ShareScore gameName="Gridlock" score={result.score || 0} rank={result.rank} inline />
           </div>
-          <ShareScore gameName="Gridlock" score={result.score || 0} rank={result.rank} />
         </div>
       )}
 
@@ -685,9 +680,8 @@ export function GridlockGame({ onGameComplete, groupSessionId }: GridlockGamePro
               ? 'Could not complete any rounds in time.'
               : 'Better luck next time!'}
           </p>
-          <div className="grid grid-cols-2 gap-3 max-w-xs mx-auto">
-            <button onClick={startGame} className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 rounded-lg transition">Try Again</button>
-            <Link href="/" className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 rounded-lg transition text-center">New Game</Link>
+          <div className="max-w-xs mx-auto">
+            <button onClick={startGame} className="w-full bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 rounded-lg transition">Try Again</button>
           </div>
         </div>
       )}

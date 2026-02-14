@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import Link from 'next/link'
+
 import { Puzzle } from 'lucide-react'
 import { formatTime } from '@/lib/utils'
 import Image from 'next/image'
@@ -9,6 +9,7 @@ import { ShareScore } from './ShareScore'
 import { Spinner } from '@/components/Spinner'
 import { CC } from '@/lib/currency'
 import { GameThumbnail } from '@/components/GameThumbnail'
+import { GameLoading } from '@/components/GameLoading'
 import { useSound } from '@/hooks/useSound'
 
 type GamePhase = 'idle' | 'loading' | 'play' | 'checking' | 'completed' | 'failed'
@@ -250,17 +251,12 @@ export function ImagePuzzleGame({ onGameComplete, groupSessionId }: ImagePuzzleG
             onClick={startGame}
             className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg text-lg transition"
           >
-            Start Game (1 <CC />Credit)
+            Start (1 <CC />Credit)
           </button>
         </div>
       )}
 
-      {phase === 'loading' && (
-        <div className="text-center py-12">
-          <div className="mx-auto mb-4"><Spinner /></div>
-          <p className="text-slate-600 dark:text-slate-300">Preparing puzzle...</p>
-        </div>
-      )}
+      {phase === 'loading' && <GameLoading gameId="image_puzzle" message="Preparing puzzle..." />}
 
       {phase === 'play' && spec && (
         <div className="flex flex-col items-center">
@@ -421,9 +417,8 @@ export function ImagePuzzleGame({ onGameComplete, groupSessionId }: ImagePuzzleG
           </div>
           <div className="grid grid-cols-2 gap-3 max-w-xs mx-auto">
             <button onClick={startGame} className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 rounded-lg transition">Play Again</button>
-            <Link href="/" className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 rounded-lg transition text-center">New Game</Link>
+            <ShareScore gameName="Image Puzzle" score={result.score || 0} rank={result.rank} inline />
           </div>
-          <ShareScore gameName="Image Puzzle" score={result.score || 0} rank={result.rank} />
         </div>
       )}
 
@@ -442,9 +437,8 @@ export function ImagePuzzleGame({ onGameComplete, groupSessionId }: ImagePuzzleG
               ? 'Place all pieces to complete the puzzle!'
               : 'Better luck next time!'}
           </p>
-          <div className="grid grid-cols-2 gap-3 max-w-xs mx-auto">
-            <button onClick={startGame} className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 rounded-lg transition">Try Again</button>
-            <Link href="/" className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 rounded-lg transition text-center">New Game</Link>
+          <div className="max-w-xs mx-auto">
+            <button onClick={startGame} className="w-full bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 rounded-lg transition">Try Again</button>
           </div>
         </div>
       )}

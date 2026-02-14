@@ -19,6 +19,7 @@ import { generateReactionBarsTurnSpec, getReactionBarsClientSpec, DEFAULT_REACTI
 import { generateImagePuzzleTurnSpec, getImagePuzzleClientSpec, DEFAULT_IMAGE_PUZZLE_CONFIG } from '@/lib/game/image-puzzle'
 import { generateDrawMeTurnSpec, getDrawMeClientSpec, DEFAULT_DRAW_ME_CONFIG } from '@/lib/game/draw-me'
 import { generateBeatMatchTurnSpec, getBeatMatchClientSpec, DEFAULT_BEAT_MATCH_CONFIG } from '@/lib/game/beat-match'
+import { generateGridRecallTurnSpec, getGridRecallClientSpec, DEFAULT_GRID_RECALL_CONFIG } from '@/lib/game/grid-recall'
 import { createServiceClient } from '@/lib/supabase/server'
 import crypto from 'crypto'
 
@@ -97,7 +98,7 @@ export async function POST(request: Request) {
       'whack_a_mole', 'typing_speed', 'mental_math', 'color_match',
       'visual_diff', 'audio_pattern', 'drag_sort', 'follow_me',
       'duck_shoot', 'memory_cards', 'number_chain', 'gridlock',
-      'reaction_bars', 'image_puzzle', 'draw_me', 'beat_match',
+      'reaction_bars', 'image_puzzle', 'draw_me', 'beat_match', 'grid_recall',
     ])
 
     if (!VALID_GAME_TYPES.has(activeGameType)) {
@@ -263,6 +264,13 @@ export async function POST(request: Request) {
           spec = bmSpec as unknown as Record<string, unknown>
           clientSpec = getBeatMatchClientSpec(bmSpec) as unknown as Record<string, unknown>
           gameTypeId = 'beat_match'
+          break
+        }
+        case 'grid_recall': {
+          const grSpec = generateGridRecallTurnSpec(profile.user_id, DEFAULT_GRID_RECALL_CONFIG)
+          spec = grSpec as unknown as Record<string, unknown>
+          clientSpec = getGridRecallClientSpec(grSpec) as unknown as Record<string, unknown>
+          gameTypeId = 'grid_recall'
           break
         }
         default: {

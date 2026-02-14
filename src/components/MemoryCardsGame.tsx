@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import Link from 'next/link'
+
 import { LayoutGrid } from 'lucide-react'
 import { formatTime } from '@/lib/utils'
 import { ShareScore } from './ShareScore'
 import { Spinner } from '@/components/Spinner'
 import { CC } from '@/lib/currency'
 import { GameThumbnail } from '@/components/GameThumbnail'
+import { GameLoading } from '@/components/GameLoading'
 import { useTheme } from '@/hooks/useTheme'
 import { useSound } from '@/hooks/useSound'
 
@@ -293,17 +294,12 @@ export function MemoryCardsGame({ onGameComplete, groupSessionId }: MemoryCardsG
             onClick={startGame}
             className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg text-lg transition"
           >
-            Start Game (1 <CC />Credit)
+            Start (1 <CC />Credit)
           </button>
         </div>
       )}
 
-      {phase === 'loading' && (
-        <div className="text-center py-12">
-          <div className="mx-auto mb-4"><Spinner /></div>
-          <p className="text-slate-300">Shuffling cards...</p>
-        </div>
-      )}
+      {phase === 'loading' && <GameLoading gameId="memory_cards" message="Shuffling cards..." />}
 
       {(phase === 'play' || phase === 'round_complete') && spec && (
         <div>
@@ -408,9 +404,8 @@ export function MemoryCardsGame({ onGameComplete, groupSessionId }: MemoryCardsG
           </div>
           <div className="grid grid-cols-2 gap-3 max-w-xs mx-auto">
             <button onClick={startGame} className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 rounded-lg transition">Play Again</button>
-            <Link href="/" className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 rounded-lg transition text-center">New Game</Link>
+            <ShareScore gameName="Memory Cards" score={result.score || 0} rank={result.rank} inline />
           </div>
-          <ShareScore gameName="Memory Cards" score={result.score || 0} rank={result.rank} />
         </div>
       )}
 
@@ -425,9 +420,8 @@ export function MemoryCardsGame({ onGameComplete, groupSessionId }: MemoryCardsG
               ? `Found ${matchCount}/${numPairs} pairs before time ran out.`
               : 'Better luck next time!'}
           </p>
-          <div className="grid grid-cols-2 gap-3 max-w-xs mx-auto">
-            <button onClick={startGame} className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 rounded-lg transition">Try Again</button>
-            <Link href="/" className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 rounded-lg transition text-center">New Game</Link>
+          <div className="max-w-xs mx-auto">
+            <button onClick={startGame} className="w-full bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 rounded-lg transition">Try Again</button>
           </div>
         </div>
       )}

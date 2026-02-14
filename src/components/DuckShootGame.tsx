@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import Link from 'next/link'
+
 import { Crosshair } from 'lucide-react'
 import { ShareScore } from './ShareScore'
 import { Spinner } from '@/components/Spinner'
+import { GameLoading } from '@/components/GameLoading'
 import { CC } from '@/lib/currency'
 import { GameThumbnail } from '@/components/GameThumbnail'
 import { useSound } from '@/hooks/useSound'
@@ -509,17 +510,12 @@ export function DuckShootGame({ onGameComplete, groupSessionId }: DuckShootGameP
             onClick={startGame}
             className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg text-lg transition"
           >
-            Start Game (1 <CC />Credit)
+            Start (1 <CC />Credit)
           </button>
         </div>
       )}
 
-      {phase === 'loading' && (
-        <div className="text-center py-12">
-          <div className="mx-auto mb-4"><Spinner size="md" /></div>
-          <p className="text-slate-400 text-sm">Loading...</p>
-        </div>
-      )}
+      {phase === 'loading' && <GameLoading gameId="duck_shoot" message="Loading..." />}
 
       {phase === 'playing' && spec && (
         <div
@@ -587,9 +583,8 @@ export function DuckShootGame({ onGameComplete, groupSessionId }: DuckShootGameP
           </div>
           <div className="grid grid-cols-2 gap-3 max-w-xs mx-auto">
             <button onClick={startGame} className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 rounded-lg transition">Play Again</button>
-            <Link href="/" className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 rounded-lg transition text-center">New Game</Link>
+            <ShareScore gameName="Target Shoot" score={result.score || 0} rank={result.rank} inline />
           </div>
-          <ShareScore gameName="Target Shoot" score={result.score || 0} rank={result.rank} />
         </div>
       )}
 
@@ -606,9 +601,8 @@ export function DuckShootGame({ onGameComplete, groupSessionId }: DuckShootGameP
               ? `Only hit ${result.hits} targets. Try to hit more!`
               : 'Keep practicing your aim!'}
           </p>
-          <div className="grid grid-cols-2 gap-3 max-w-xs mx-auto">
-            <button onClick={startGame} className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 rounded-lg transition">Try Again</button>
-            <Link href="/" className="border-2 border-yellow-500 hover:bg-yellow-500/10 text-yellow-500 font-bold py-3 rounded-lg transition text-center">New Game</Link>
+          <div className="max-w-xs mx-auto">
+            <button onClick={startGame} className="w-full bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 rounded-lg transition">Try Again</button>
           </div>
         </div>
       )}

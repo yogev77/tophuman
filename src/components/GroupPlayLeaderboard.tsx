@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Crown } from 'lucide-react'
-import Link from 'next/link'
+import { Link } from 'next-view-transitions'
 import { CC } from '@/lib/currency'
 
 interface LeaderboardEntry {
