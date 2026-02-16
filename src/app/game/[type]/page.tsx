@@ -359,7 +359,7 @@ function GamePageContent({ gameType }: { gameType: string }) {
           >
             <Link
               href="/"
-              className="w-full flex items-center justify-center gap-2 border-2 border-slate-600 hover:border-slate-400 text-slate-400 hover:text-white font-semibold py-2.5 rounded-lg transition text-base"
+              className="w-full flex items-center justify-center gap-2 border-2 border-slate-600 hover:border-slate-400 bg-slate-100 dark:bg-slate-900 text-slate-400 hover:text-white font-semibold py-2.5 rounded-lg transition text-base"
             >
               <Gamepad2 className="w-5 h-5" />
               All Games

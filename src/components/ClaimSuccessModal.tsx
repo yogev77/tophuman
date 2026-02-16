@@ -113,7 +113,7 @@ export function ClaimSuccessModal({ isOpen, onClose, amount, newBalance, reason,
 
       {/* Modal */}
       <div
-        className={`relative bg-gradient-to-b from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl border border-slate-200 dark:border-slate-700 transform transition-all duration-300 ${
+        className={`relative bg-gradient-to-b from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 rounded-2xl p-8 max-w-sm w-full max-h-[calc(100vh-4rem)] overflow-y-auto text-center shadow-2xl border border-slate-200 dark:border-slate-700 transform transition-all duration-300 ${
           isAnimating ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
         }`}
       >
