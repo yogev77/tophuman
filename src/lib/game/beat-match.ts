@@ -36,11 +36,60 @@ export interface BeatMatchResult {
 }
 
 export const DEFAULT_BEAT_MATCH_CONFIG: BeatMatchConfig = {
-  time_limit_seconds: 60, // generous server limit; client ~30s gameplay
+  time_limit_seconds: 90, // generous server limit; client ~45s gameplay
 }
 
 // Clean distinct tones: C4, E4, G4, B4
 const TONE_FREQUENCIES = [261.63, 329.63, 392.00, 493.88]
+
+// Groove templates: 5 levels, each with 3 pre-designed interval patterns (seed picks one)
+const GROOVE_TEMPLATES: { beats: number; tones: number; intervals: number[][] }[] = [
+  // Level 1 — Pulse: 4 beats, 2 tones, steady quarter notes (~500ms gaps)
+  {
+    beats: 4, tones: 2,
+    intervals: [
+      [500, 500, 500],
+      [520, 480, 520],
+      [480, 500, 520],
+    ],
+  },
+  // Level 2 — Bounce: 5 beats, 3 tones, mix of quarters + eighths (250-500ms)
+  {
+    beats: 5, tones: 3,
+    intervals: [
+      [500, 250, 500, 250],
+      [250, 500, 250, 500],
+      [500, 500, 250, 250],
+    ],
+  },
+  // Level 3 — Funk: 6 beats, 3 tones, syncopated quick doubles (200-400ms)
+  {
+    beats: 6, tones: 3,
+    intervals: [
+      [300, 200, 400, 200, 300],
+      [200, 300, 200, 400, 300],
+      [400, 200, 200, 300, 350],
+    ],
+  },
+  // Level 4 — Latin: 7 beats, 4 tones, clave-inspired uneven groups (200-350ms)
+  {
+    beats: 7, tones: 4,
+    intervals: [
+      [300, 200, 350, 250, 200, 300],
+      [200, 350, 200, 300, 250, 300],
+      [350, 200, 300, 200, 300, 250],
+    ],
+  },
+  // Level 5 — Breakbeat: 8 beats, 4 tones, fast complex (200-300ms)
+  {
+    beats: 8, tones: 4,
+    intervals: [
+      [250, 200, 300, 200, 250, 200, 250],
+      [200, 250, 200, 300, 200, 250, 200],
+      [300, 200, 200, 250, 250, 200, 200],
+    ],
+  },
+]
 
 function seededRandom(seed: string): () => number {
   let hash = 0
@@ -63,21 +112,19 @@ export function generateBeatMatchTurnSpec(
   const seed = crypto.createHash('sha256').update(seedInput).digest('hex')
   const random = seededRandom(seed)
 
-  // Round 1 (Simple): 4 beats, slower tempo (500-700ms gaps), 3 tone types
-  const simple: BeatMatchRound = {
-    beats: Array.from({ length: 4 }, () => Math.floor(random() * 3)),
-    intervals: Array.from({ length: 3 }, () => 500 + Math.floor(random() * 200)),
-  }
-
-  // Round 2 (Advanced): 6 beats, faster tempo (300-500ms gaps), 4 tone types
-  const advanced: BeatMatchRound = {
-    beats: Array.from({ length: 6 }, () => Math.floor(random() * 4)),
-    intervals: Array.from({ length: 5 }, () => 300 + Math.floor(random() * 200)),
-  }
+  // Generate 5 rounds from groove templates
+  const rounds: BeatMatchRound[] = GROOVE_TEMPLATES.map(level => {
+    // Pick one of 3 groove templates for intervals
+    const templateIdx = Math.floor(random() * 3)
+    const intervals = [...level.intervals[templateIdx]]
+    // Randomize which tones (pads) are hit
+    const beats = Array.from({ length: level.beats }, () => Math.floor(random() * level.tones))
+    return { beats, intervals }
+  })
 
   return {
     seed,
-    rounds: [simple, advanced],
+    rounds,
     toneCount: 4,
     frequencies: [...TONE_FREQUENCIES],
     timeLimitMs: config.time_limit_seconds * 1000,
@@ -104,8 +151,10 @@ export function validateBeatMatchTurn(
 ): BeatMatchResult {
   const taps = events.filter(e => e.eventType === 'tap')
 
+  const totalExpected = spec.rounds.reduce((sum, r) => sum + r.beats.length, 0)
+
   if (taps.length === 0) {
-    return { valid: false, reason: 'no_input', correct: 0, total: 10 }
+    return { valid: false, reason: 'no_input', correct: 0, total: totalExpected }
   }
 
   // Bot detection: check timing consistency
@@ -120,18 +169,18 @@ export function validateBeatMatchTurn(
     const stdDev = Math.sqrt(variance)
 
     if (stdDev < 15 && intervals.length >= 4) {
-      return { valid: false, reason: 'suspicious_timing', correct: 0, total: 10, flag: true }
+      return { valid: false, reason: 'suspicious_timing', correct: 0, total: totalExpected, flag: true }
     }
     if (avgInterval < 50) {
-      return { valid: false, reason: 'impossible_speed', correct: 0, total: 10, flag: true }
+      return { valid: false, reason: 'impossible_speed', correct: 0, total: totalExpected, flag: true }
     }
   }
 
   // Group taps by round
-  const roundTaps: BeatMatchEvent[][] = [[], []]
+  const roundTaps: BeatMatchEvent[][] = spec.rounds.map(() => [])
   for (const tap of taps) {
     const ri = tap.roundIndex ?? 0
-    if (ri === 0 || ri === 1) roundTaps[ri].push(tap)
+    if (ri >= 0 && ri < spec.rounds.length) roundTaps[ri].push(tap)
   }
 
   let totalCorrectBeats = 0
@@ -185,7 +234,7 @@ export function validateBeatMatchTurn(
 
   // Scoring: unbounded sqrt-based (matches platform pattern)
   const basePoints = 7000
-  const maxTimeMs = 30000
+  const maxTimeMs = 45000
   const speed = Math.sqrt(maxTimeMs / totalTimeMs)
   const score = Math.round(basePoints * quality * speed)
 

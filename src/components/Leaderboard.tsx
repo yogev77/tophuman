@@ -5,6 +5,7 @@ import { Crown } from 'lucide-react'
 import { formatCredits, formatCountdown } from '@/lib/utils'
 import { Link } from 'next-view-transitions'
 import { CC } from '@/lib/currency'
+import { trackLeaderboardTabSwitched } from '@/lib/analytics'
 
 interface LeaderboardEntry {
   rank: number
@@ -104,6 +105,7 @@ export function Leaderboard({ gameType, gameTypeName, refreshKey, poolSize, msUn
 
   // Switch tab: use cache instantly, then refresh in background
   const handlePeriodChange = (p: 'today' | 'alltime') => {
+    trackLeaderboardTabSwitched({ game_type: gameType, period: p })
     setPeriod(p)
     const cached = cache.current[p]
     if (cached) {

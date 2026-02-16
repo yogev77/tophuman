@@ -12,6 +12,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useCreditsNotification } from '@/components/CreditsNotificationProvider'
 import { GAMES, toUiGameId, getSkillForGame } from '@/lib/skills'
 import { GAME_ICONS } from '@/lib/game-icons'
+import { trackGameCompleted, trackGroupPlayJoined } from '@/lib/analytics'
 import { GroupPlayLeaderboard } from '@/components/GroupPlayLeaderboard'
 import { GroupSessionBar } from '@/components/GroupSessionBar'
 import { EmojiKeypadGame } from '@/components/EmojiKeypadGame'
@@ -96,6 +97,7 @@ export default function GroupPage({ params }: { params: Promise<{ token: string 
   const [leaderboardRefreshKey, setLeaderboardRefreshKey] = useState(0)
   const [creatingNew, setCreatingNew] = useState(false)
   const gameContainerRef = useRef<HTMLDivElement>(null)
+  const hasTrackedJoin = useRef(false)
 
   const fetchSession = useCallback(async () => {
     try {
@@ -113,6 +115,11 @@ export default function GroupPage({ params }: { params: Promise<{ token: string 
       setLeaderboard(data.leaderboard)
       setPlayerCount(data.playerCount)
       setTurnCount(data.turnCount || 0)
+      if (!hasTrackedJoin.current) {
+        const uiId = toUiGameId(data.session.gameTypeId)
+        if (uiId) trackGroupPlayJoined({ game_type: uiId, player_count: data.playerCount })
+        hasTrackedJoin.current = true
+      }
       // Refresh balance when session ended/settled (picks up pending claims)
       if (data.session.status === 'ended' || data.session.status === 'settled') {
         refreshBalance()
@@ -148,7 +155,8 @@ export default function GroupPage({ params }: { params: Promise<{ token: string 
   const GameIcon = uiGameId ? (GAME_ICONS[uiGameId] || GAME_ICONS.emoji_keypad) : GAME_ICONS.emoji_keypad
   const GameComponent = uiGameId ? GAME_COMPONENTS[uiGameId] : null
 
-  const handleGameComplete = () => {
+  const handleGameComplete = (data?: { score?: number; valid?: boolean; rank?: number }) => {
+    if (uiGameId) trackGameCompleted({ game_type: uiGameId, ...data })
     refreshBalance()
     setTimeout(() => {
       setLeaderboardRefreshKey(k => k + 1)

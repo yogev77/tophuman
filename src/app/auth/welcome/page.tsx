@@ -5,6 +5,13 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
 import { Trophy, AlertCircle } from 'lucide-react'
 import { Spinner } from '@/components/Spinner'
+import {
+  trackWelcomePageLoaded,
+  trackAuthCallbackReached,
+  trackCreditsGranted,
+  trackReferralApplied,
+  trackOnboardingComplete,
+} from '@/lib/analytics'
 
 async function grantCreditsWithRetry(): Promise<boolean> {
   const res = await fetch('/api/credits/grant', { method: 'POST' })
@@ -25,12 +32,22 @@ function WelcomeContent() {
 
   useEffect(() => {
     const processWelcome = async () => {
+      trackWelcomePageLoaded()
+
+      if (!sessionStorage.getItem('auth_callback_tracked')) {
+        trackAuthCallbackReached({ needs_username: false })
+        sessionStorage.setItem('auth_callback_tracked', 'true')
+      }
+
       const referralCode = localStorage.getItem('referralCode')
       const next = searchParams.get('next') || localStorage.getItem('authRedirectTo') || '/'
       localStorage.removeItem('authRedirectTo')
 
       // Auto-grant first daily credits with retry
       const grantOk = await grantCreditsWithRetry()
+      if (grantOk) {
+        trackCreditsGranted()
+      }
       if (!grantOk) {
         setFailed(true)
         setStatus('Something went wrong setting up your account.')
@@ -46,16 +63,19 @@ function WelcomeContent() {
             body: JSON.stringify({ referralCode }),
           })
 
+          trackReferralApplied({ success: res.ok })
           if (res.ok) {
             setStatus('Referral bonus applied! Redirecting...')
           }
           localStorage.removeItem('referralCode')
         } catch (err) {
+          trackReferralApplied({ success: false })
           console.error('Referral error:', err)
         }
       }
 
       // Short delay to show status, then redirect
+      trackOnboardingComplete()
       setTimeout(() => {
         router.push(next)
       }, 1500)

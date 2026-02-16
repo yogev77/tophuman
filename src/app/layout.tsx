@@ -11,6 +11,7 @@ import { BottomNotificationBar } from '@/components/BottomNotificationBar'
 import { GroupPlayProvider } from '@/components/GroupPlayProvider'
 import { GroupPlayBar } from '@/components/GroupPlayBar'
 import { Toaster } from 'sonner'
+import { PostHogProvider } from '@/components/PostHogProvider'
 
 const recursive = Recursive({
   subsets: ['latin'],
@@ -53,6 +54,7 @@ export default function RootLayout({
     <ViewTransitions>
       <html lang="en" className="dark">
         <body className={`${recursive.className} ${recursive.variable} bg-slate-100 dark:bg-slate-900 min-h-screen transition-colors`}>
+          <PostHogProvider>
           <ThemeProvider>
             <SoundProvider>
             <CreditsNotificationProvider>
@@ -72,6 +74,7 @@ export default function RootLayout({
             </CreditsNotificationProvider>
             </SoundProvider>
           </ThemeProvider>
+          </PostHogProvider>
         </body>
       </html>
     </ViewTransitions>

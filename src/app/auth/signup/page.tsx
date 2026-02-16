@@ -6,6 +6,15 @@ import { createClient } from '@/lib/supabase/client'
 import { Gift, Check, X, Loader2 } from 'lucide-react'
 import { Spinner } from '@/components/Spinner'
 import { C, CC } from '@/lib/currency'
+import {
+  trackSignupPageViewed,
+  trackAuthTabSwitched,
+  trackSignupSubmitted,
+  trackSignupError,
+  trackLoginSubmitted,
+  trackLoginError,
+  trackEmailVerificationSent,
+} from '@/lib/analytics'
 
 function AuthContent() {
   const searchParams = useSearchParams()
@@ -73,6 +82,8 @@ function AuthContent() {
     if (mode === 'login') {
       setTab('login')
     }
+
+    trackSignupPageViewed({ mode: mode || 'signup', has_referral: !!ref })
   }, [searchParams])
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -99,6 +110,7 @@ function AuthContent() {
       return
     }
 
+    trackSignupSubmitted({ method: 'email' })
     setLoading(true)
 
     try {
@@ -113,9 +125,12 @@ function AuthContent() {
 
       if (error) throw error
 
+      trackEmailVerificationSent()
       setSuccess(true)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
+      const message = err instanceof Error ? err.message : 'An error occurred'
+      trackSignupError({ error: message })
+      setError(message)
     } finally {
       setLoading(false)
     }
@@ -123,6 +138,11 @@ function AuthContent() {
 
   const handleGoogleSignIn = async () => {
     setError(null)
+    if (tab === 'signup') {
+      trackSignupSubmitted({ method: 'google' })
+    } else {
+      trackLoginSubmitted({ method: 'google' })
+    }
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -137,6 +157,7 @@ function AuthContent() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+    trackLoginSubmitted({ method: 'email' })
     setLoading(true)
 
     try {
@@ -152,7 +173,9 @@ function AuthContent() {
       router.push(redirectTo)
       router.refresh()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
+      const message = err instanceof Error ? err.message : 'An error occurred'
+      trackLoginError({ error: message })
+      setError(message)
     } finally {
       setLoading(false)
     }
@@ -185,7 +208,7 @@ function AuthContent() {
         {/* Tabs */}
         <div className="flex border-b border-slate-700">
           <button
-            onClick={() => { setTab('signup'); setError(null) }}
+            onClick={() => { setTab('signup'); setError(null); trackAuthTabSwitched({ tab: 'signup' }) }}
             className={`flex-1 py-4 text-sm font-semibold transition ${
               tab === 'signup'
                 ? 'bg-yellow-500 text-slate-900'
@@ -195,7 +218,7 @@ function AuthContent() {
             Sign Up
           </button>
           <button
-            onClick={() => { setTab('login'); setError(null) }}
+            onClick={() => { setTab('login'); setError(null); trackAuthTabSwitched({ tab: 'login' }) }}
             className={`flex-1 py-4 text-sm font-semibold transition ${
               tab === 'login'
                 ? 'bg-yellow-500 text-slate-900'

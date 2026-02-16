@@ -56,7 +56,7 @@ export function BeatMatchGame({ onGameComplete, groupSessionId }: BeatMatchGameP
   const [activePad, setActivePad] = useState<number | null>(null)
   const [playingBeatIndex, setPlayingBeatIndex] = useState(-1)
   const [userTapCount, setUserTapCount] = useState(0)
-  const [timeLeft, setTimeLeft] = useState(30000)
+  const [timeLeft, setTimeLeft] = useState(45000)
   const [countdownNum, setCountdownNum] = useState(3)
   const [roundResult, setRoundResult] = useState<{ correct: number; total: number } | null>(null)
 
@@ -167,7 +167,7 @@ export function BeatMatchGame({ onGameComplete, groupSessionId }: BeatMatchGameP
     setResult(null)
     setCurrentRound(0)
     setUserTapCount(0)
-    setTimeLeft(30000)
+    setTimeLeft(45000)
     setRoundResult(null)
     completingRef.current = false
 
@@ -204,10 +204,10 @@ export function BeatMatchGame({ onGameComplete, groupSessionId }: BeatMatchGameP
 
       gameStartTimeRef.current = Date.now()
 
-      // Start 30s timer
+      // Start 45s timer
       timerRef.current = setInterval(() => {
         const elapsed = Date.now() - gameStartTimeRef.current
-        const remaining = 30000 - elapsed
+        const remaining = 45000 - elapsed
         setTimeLeft(Math.max(0, remaining))
 
         if (remaining <= 0) {
@@ -277,7 +277,7 @@ export function BeatMatchGame({ onGameComplete, groupSessionId }: BeatMatchGameP
         setPhase('between')
         setRoundResult({ correct: newCount, total: round.beats.length })
 
-        await new Promise(resolve => setTimeout(resolve, 1500))
+        await new Promise(resolve => setTimeout(resolve, 1000))
 
         const nextRound = currentRound + 1
         setCurrentRound(nextRound)
@@ -317,7 +317,8 @@ export function BeatMatchGame({ onGameComplete, groupSessionId }: BeatMatchGameP
     }
   }, [])
 
-  const roundLabel = currentRound === 0 ? 'Simple' : 'Advanced'
+  const ROUND_NAMES = ['Pulse', 'Bounce', 'Funk', 'Latin', 'Breakbeat']
+  const roundLabel = ROUND_NAMES[currentRound] ?? `Level ${currentRound + 1}`
   const currentBeats = spec?.rounds[currentRound]?.beats.length ?? 0
 
   return (

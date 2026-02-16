@@ -42,6 +42,7 @@ import {
 import { C, CC } from '@/lib/currency'
 import { GAMES, toDbGameTypeId, getSkillForGame } from '@/lib/skills'
 import { GAME_ICONS } from '@/lib/game-icons'
+import { trackGameCompleted, trackGroupPlayCreated, trackReferralShared } from '@/lib/analytics'
 
 const GAME_COMPONENTS: Record<string, React.ComponentType<{ onGameComplete?: () => void }>> = {
   emoji_keypad: EmojiKeypadGame,
@@ -183,7 +184,8 @@ function GamePageContent({ gameType }: { gameType: string }) {
     return () => { if (countdownRef.current) clearInterval(countdownRef.current) }
   }, [])
 
-  const handleGameComplete = () => {
+  const handleGameComplete = (data?: { score?: number; valid?: boolean; rank?: number }) => {
+    trackGameCompleted({ game_type: gameType, ...data })
     refreshBalance()
     fetchPoolSize()
     setGameCompleted(true)
@@ -202,6 +204,7 @@ function GamePageContent({ gameType }: { gameType: string }) {
       })
       if (res.ok) {
         const data = await res.json()
+        trackGroupPlayCreated({ game_type: gameType })
         router.push(`/group/${data.joinToken}`)
       }
     } catch {
@@ -424,9 +427,9 @@ function GamePageContent({ gameType }: { gameType: string }) {
                   const text = 'Compete across 5 mind skills on Podium Arena. Clock resets daily.'
                   const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0
                   if (isMobile && navigator.share) {
-                    try { await navigator.share({ title: 'Podium Arena', text, url }); return } catch {}
+                    try { await navigator.share({ title: 'Podium Arena', text, url }); trackReferralShared({ method: 'native_share', location: 'game_page' }); return } catch {}
                   }
-                  try { await navigator.clipboard.writeText(`${text}\n\n${url}`); setInviteCopied(true); setTimeout(() => setInviteCopied(false), 2000) } catch {}
+                  try { await navigator.clipboard.writeText(`${text}\n\n${url}`); trackReferralShared({ method: 'clipboard', location: 'game_page' }); setInviteCopied(true); setTimeout(() => setInviteCopied(false), 2000) } catch {}
                 }}
                 className="w-full flex items-center justify-center gap-1.5 text-sm border border-yellow-500 text-yellow-600 dark:text-yellow-400 hover:bg-yellow-500/10 px-3 py-2 rounded-lg transition"
               >

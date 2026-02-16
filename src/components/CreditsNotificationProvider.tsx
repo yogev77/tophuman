@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useCallback, useEffect, useRef } f
 import { useCredits } from '@/hooks/useCredits'
 import { toast } from 'sonner'
 import { ClaimSuccessModal } from './ClaimSuccessModal'
+import { trackCreditsClaimed } from '@/lib/analytics'
 
 interface CreditsNotificationContextType {
   balance: number
@@ -102,6 +103,8 @@ export function CreditsNotificationProvider({ children }: { children: React.Reac
         const result = await credits.claimWinnings()
 
         if (result) {
+          trackCreditsClaimed({ claim_type: 'winnings', amount: result.totalClaimed, new_balance: result.newBalance })
+
           // Trigger counter animation
           setIsCounterAnimating(true)
           setTimeout(() => setIsCounterAnimating(false), 1200)
@@ -132,6 +135,8 @@ export function CreditsNotificationProvider({ children }: { children: React.Reac
         const success = await credits.claimDailyGrant()
 
         if (success) {
+          trackCreditsClaimed({ claim_type: 'daily', amount: 10, new_balance: credits.balance + 10 })
+
           // Trigger counter animation
           setIsCounterAnimating(true)
           setTimeout(() => setIsCounterAnimating(false), 1200)

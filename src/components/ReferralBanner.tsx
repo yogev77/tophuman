@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Share2, Copy, Check } from 'lucide-react'
 import { C, CC } from '@/lib/currency'
+import { trackReferralShared } from '@/lib/analytics'
 
 interface ReferralBannerProps {
   referralCode: string
@@ -18,6 +19,7 @@ export function ReferralBanner({ referralCode }: ReferralBannerProps) {
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(referralUrl)
+      trackReferralShared({ method: 'clipboard', location: 'referral_banner' })
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch (err) {
@@ -33,6 +35,7 @@ export function ReferralBanner({ referralCode }: ReferralBannerProps) {
           text: `Play skill games and win ${C}Credits! Join using my link:`,
           url: referralUrl,
         })
+        trackReferralShared({ method: 'native_share', location: 'referral_banner' })
       } catch (err) {
         // User cancelled or share failed
         handleCopy()

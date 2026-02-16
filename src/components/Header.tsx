@@ -20,8 +20,16 @@ export function Header() {
   const [drawerClosing, setDrawerClosing] = useState(false)
   const prevShowRef = useRef(false)
   const [copied, setCopied] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const drawerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   const referralUrl = typeof window !== 'undefined' && referralCode
     ? `${window.location.origin}/auth/signup?ref=${referralCode}`
@@ -44,15 +52,16 @@ export function Header() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // Animate drawer close on game pages
+  // Animate drawer close on game pages (mobile only)
+  const useDrawer = isGamePage && isMobile
   useEffect(() => {
-    if (prevShowRef.current && !showCreditsMenu && isGamePage) {
+    if (prevShowRef.current && !showCreditsMenu && useDrawer) {
       setDrawerClosing(true)
     } else if (showCreditsMenu) {
       setDrawerClosing(false)
     }
     prevShowRef.current = showCreditsMenu
-  }, [showCreditsMenu, isGamePage])
+  }, [showCreditsMenu, useDrawer])
 
   const shareText = 'Compete across 5 mind skills on Podium Arena. Clock resets daily.'
 
@@ -201,7 +210,7 @@ export function Header() {
                     </button>
                   </div>
 
-                  {showCreditsMenu && !isGamePage && (
+                  {showCreditsMenu && !useDrawer && (
                     <div className="absolute right-0 top-full mt-2 w-72 bg-slate-800 rounded-xl shadow-xl border border-slate-700 z-50 overflow-hidden">
                       {creditsMenuContent}
                     </div>
@@ -233,7 +242,7 @@ export function Header() {
         </div>
       </div>
 
-      {(showCreditsMenu || drawerClosing) && isGamePage && (
+      {(showCreditsMenu || drawerClosing) && useDrawer && (
         <div className="absolute left-0 right-0 top-full overflow-hidden z-50">
           <div
             ref={drawerRef}

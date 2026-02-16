@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Check, X, Loader2 } from 'lucide-react'
 import { Spinner } from '@/components/Spinner'
+import { trackAuthCallbackReached, trackUsernameChosen } from '@/lib/analytics'
 
 function ChooseUsernameContent() {
   const router = useRouter()
@@ -40,6 +41,8 @@ function ChooseUsernameContent() {
         return
       }
       setCheckingAuth(false)
+      trackAuthCallbackReached({ needs_username: true })
+      sessionStorage.setItem('auth_callback_tracked', 'true')
     }
     check()
   }, [router])
@@ -108,6 +111,7 @@ function ChooseUsernameContent() {
       }
 
       // Success — go to welcome page for credit grant + referral
+      trackUsernameChosen()
       const next = searchParams.get('next') || localStorage.getItem('authRedirectTo') || '/'
       router.push(`/auth/welcome?next=${encodeURIComponent(next)}`)
     } catch {
