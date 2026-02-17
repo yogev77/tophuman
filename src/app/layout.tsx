@@ -53,7 +53,7 @@ export default function RootLayout({
   return (
     <ViewTransitions>
       <html lang="en" className="dark">
-        <body className={`${recursive.className} ${recursive.variable} bg-slate-100 dark:bg-slate-900 min-h-screen transition-colors`}>
+<body className={`${recursive.className} ${recursive.variable} bg-slate-100 dark:bg-slate-900 min-h-screen transition-colors`}>
           <PostHogProvider>
           <ThemeProvider>
             <SoundProvider>
