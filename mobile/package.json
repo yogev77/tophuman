@@ -1,0 +1,24 @@
+{
+  "name": "podium-arena-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Podium Arena native mobile app wrapper",
+  "scripts": {
+    "build": "echo 'No build needed - using remote URL'",
+    "cap:sync": "npx cap sync",
+    "cap:open:android": "npx cap open android",
+    "cap:run:android": "npx cap run android",
+    "cap:open:ios": "npx cap open ios",
+    "cap:run:ios": "npx cap run ios"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/core": "^7.0.0",
+    "@capacitor/ios": "^7.0.0",
+    "@capacitor/splash-screen": "^7.0.0",
+    "@capacitor/status-bar": "^7.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.0.0"
+  }
+}
