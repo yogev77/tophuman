@@ -301,7 +301,7 @@ export default function GroupPage({ params }: { params: Promise<{ token: string 
           <div className="mt-3">
             <Link
               href="/"
-              className="w-full flex items-center justify-center gap-2 border-2 border-slate-300 dark:border-slate-600 hover:border-slate-400 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-semibold py-2.5 rounded-lg transition text-base"
+              className="w-full flex items-center justify-center gap-2 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-600 font-semibold py-2.5 rounded-lg transition text-base"
             >
               <Gamepad2 className="w-5 h-5" />
               All Games

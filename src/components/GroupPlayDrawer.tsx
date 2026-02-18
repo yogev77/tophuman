@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { X, Clock, Users } from 'lucide-react'
+import { X, Users } from 'lucide-react'
 import { useGroupPlay, ActiveGroup } from './GroupPlayProvider'
 import { GAME_ICONS } from '@/lib/game-icons'
 import { CC } from '@/lib/currency'
@@ -13,7 +13,6 @@ function formatTimeRemaining(endsAt: string): string {
   const totalSec = Math.floor(diff / 1000)
   const min = Math.floor(totalSec / 60)
   const sec = totalSec % 60
-  if (min >= 1) return `${min}m`
   return `${min}:${sec.toString().padStart(2, '0')}`
 }
 
@@ -109,15 +108,14 @@ export function GroupPlayDrawer() {
                     </div>
                     <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
                       <span className="inline-flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {formatTimeRemaining(group.endsAt)}
-                      </span>
-                      <span className="inline-flex items-center gap-1">
                         <Users className="w-3 h-3" />
                         {group.playerCount}
                       </span>
                       <span><CC />{group.turnCount}</span>
                     </div>
+                  </div>
+                  <div className={`shrink-0 tabular-nums text-sm font-medium ${endingSoon ? 'text-red-500' : 'text-slate-600 dark:text-slate-300'}`}>
+                    {formatTimeRemaining(group.endsAt)}
                   </div>
                 </button>
               )

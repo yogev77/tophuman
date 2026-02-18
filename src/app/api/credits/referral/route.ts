@@ -123,16 +123,22 @@ export async function POST(request: Request) {
     }
 
     // Grant 100 credits to referrer
-    // TODO: Consider deferring this until referred user plays N games
-    await serviceSupabase
+    const { error: ledgerError } = await serviceSupabase
       .from('credit_ledger')
       .insert({
         user_id: referrer.user_id,
         amount: 100,
         event_type: 'referral_bonus',
         utc_day: today,
-        memo: `Referral bonus for inviting ${currentProfile.user_id}`,
+        reference_id: currentProfile.user_id,
+        reference_type: 'referral',
+        metadata: { referred_user: currentProfile.user_id },
       })
+
+    if (ledgerError) {
+      console.error('Referral ledger insert failed:', ledgerError)
+      return NextResponse.json({ error: 'Failed to grant referral bonus' }, { status: 500 })
+    }
 
     return NextResponse.json({ success: true, creditsGranted: 100 })
   } catch (err) {

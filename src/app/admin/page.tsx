@@ -27,6 +27,7 @@ import {
   ChevronRight,
   Mail,
   Send,
+  Users,
 } from 'lucide-react'
 import { EMAIL_TEMPLATES } from '@/lib/email-templates'
 
@@ -179,7 +180,16 @@ function gameDisplayName(id: string | null): string {
   return GAME_NAME_MAP[id] || id
 }
 
-type Tab = 'dashboard' | 'treasury' | 'notifications'
+type Tab = 'dashboard' | 'treasury' | 'notifications' | 'referrals'
+
+interface ReferralEntry {
+  referrer_user_id: string
+  referrer_name: string
+  referred_user_id: string
+  referred_name: string
+  referred_at: string
+  credits_granted: boolean
+}
 
 const EVENT_TYPE_STYLES: Record<string, { label: string; color: string }> = {
   daily_grant: { label: 'Daily Grant', color: 'bg-green-500/20 text-green-400' },
@@ -240,6 +250,11 @@ export default function AdminPage() {
   const [snapshotsTotal, setSnapshotsTotal] = useState(0)
   const [snapshotsLoading, setSnapshotsLoading] = useState(false)
   const [recordingSnapshot, setRecordingSnapshot] = useState(false)
+
+  // Referrals tab state
+  const [referrals, setReferrals] = useState<ReferralEntry[]>([])
+  const [referralsLoading, setReferralsLoading] = useState(false)
+  const [referralStats, setReferralStats] = useState({ total: 0, credited: 0, uncredited: 0 })
 
   // Notifications tab state
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
@@ -493,6 +508,69 @@ export default function AdminPage() {
     }
   }, [activeTab, treasuryUserId, treasuryEntries.length, treasuryBalance, fetchTreasuryHistory, snapshots.length, snapshotsLoading, fetchSnapshots, settlementHistory.length, settlementHistoryLoading, fetchSettlementHistory])
 
+  // Fetch referral data when switching to referrals tab
+  useEffect(() => {
+    if (activeTab !== 'referrals' || referrals.length > 0 || referralsLoading) return
+    const fetchReferrals = async () => {
+      setReferralsLoading(true)
+      try {
+        const supabase = createClient()
+
+        // Get all referred profiles (where referred_by is not null)
+        const { data: referred } = await supabase
+          .from('profiles')
+          .select('user_id, display_name, username, referred_by, created_at')
+          .not('referred_by', 'is', null)
+          .order('created_at', { ascending: false })
+
+        if (!referred || referred.length === 0) {
+          setReferrals([])
+          setReferralStats({ total: 0, credited: 0, uncredited: 0 })
+          setReferralsLoading(false)
+          return
+        }
+
+        // Get all referral_bonus ledger entries
+        const { data: bonuses } = await supabase
+          .from('credit_ledger')
+          .select('user_id, reference_id, created_at')
+          .eq('event_type', 'referral_bonus')
+
+        const bonusSet = new Set(bonuses?.map(b => b.reference_id) ?? [])
+
+        // Get referrer profiles for display names
+        const referrerIds = [...new Set(referred.map(r => r.referred_by))]
+        const { data: referrerProfiles } = await supabase
+          .from('profiles')
+          .select('user_id, display_name, username')
+          .in('user_id', referrerIds)
+
+        const referrerMap = new Map(referrerProfiles?.map(p => [p.user_id, p]) ?? [])
+
+        const entries: ReferralEntry[] = referred.map(r => {
+          const referrer = referrerMap.get(r.referred_by)
+          return {
+            referrer_user_id: r.referred_by,
+            referrer_name: referrer?.username || referrer?.display_name || r.referred_by,
+            referred_user_id: r.user_id,
+            referred_name: r.username || r.display_name || r.user_id,
+            referred_at: r.created_at,
+            credits_granted: bonusSet.has(r.user_id),
+          }
+        })
+
+        const credited = entries.filter(e => e.credits_granted).length
+        setReferrals(entries)
+        setReferralStats({ total: entries.length, credited, uncredited: entries.length - credited })
+      } catch (err) {
+        console.error('Failed to fetch referrals:', err)
+      } finally {
+        setReferralsLoading(false)
+      }
+    }
+    fetchReferrals()
+  }, [activeTab, referrals.length, referralsLoading])
+
   const updateGameSetting = async (gameId: string, isActive: boolean, opensAt: string | null) => {
     setUpdatingGame(gameId)
     try {
@@ -656,6 +734,17 @@ export default function AdminPage() {
         >
           <Vault className="w-4 h-4" />
           Treasury
+        </button>
+        <button
+          onClick={() => setActiveTab('referrals')}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition ${
+            activeTab === 'referrals'
+              ? 'bg-slate-700 text-white'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          Referrals
         </button>
         <button
           onClick={() => setActiveTab('notifications')}
@@ -1393,6 +1482,73 @@ export default function AdminPage() {
             )}
           </div>
 
+        </>
+      )}
+
+      {activeTab === 'referrals' && (
+        <>
+          {/* Stats cards */}
+          <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+              <div className="text-2xl font-bold text-white">{referralStats.total}</div>
+              <div className="text-xs text-slate-400">Total Referrals</div>
+            </div>
+            <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+              <div className="text-2xl font-bold text-green-400">{referralStats.credited}</div>
+              <div className="text-xs text-slate-400">Credits Granted</div>
+            </div>
+            <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+              <div className="text-2xl font-bold text-red-400">{referralStats.uncredited}</div>
+              <div className="text-xs text-slate-400">Missing Credits</div>
+            </div>
+          </div>
+
+          {/* Referral list */}
+          <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-700 flex items-center justify-between">
+              <h3 className="text-sm font-bold text-white">Referral Activity</h3>
+              <button
+                onClick={() => { setReferrals([]); setReferralsLoading(false) }}
+                className="text-xs text-slate-400 hover:text-white transition"
+              >
+                Refresh
+              </button>
+            </div>
+            {referralsLoading ? (
+              <div className="flex items-center justify-center h-32 text-slate-500">Loading...</div>
+            ) : referrals.length === 0 ? (
+              <div className="flex items-center justify-center h-32 text-slate-500">No referrals yet</div>
+            ) : (
+              <div className="divide-y divide-slate-700 max-h-[600px] overflow-y-auto">
+                {referrals.map((r, i) => (
+                  <div key={i} className="px-4 py-3 flex items-center gap-3">
+                    <div className={`w-2 h-2 rounded-full shrink-0 ${r.credits_granted ? 'bg-green-400' : 'bg-red-400'}`} />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm text-white">
+                        <span className="font-medium text-cyan-400">{r.referrer_name}</span>
+                        <span className="text-slate-500 mx-1.5">&rarr;</span>
+                        <span className="font-medium">{r.referred_name}</span>
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        {new Date(r.referred_at).toLocaleDateString()} {new Date(r.referred_at).toLocaleTimeString()}
+                      </div>
+                    </div>
+                    <div className="shrink-0">
+                      {r.credits_granted ? (
+                        <span className="inline-flex items-center gap-1 text-xs text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full">
+                          <Check className="w-3 h-3" /> 100 credited
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-xs text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full">
+                          <X className="w-3 h-3" /> Not credited
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </>
       )}
 
