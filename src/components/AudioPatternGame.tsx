@@ -321,21 +321,23 @@ export function AudioPatternGame({ onGameComplete, groupSessionId }: AudioPatter
       {phase === 'idle' && (
         <div className="text-center pb-6">
           <div className="mb-4 max-w-sm mx-auto"><GameThumbnail gameId="audio_pattern" isPlayable={true} /></div>
-          <p className="text-slate-300 mb-6">
-            Listen and repeat! Start with 3 tones, each level adds one more. 30 seconds - go fast!
-          </p>
-          {!soundEnabled && (
-            <div className="mb-4 p-3 bg-yellow-500/20 border border-yellow-500/30 rounded-lg text-yellow-400 text-sm">
-              Sounds are off. Enable sounds in Settings to play this game.
-            </div>
-          )}
-          <button
-            onClick={startGame}
-            disabled={!soundEnabled}
-            className="bg-yellow-500 hover:bg-yellow-400 disabled:bg-yellow-500/30 disabled:text-slate-900/50 text-slate-900 font-bold py-3 px-8 rounded-lg text-lg transition"
-          >
-            Start (1 <CC />Credit)
-          </button>
+          <div className="max-w-sm mx-auto">
+            <p className="text-slate-300 mb-6">
+              Listen and repeat! Start with 3 tones, each level adds one more. 30 seconds - go fast!
+            </p>
+            {!soundEnabled && (
+              <div className="mb-4 p-3 bg-yellow-500/20 border border-yellow-500/30 rounded-lg text-yellow-400 text-sm">
+                Sounds are off. Enable sounds in Settings to play this game.
+              </div>
+            )}
+            <button
+              onClick={startGame}
+              disabled={!soundEnabled}
+              className="bg-yellow-500 hover:bg-yellow-400 disabled:bg-yellow-500/30 disabled:text-slate-900/50 text-slate-900 font-bold py-3 px-8 rounded-lg text-lg transition"
+            >
+              Start (1 <CC />Credit)
+            </button>
+          </div>
         </div>
       )}
 

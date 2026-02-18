@@ -37,6 +37,7 @@ function renderGame(gameId: string) {
     case 'draw_me': return <DrawMe />
     case 'beat_match': return <BeatMatch />
     case 'grid_recall': return <GridRecall />
+    case 'maze_path': return <MazePath />
     default: return <DefaultThumb />
   }
 }
@@ -563,6 +564,54 @@ function GridRecall() {
         <rect key={i} x={t.x} y={t.y} width={s} height={s} rx="8"
           className={t.on ? 'fill-purple-500' : 'fill-slate-200 dark:fill-slate-600'} />
       ))}
+    </>
+  )
+}
+
+/* ─── Maze Path ─── */
+function MazePath() {
+  // Stylized 5x5 mini-maze with a traced path from A to B
+  const wallColor = 'stroke-green-700/60 dark:stroke-green-400/50'
+  const wallW = 3
+  const ox = 155, oy = 15 // offset — centered: (480 - 5*34) / 2
+  const cs = 34 // cell size
+  return (
+    <>
+      <rect width="480" height="200" rx="8" className="fill-green-100 dark:fill-green-900/20" />
+      {/* Grid background */}
+      <rect x={ox} y={oy} width={cs * 5} height={cs * 5} rx="6" className="fill-white/40 dark:fill-slate-800/30" />
+      {/* Outer border */}
+      <rect x={ox} y={oy} width={cs * 5} height={cs * 5} rx="6" fill="none" strokeWidth={wallW} className={wallColor} />
+      {/* Horizontal walls */}
+      <line x1={ox + cs} y1={oy + cs} x2={ox + cs * 3} y2={oy + cs} strokeWidth={wallW} className={wallColor} />
+      <line x1={ox + cs * 4} y1={oy + cs} x2={ox + cs * 5} y2={oy + cs} strokeWidth={wallW} className={wallColor} />
+      <line x1={ox} y1={oy + cs * 2} x2={ox + cs} y2={oy + cs * 2} strokeWidth={wallW} className={wallColor} />
+      <line x1={ox + cs * 2} y1={oy + cs * 2} x2={ox + cs * 3} y2={oy + cs * 2} strokeWidth={wallW} className={wallColor} />
+      <line x1={ox + cs * 4} y1={oy + cs * 2} x2={ox + cs * 5} y2={oy + cs * 2} strokeWidth={wallW} className={wallColor} />
+      <line x1={ox + cs} y1={oy + cs * 3} x2={ox + cs * 2} y2={oy + cs * 3} strokeWidth={wallW} className={wallColor} />
+      <line x1={ox + cs * 3} y1={oy + cs * 3} x2={ox + cs * 4} y2={oy + cs * 3} strokeWidth={wallW} className={wallColor} />
+      <line x1={ox} y1={oy + cs * 4} x2={ox + cs * 2} y2={oy + cs * 4} strokeWidth={wallW} className={wallColor} />
+      <line x1={ox + cs * 3} y1={oy + cs * 4} x2={ox + cs * 5} y2={oy + cs * 4} strokeWidth={wallW} className={wallColor} />
+      {/* Vertical walls */}
+      <line x1={ox + cs} y1={oy} x2={ox + cs} y2={oy + cs} strokeWidth={wallW} className={wallColor} />
+      <line x1={ox + cs * 2} y1={oy + cs} x2={ox + cs * 2} y2={oy + cs * 2} strokeWidth={wallW} className={wallColor} />
+      <line x1={ox + cs * 3} y1={oy} x2={ox + cs * 3} y2={oy + cs} strokeWidth={wallW} className={wallColor} />
+      <line x1={ox + cs * 4} y1={oy + cs * 2} x2={ox + cs * 4} y2={oy + cs * 3} strokeWidth={wallW} className={wallColor} />
+      <line x1={ox + cs} y1={oy + cs * 3} x2={ox + cs} y2={oy + cs * 4} strokeWidth={wallW} className={wallColor} />
+      <line x1={ox + cs * 2} y1={oy + cs * 2} x2={ox + cs * 2} y2={oy + cs * 3} strokeWidth={wallW} className={wallColor} />
+      <line x1={ox + cs * 3} y1={oy + cs * 3} x2={ox + cs * 3} y2={oy + cs * 5} strokeWidth={wallW} className={wallColor} />
+      {/* Traced path (A→B) */}
+      <polyline
+        points={`${ox + cs / 2},${oy + cs / 2} ${ox + cs / 2},${oy + cs * 1.5} ${ox + cs * 1.5},${oy + cs * 1.5} ${ox + cs * 1.5},${oy + cs * 2.5} ${ox + cs * 2.5},${oy + cs * 2.5} ${ox + cs * 2.5},${oy + cs * 3.5} ${ox + cs * 2.5},${oy + cs * 4.5} ${ox + cs * 3.5},${oy + cs * 4.5} ${ox + cs * 4.5},${oy + cs * 4.5}`}
+        fill="none" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"
+        className="stroke-yellow-500"
+      />
+      {/* Start marker (A) */}
+      <circle cx={ox + cs / 2} cy={oy + cs / 2} r="10" className="fill-green-500" />
+      <text x={ox + cs / 2} y={oy + cs / 2 + 4} textAnchor="middle" fontSize="12" fontWeight="bold" className="fill-white">A</text>
+      {/* End marker (B) */}
+      <circle cx={ox + cs * 4.5} cy={oy + cs * 4.5} r="10" className="fill-red-500" />
+      <text x={ox + cs * 4.5} y={oy + cs * 4.5 + 4} textAnchor="middle" fontSize="12" fontWeight="bold" className="fill-white">B</text>
     </>
   )
 }

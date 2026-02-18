@@ -8,6 +8,7 @@ import { useCreditsNotification } from './CreditsNotificationProvider'
 import { useTheme } from '@/hooks/useTheme'
 import { Share2, Copy, Check, Gift, Sun, Moon, Trophy, History, Loader2 } from 'lucide-react'
 import { C, CC } from '@/lib/currency'
+import { LOGO_POLYGONS, SKILLS } from '@/lib/skills'
 
 export function Header() {
   const { user, loading: authLoading } = useAuth()
@@ -151,11 +152,15 @@ export function Header() {
   )
 
   return (
-    <header className={`${isHome ? '' : 'sticky top-0 z-40 backdrop-blur-sm'} bg-slate-900/95 border-b border-slate-800`}>
+    <header className={`${isHome ? '' : 'sticky top-0 z-40 backdrop-blur-sm border-b border-slate-800'} bg-slate-900/95`}>
       <div className="max-w-6xl mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 text-2xl font-bold text-white font-title">
-            <Trophy className="w-6 h-6 text-yellow-400" />
+            <svg viewBox="104 96 304 290" className="w-9 h-9 shrink-0">
+              {LOGO_POLYGONS.map(p => (
+                <polygon key={p.skill} fill={SKILLS[p.skill].hex} points={p.points} />
+              ))}
+            </svg>
             Podium Arena
           </Link>
 

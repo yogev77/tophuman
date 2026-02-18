@@ -28,6 +28,7 @@ import { ImagePuzzleGame } from '@/components/ImagePuzzleGame'
 import { DrawMeGame } from '@/components/DrawMeGame'
 import { BeatMatchGame } from '@/components/BeatMatchGame'
 import { GridRecallGame } from '@/components/GridRecallGame'
+import { MazePathGame } from '@/components/MazePathGame'
 import { Leaderboard } from '@/components/Leaderboard'
 import { Link } from 'next-view-transitions'
 import {
@@ -65,6 +66,7 @@ const GAME_COMPONENTS: Record<string, React.ComponentType<{ onGameComplete?: () 
   draw_me: DrawMeGame,
   beat_match: BeatMatchGame,
   grid_recall: GridRecallGame,
+  maze_path: MazePathGame,
 }
 
 function OutOfCreditsView({ referralCode }: { referralCode: string | null }) {
@@ -294,9 +296,7 @@ function GamePageContent({ gameType }: { gameType: string }) {
       >
         <div className="flex items-start gap-3">
           <Link href="/" className="flex items-start gap-3 min-w-0 flex-1 group">
-            <div className={`p-3 ${iconColors.bg} rounded-xl shrink-0`}>
-              <GameIcon className={`w-10 h-10 ${iconColors.icon}`} />
-            </div>
+            <GameIcon className={`w-10 h-10 shrink-0 ${iconColors.icon}`} />
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
@@ -400,7 +400,7 @@ function GamePageContent({ gameType }: { gameType: string }) {
             <button
               onClick={handleCreateGroup}
               disabled={creatingGroup}
-              className="w-full flex items-center justify-center gap-2 bg-purple-500 hover:bg-purple-400 !text-white font-bold py-2.5 rounded-lg transition text-sm disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-2 border-2 border-purple-500 hover:bg-purple-500/10 text-purple-500 font-bold py-2.5 rounded-lg transition text-sm disabled:opacity-50"
             >
               <Users className="w-4 h-4" />
               {creatingGroup ? 'Creating...' : 'Start Group Play'}

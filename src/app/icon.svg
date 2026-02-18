@@ -1,11 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24">
-  <rect width="24" height="24" fill="#0f172a" rx="4"/>
-  <g transform="translate(2, 2) scale(0.83)" fill="none" stroke="#facc15" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
-    <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
-    <path d="M4 22h16"/>
-    <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
-    <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
-    <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="104 96 304 290">
+  <polygon fill="#E9A90B" points="253,106 115,207 253,252"/>
+  <polygon fill="#456F8C" points="259,106 397,207 259,252"/>
+  <polygon fill="#EA4E1E" points="399,212 346,375 261,258"/>
+  <polygon fill="#7A41B1" points="342,379 170,379 256,261"/>
+  <polygon fill="#599865" points="166,375 113,212 251,258"/>
 </svg>

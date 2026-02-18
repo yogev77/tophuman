@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
-import { Trophy, AlertCircle } from 'lucide-react'
+import { AlertCircle } from 'lucide-react'
 import { Spinner } from '@/components/Spinner'
+import { LOGO_POLYGONS, SKILLS } from '@/lib/skills'
 import {
   trackWelcomePageLoaded,
   trackAuthCallbackReached,
@@ -105,7 +106,11 @@ function WelcomeContent() {
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4">
       <div className="bg-white dark:bg-slate-800 rounded-xl p-8 max-w-md w-full text-center">
-        <Trophy className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
+        <svg viewBox="104 96 304 290" className="w-16 h-16 mx-auto mb-4">
+          {LOGO_POLYGONS.map(p => (
+            <polygon key={p.skill} fill={SKILLS[p.skill].hex} points={p.points} />
+          ))}
+        </svg>
         <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">Welcome to Podium Arena!</h2>
         <p className="text-slate-500 dark:text-slate-300 mb-4">Your account is ready!</p>
         <div className="flex items-center justify-center gap-2 text-blue-400">

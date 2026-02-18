@@ -16,6 +16,7 @@ const VALID_GAME_TYPES = [
   'duck_shoot',
   'beat_match',
   'grid_recall',
+  'maze_path',
 ]
 
 export async function GET() {
@@ -153,6 +154,7 @@ function getGameName(gameId: string): string {
     drag_sort: 'Drag & Sort',
     follow_me: 'Follow Me',
     duck_shoot: 'Target Shoot',
+    maze_path: 'Maze Path',
   }
   return names[gameId] || gameId
 }
@@ -171,6 +173,7 @@ function getGameDescription(gameId: string): string {
     drag_sort: 'Arrange items in the correct order',
     follow_me: 'Trace the path as accurately as possible',
     duck_shoot: 'Hit the moving targets with precision',
+    maze_path: 'Find and trace the path through the maze',
   }
   return descriptions[gameId] || ''
 }

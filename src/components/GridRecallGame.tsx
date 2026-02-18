@@ -409,15 +409,17 @@ export function GridRecallGame({ onGameComplete, groupSessionId }: { onGameCompl
           <div className="pb-6">
             <GameThumbnail gameId="grid_recall" isPlayable={true} />
           </div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Grid Recall</h2>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mb-1">Memorize the pattern, then tap it back.</p>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">6 rounds — gets harder each round.</p>
-          <button
-            onClick={startGame}
-            className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg text-lg transition"
-          >
-            Start (1 <CC />Credit)
-          </button>
+          <div className="max-w-sm mx-auto">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Grid Recall</h2>
+            <p className="text-slate-500 dark:text-slate-400 text-sm mb-1">Memorize the pattern, then tap it back.</p>
+            <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">6 rounds — gets harder each round.</p>
+            <button
+              onClick={startGame}
+              className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg text-lg transition"
+            >
+              Start (1 <CC />Credit)
+            </button>
+          </div>
         </div>
       )}
 

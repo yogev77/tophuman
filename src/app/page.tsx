@@ -2,8 +2,6 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useAuth } from '@/hooks/useAuth'
-import { useCreditsNotification } from '@/components/CreditsNotificationProvider'
-import { useTheme } from '@/hooks/useTheme'
 import { Link } from 'next-view-transitions'
 import {
   Target,
@@ -17,8 +15,6 @@ import {
   Gamepad2,
   Trophy,
   TrendingUp,
-  Sun,
-  Moon,
   Radar,
   Zap,
   Cog,
@@ -28,8 +24,11 @@ import {
 } from 'lucide-react'
 import { C, CC } from '@/lib/currency'
 import { GameThumbnail } from '@/components/GameThumbnail'
-import { GAMES, SKILL_LIST, getSkillForGame, SkillId } from '@/lib/skills'
+import { GAMES, SKILL_LIST, SKILLS, LOGO_POLYGONS, getSkillForGame, SkillId } from '@/lib/skills'
 import { GAME_ICONS } from '@/lib/game-icons'
+import { useCreditsNotification } from '@/components/CreditsNotificationProvider'
+import { useTheme } from '@/hooks/useTheme'
+import { Sun, Moon } from 'lucide-react'
 
 const SKILL_ICONS: Record<SkillId, typeof Zap> = {
   reflex: Zap,
@@ -142,7 +141,7 @@ function GameTile({ game }: { game: GameInfo }) {
         </div>
       )}
       <div className="flex items-start gap-3 mb-3">
-        <div className={`p-4 rounded-lg shrink-0 ${isPlayable ? iconColors.bg : 'bg-slate-600/30'}`}>
+        <div className="shrink-0">
           <Icon className={`w-7 h-7 ${isPlayable ? iconColors.icon : 'text-slate-500'}`} />
         </div>
         <div className="min-w-0 pr-24">
@@ -223,16 +222,15 @@ function GameTile({ game }: { game: GameInfo }) {
 }
 
 export default function HomePage() {
-  const { user, loading: authLoading } = useAuth()
-  const { balance, displayName, username: profileUsername, loading: creditsLoading, isCounterAnimating, hasUnseenNotification } = useCreditsNotification()
+  const { user } = useAuth()
+  const { balance, displayName, username: profileUsername } = useCreditsNotification()
   const { theme, toggleTheme } = useTheme()
-  const userName = displayName || (user?.email ? user.email.split('@')[0] : '?')
   const [data, setData] = useState<GamesData | null>(null)
+  const [isSticky, setIsSticky] = useState(false)
+  const stickySentinelRef = useRef<HTMLDivElement>(null)
   const [loading, setLoading] = useState(true)
   const [timeLeft, setTimeLeft] = useState(0)
   const [showSharePopup, setShowSharePopup] = useState(false)
-  const [isSticky, setIsSticky] = useState(false)
-  const stickySentinelRef = useRef<HTMLDivElement>(null)
   const [copied, setCopied] = useState(false)
   const [topPlayersAllTime, setTopPlayersAllTime] = useState<TopPlayerEntry[]>(() => {
     if (typeof window === 'undefined') return []
@@ -267,14 +265,28 @@ export default function HomePage() {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('gameViewMode')
       if (saved === 'list' || saved === 'icons' || saved === 'skills') return saved
-      return 'skills'
+      return 'list'
     }
-    return 'skills'
+    return 'list'
   })
   const setAndSaveViewMode = (mode: 'list' | 'icons' | 'skills') => {
     setViewMode(mode)
     localStorage.setItem('gameViewMode', mode)
+    // Scroll to sentinel so sticky bar sits at top and games content starts right below
+    if (stickySentinelRef.current) {
+      stickySentinelRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
   }
+  const [skillFilters, setSkillFilters] = useState<Set<SkillId>>(new Set())
+  const toggleSkillFilter = (id: SkillId) => {
+    setSkillFilters(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+  const stickyBarRef = useRef<HTMLDivElement>(null)
   const sharePopupRef = useRef<HTMLDivElement>(null)
 
   const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/auth/signup` : ''
@@ -443,18 +455,26 @@ export default function HomePage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
-      {/* Hero Section */}
-      <div className="text-center mb-10">
-        <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 font-title">
-          Daily Mind Battles.
-        </h1>
+      {/* Hero Illustration — mask bottom 30% */}
+      <div className="flex justify-center mb-2">
+        <div className="overflow-hidden w-full max-w-xl md:max-w-2xl">
+          <img
+            src="/hero-illustration.png"
+            alt="Skill characters"
+            className="w-full h-auto"
+            style={{ marginBottom: '-20%' }}
+            draggable={false}
+          />
+        </div>
       </div>
 
-      {/* Today's Stats — reserve 2 lines on mobile, 1 on desktop */}
-      <div className="text-center mb-8 text-base md:text-lg text-slate-500 dark:text-slate-400 min-h-[52px] md:min-h-[32px] flex items-center justify-center">
+      <h1 className="text-4xl md:text-5xl font-bold text-yellow-500 font-title text-center mb-2">Daily Mind Battles</h1>
+
+      {/* Today's Stats */}
+      <div className="text-center mb-6 text-base md:text-lg text-slate-500 dark:text-slate-400 min-h-[52px] md:min-h-[32px] flex items-center justify-center">
         {data ? (
           <div className="animate-[fadeIn_300ms_ease-out]">
-            <span className="text-yellow-600 dark:text-yellow-400 font-semibold"><CC />{data.pool.totalCredits}</span> Total Pool
+            <span className="text-yellow-500 font-semibold"><CC />{data.pool.totalCredits}</span> Total Pool
             <span className="mx-3">·</span>
             <span className="text-slate-900 dark:text-white font-semibold">{data.pool.uniquePlayers}</span> {data.pool.uniquePlayers === 1 ? 'Player' : 'Players'}
             <br className="md:hidden" /><span className="hidden md:inline mx-3">·</span>
@@ -473,19 +493,19 @@ export default function HomePage() {
       <div ref={stickySentinelRef} className="h-0" />
 
       {/* Sticky Site Tab Controller */}
-      <div className={`sticky top-0 z-30 -mx-4 px-4 py-2 bg-slate-900/95 backdrop-blur-sm ${isSticky ? 'sticky-bar-enter border-b border-slate-800' : ''}`}>
-        <div className="relative flex items-center justify-center">
-          {/* Logo - absolutely positioned left, visible when stuck — scrolls to top */}
-          <button
-            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            className={`absolute left-0 hidden items-center gap-2 text-lg font-bold text-white font-title transition-opacity duration-200 cursor-pointer ${isSticky ? 'xl:flex opacity-100' : 'xl:hidden opacity-0'}`}
-          >
-            <Trophy className="w-5 h-5 text-yellow-400" />
-            Podium Arena
-          </button>
-
-          {/* Tabs */}
-          <div className="flex gap-1 bg-slate-800 rounded-xl p-1 w-full md:w-1/2">
+      <div ref={stickyBarRef} className={`sticky top-0 z-30 -mx-4 px-4 py-2 bg-slate-900/95 backdrop-blur-sm ${isSticky ? 'sticky-bar-enter border-b border-slate-800' : ''}`}>
+        <div className={`flex items-center gap-3 ${isSticky ? 'justify-between' : 'justify-center'}`}>
+          {isSticky && (
+            <Link href="/" className="flex items-center gap-2 text-lg font-bold text-white font-title shrink-0">
+              <svg viewBox="104 96 304 290" className="w-7 h-7 shrink-0">
+                {LOGO_POLYGONS.map(p => (
+                  <polygon key={p.skill} fill={SKILLS[p.skill].hex} points={p.points} />
+                ))}
+              </svg>
+              <span className="hidden sm:inline">Podium Arena</span>
+            </Link>
+          )}
+          <div className={`flex gap-1 bg-slate-800 rounded-xl p-1 ${isSticky ? 'flex-1 max-w-sm' : 'w-full md:w-1/2'}`}>
             <button
               onClick={() => setAndSaveSiteTab('games')}
               className={`flex-1 flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition ${
@@ -506,63 +526,60 @@ export default function HomePage() {
               }`}
             >
               <Trophy className="w-4 h-4" />
-              Top Charts
+              Charts
             </button>
           </div>
-
-          {/* Header elements - absolutely positioned right, visible when stuck */}
-          <div className={`absolute right-0 hidden items-center gap-3 transition-opacity duration-200 ${isSticky ? 'xl:flex opacity-100' : 'xl:hidden opacity-0'}`}>
-            {!authLoading && user ? (
-              <>
-                {!creditsLoading && (
-                  <span className={`relative text-yellow-400 font-semibold text-sm ${isCounterAnimating ? 'credit-counter-animate' : ''}`}>
-                    <CC />{balance} Credits
-                    {hasUnseenNotification && (
-                      <span className="absolute -top-1 -right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                    )}
-                  </span>
+          {isSticky && (
+            <div className="flex items-center gap-3 shrink-0">
+              {user && (
+                <>
+                  <span className="text-yellow-400 font-semibold text-sm"><CC />{balance}</span>
+                  <Link
+                    href={profileUsername ? `/player/${profileUsername}` : '/profile'}
+                    className="text-slate-400 hover:text-white text-sm transition"
+                  >
+                    {(profileUsername || displayName || '?')[0].toUpperCase()}
+                  </Link>
+                </>
+              )}
+              <button
+                onClick={toggleTheme}
+                className="hidden sm:block p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 transition"
+                aria-label="Toggle theme"
+              >
+                {theme === 'dark' ? (
+                  <Sun className="w-4 h-4 text-yellow-400" />
+                ) : (
+                  <Moon className="w-4 h-4 text-slate-600" />
                 )}
-                <Link
-                  href={profileUsername ? `/player/${profileUsername}` : '/profile'}
-                  className="tap-highlight text-slate-400 hover:text-white text-sm transition"
-                >
-                  {userName}
-                </Link>
-                <button
-                  onClick={toggleTheme}
-                  className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 transition"
-                  aria-label="Toggle theme"
-                >
-                  {theme === 'dark' ? (
-                    <Sun className="w-5 h-5 text-yellow-400" />
-                  ) : (
-                    <Moon className="w-5 h-5 text-slate-600" />
-                  )}
-                </button>
-              </>
-            ) : !authLoading ? (
-              <>
-                <Link
-                  href="/auth/signup"
-                  className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 transition text-slate-400 hover:text-white text-sm font-medium"
-                >
-                  Connect
-                </Link>
-                <button
-                  onClick={toggleTheme}
-                  className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 transition"
-                  aria-label="Toggle theme"
-                >
-                  {theme === 'dark' ? (
-                    <Sun className="w-5 h-5 text-yellow-400" />
-                  ) : (
-                    <Moon className="w-5 h-5 text-slate-600" />
-                  )}
-                </button>
-              </>
-            ) : null}
-          </div>
+              </button>
+            </div>
+          )}
         </div>
+        {siteTab === 'games' && (
+          <div className="flex items-center justify-between gap-3 mt-2">
+            <div className="flex bg-slate-800 rounded-lg p-0.5 overflow-x-auto min-w-0">
+              {SKILL_LIST.map(skill => {
+                const isOn = skillFilters.has(skill.id)
+                return (
+                  <button
+                    key={skill.id}
+                    onClick={() => toggleSkillFilter(skill.id)}
+                    className="shrink-0 px-3 py-1.5 rounded-md text-xs font-semibold transition"
+                    style={{ color: isOn ? skill.hex : undefined }}
+                  >
+                    {skill.name}
+                  </button>
+                )
+              })}
+            </div>
+            <div className="flex bg-slate-800 rounded-lg p-0.5 shrink-0">
+              <button onClick={() => setAndSaveViewMode('list')} className={`px-3 py-1.5 rounded-md transition ${viewMode === 'list' ? 'bg-yellow-500 text-slate-900' : 'text-slate-400 hover:text-white'}`} aria-label="List view"><List className="w-4 h-4" /></button>
+              <button onClick={() => setAndSaveViewMode('icons')} className={`px-3 py-1.5 rounded-md transition ${viewMode === 'icons' ? 'bg-yellow-500 text-slate-900' : 'text-slate-400 hover:text-white'}`} aria-label="Icon view"><Grid3X3 className="w-4 h-4" /></button>
+              <button onClick={() => setAndSaveViewMode('skills')} className={`px-3 py-1.5 rounded-md transition ${viewMode === 'skills' ? 'bg-yellow-500 text-slate-900' : 'text-slate-400 hover:text-white'}`} aria-label="Skills view"><Radar className="w-4 h-4" /></button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Games Tab */}
@@ -570,41 +587,13 @@ export default function HomePage() {
         <div className="mt-6">
           {loading ? (
             <>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-white font-title">Play Now</h2>
-                <div className="flex bg-slate-800 rounded-lg p-0.5">
-                  <button
-                    onClick={() => setAndSaveViewMode('list')}
-                    className={`px-3 py-1.5 rounded-md transition ${viewMode === 'list' ? 'bg-yellow-500 text-slate-900' : 'text-slate-400 hover:text-white'}`}
-                    aria-label="List view"
-                  >
-                    <List className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => setAndSaveViewMode('icons')}
-                    className={`px-3 py-1.5 rounded-md transition ${viewMode === 'icons' ? 'bg-yellow-500 text-slate-900' : 'text-slate-400 hover:text-white'}`}
-                    aria-label="Icon view"
-                  >
-                    <Grid3X3 className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => setAndSaveViewMode('skills')}
-                    className={`px-3 py-1.5 rounded-md transition ${viewMode === 'skills' ? 'bg-yellow-500 text-slate-900' : 'text-slate-400 hover:text-white'}`}
-                    aria-label="Skills view"
-                  >
-                    <Radar className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
               {viewMode === 'list' ? (
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
                   {Object.values(GAMES).map(gameDef => (
                     <div key={gameDef.id} className="bg-white dark:bg-slate-800 rounded-xl p-4 animate-pulse">
                       <div className="h-[83px] bg-slate-200 dark:bg-slate-700 rounded-lg mb-3" />
                       <div className="flex items-center gap-2">
-                        <div className={`p-1.5 rounded-lg ${gameDef.iconColors.bg}`}>
-                          {(() => { const Icon = GAME_ICONS[gameDef.id] || Target; return <Icon className={`w-4 h-4 ${gameDef.iconColors.icon}`} /> })()}
-                        </div>
+                        {(() => { const Icon = GAME_ICONS[gameDef.id] || Target; return <Icon className={`w-5 h-5 ${gameDef.iconColors.icon}`} /> })()}
                         <span className="text-sm font-semibold text-slate-900 dark:text-white">{gameDef.name}</span>
                       </div>
                     </div>
@@ -616,9 +605,7 @@ export default function HomePage() {
                     const Icon = GAME_ICONS[gameDef.id] || Target
                     return (
                       <div key={gameDef.id} className="flex flex-col items-center text-center p-3 rounded-xl bg-white dark:bg-slate-800">
-                        <div className={`p-3 rounded-2xl mb-2 ${gameDef.iconColors.bg}`}>
-                          <Icon className={`w-7 h-7 ${gameDef.iconColors.icon}`} />
-                        </div>
+                        <Icon className={`w-7 h-7 mb-2 ${gameDef.iconColors.icon}`} />
                         <span className="text-xs font-medium text-slate-900 dark:text-white leading-tight line-clamp-2">{gameDef.name}</span>
                         <div className="flex items-center gap-1 mt-0.5">
                           <span className="text-[10px] text-slate-400 dark:text-slate-500 animate-pulse">· · ·</span>
@@ -645,13 +632,8 @@ export default function HomePage() {
                           {skillGameDefs.map(gameDef => {
                             const Icon = GAME_ICONS[gameDef.id] || Target
                             return (
-                              <div
-                                key={gameDef.id}
-                                className="flex flex-col items-center text-center p-3 rounded-xl bg-white dark:bg-slate-800"
-                              >
-                                <div className={`p-3 rounded-2xl mb-2 ${gameDef.iconColors.bg}`}>
-                                  <Icon className={`w-7 h-7 ${gameDef.iconColors.icon}`} />
-                                </div>
+                              <div key={gameDef.id} className="flex flex-col items-center text-center p-3 rounded-xl bg-white dark:bg-slate-800">
+                                <Icon className={`w-7 h-7 mb-2 ${gameDef.iconColors.icon}`} />
                                 <span className="text-xs font-medium text-slate-900 dark:text-white leading-tight line-clamp-2">{gameDef.name}</span>
                                 <div className="flex items-center gap-1 mt-0.5">
                                   <span className="text-[10px] text-slate-400 dark:text-slate-500 animate-pulse">· · ·</span>
@@ -671,46 +653,15 @@ export default function HomePage() {
               {/* Active Games */}
               {playableGames.length > 0 && (
                 <>
-                  <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-2xl font-bold text-white font-title">Play Now</h2>
-                    <div className="flex bg-slate-800 rounded-lg p-0.5">
-                      <button
-                        onClick={() => setAndSaveViewMode('list')}
-                        className={`px-3 py-1.5 rounded-md transition ${viewMode === 'list' ? 'bg-yellow-500 text-slate-900' : 'text-slate-400 hover:text-white'}`}
-                        aria-label="List view"
-                      >
-                        <List className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => setAndSaveViewMode('icons')}
-                        className={`px-3 py-1.5 rounded-md transition ${viewMode === 'icons' ? 'bg-yellow-500 text-slate-900' : 'text-slate-400 hover:text-white'}`}
-                        aria-label="Icon view"
-                      >
-                        <Grid3X3 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => setAndSaveViewMode('skills')}
-                        className={`px-3 py-1.5 rounded-md transition ${viewMode === 'skills' ? 'bg-yellow-500 text-slate-900' : 'text-slate-400 hover:text-white'}`}
-                        aria-label="Skills view"
-                      >
-                        <Radar className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-
                   {viewMode === 'list' ? (
                     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
-                      {playableGames.map(game => (
-                        <GameTile
-                          key={game.id}
-                          game={game}
-
-                        />
+                      {(skillFilters.size > 0 ? playableGames.filter(g => skillFilters.has(GAMES[g.id]?.skill as SkillId)) : playableGames).map(game => (
+                        <GameTile key={game.id} game={game} />
                       ))}
                     </div>
                   ) : viewMode === 'icons' ? (
                     <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3 mb-10">
-                      {playableGames.map(game => {
+                      {(skillFilters.size > 0 ? playableGames.filter(g => skillFilters.has(GAMES[g.id]?.skill as SkillId)) : playableGames).map(game => {
                         const Icon = GAME_ICONS[game.id] || Target
                         const colors = GAMES[game.id]?.iconColors || GAMES.emoji_keypad.iconColors
                         const skill = getSkillForGame(game.id)
@@ -720,9 +671,7 @@ export default function HomePage() {
                             href={`/game/${game.id}`}
                             className="flex flex-col items-center text-center p-3 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-transform duration-150 hover:scale-105 active:scale-95"
                           >
-                            <div className={`p-3 rounded-2xl mb-2 ${colors.bg}`}>
-                              <Icon className={`w-7 h-7 ${colors.icon}`} />
-                            </div>
+                            <Icon className={`w-7 h-7 mb-2 ${colors.icon}`} />
                             <span className="text-xs font-medium text-slate-900 dark:text-white leading-tight line-clamp-2">{game.name}</span>
                             {skill && (
                               <span className={`text-[10px] font-medium mt-0.5 ${skill.colors.text}`}>{skill.name}</span>
@@ -741,7 +690,7 @@ export default function HomePage() {
                     </div>
                   ) : (
                     <div className="space-y-6 mb-10">
-                      {rotatedSkillList.map(skill => {
+                      {(skillFilters.size > 0 ? SKILL_LIST.filter(s => skillFilters.has(s.id)) : rotatedSkillList).map(skill => {
                         const playableIds = new Set(playableGames.map(g => g.id))
                         const skillGames = Object.keys(GAMES)
                           .filter(id => GAMES[id].skill === skill.id && playableIds.has(id))
@@ -766,9 +715,7 @@ export default function HomePage() {
                                     href={`/game/${game.id}`}
                                     className="flex flex-col items-center text-center p-3 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-transform duration-150 hover:scale-105 active:scale-95"
                                   >
-                                    <div className={`p-3 rounded-2xl mb-2 ${colors.bg}`}>
-                                      <Icon className={`w-7 h-7 ${colors.icon}`} />
-                                    </div>
+                                    <Icon className={`w-7 h-7 mb-2 ${colors.icon}`} />
                                     <span className="text-xs font-medium text-slate-900 dark:text-white leading-tight line-clamp-2">{game.name}</span>
                                     <div className="flex items-center gap-1 mt-0.5 max-w-full">
                                       <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">

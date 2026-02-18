@@ -274,15 +274,17 @@ export function NumberChainGame({ onGameComplete, groupSessionId }: NumberChainG
       {phase === 'idle' && (
         <div className="text-center pb-6">
           <div className="mb-4 max-w-sm mx-auto"><GameThumbnail gameId="number_chain" isPlayable={true} /></div>
-          <p className="text-slate-300 mb-6">
-            Two levels — count up in one, count down in the other. Find and tap each number in order!
-          </p>
-          <button
-            onClick={startGame}
-            className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg text-lg transition"
-          >
-            Start (1 <CC />Credit)
-          </button>
+          <div className="max-w-sm mx-auto">
+            <p className="text-slate-300 mb-6">
+              Two levels — count up in one, count down in the other. Find and tap each number in order!
+            </p>
+            <button
+              onClick={startGame}
+              className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg text-lg transition"
+            >
+              Start (1 <CC />Credit)
+            </button>
+          </div>
         </div>
       )}
 

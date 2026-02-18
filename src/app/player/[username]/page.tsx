@@ -35,7 +35,7 @@ import { useCreditsNotification } from '@/components/CreditsNotificationProvider
 import { useTheme } from '@/hooks/useTheme'
 import { useSound } from '@/hooks/useSound'
 import { createClient } from '@/lib/supabase/client'
-import { GAMES, SKILLS, SKILL_LIST, getGameName, SkillId } from '@/lib/skills'
+import { GAMES, SKILLS, SKILL_LIST, SKILL_HEX, getGameName, SkillId } from '@/lib/skills'
 import { GAME_ICONS } from '@/lib/game-icons'
 
 const SKILL_ICONS: Record<SkillId, typeof Zap> = {
@@ -46,13 +46,7 @@ const SKILL_ICONS: Record<SkillId, typeof Zap> = {
   pattern: Shapes,
 }
 
-const SKILL_HEX: Record<SkillId, string> = {
-  reflex: '#eab308',
-  logic: '#2563eb',
-  focus: '#ef4444',
-  memory: '#a855f7',
-  pattern: '#22c55e',
-}
+// SKILL_HEX imported from @/lib/skills
 
 const MAX_SKILL_LEVEL = 50
 
@@ -808,8 +802,8 @@ function SkillRadarChart({ skills }: { skills: SkillEntry[] }) {
           <>
             <polygon
               points={dataPoints.map(p => `${p.x},${p.y}`).join(' ')}
-              fill="rgba(234,179,8,0.15)"
-              stroke="rgba(234,179,8,0.6)"
+              fill={`${SKILLS.reflex.hex}1F`}
+              stroke={`${SKILLS.reflex.hex}80`}
               strokeWidth="2"
               strokeLinejoin="round"
             />

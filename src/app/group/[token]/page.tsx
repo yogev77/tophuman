@@ -35,6 +35,7 @@ import { ImagePuzzleGame } from '@/components/ImagePuzzleGame'
 import { DrawMeGame } from '@/components/DrawMeGame'
 import { BeatMatchGame } from '@/components/BeatMatchGame'
 import { GridRecallGame } from '@/components/GridRecallGame'
+import { MazePathGame } from '@/components/MazePathGame'
 
 const GAME_COMPONENTS: Record<string, React.ComponentType<{ onGameComplete?: () => void; groupSessionId?: string }>> = {
   emoji_keypad: EmojiKeypadGame,
@@ -57,6 +58,7 @@ const GAME_COMPONENTS: Record<string, React.ComponentType<{ onGameComplete?: () 
   draw_me: DrawMeGame,
   beat_match: BeatMatchGame,
   grid_recall: GridRecallGame,
+  maze_path: MazePathGame,
 }
 
 interface SessionData {
@@ -246,9 +248,7 @@ export default function GroupPage({ params }: { params: Promise<{ token: string 
       {/* Header */}
       <div className="mb-6">
         <Link href="/" className="flex items-start gap-3 min-w-0 group">
-          <div className={`p-3 ${iconColors.bg} rounded-xl shrink-0`}>
-            <GameIcon className={`w-10 h-10 ${iconColors.icon}`} />
-          </div>
+          <GameIcon className={`w-10 h-10 shrink-0 ${iconColors.icon}`} />
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-bold text-slate-900 dark:text-white font-title group-hover:text-slate-300 transition">{gameDef.name}</h1>

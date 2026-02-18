@@ -6,6 +6,10 @@ export type SkillId = 'reflex' | 'logic' | 'focus' | 'memory' | 'pattern'
 export interface SkillDef {
   id: SkillId
   name: string
+  /** Primary hex color from the logo pentagon slice */
+  hex: string
+  /** Lighter hex variant for dark-mode text readability */
+  hexLight: string
   colors: {
     bg: string
     text: string
@@ -20,61 +24,90 @@ export const SKILLS: Record<SkillId, SkillDef> = {
   reflex: {
     id: 'reflex',
     name: 'Reflex',
+    hex: '#E9A90B',
+    hexLight: '#E7B73F',
     colors: {
-      bg: 'bg-yellow-500/20',
-      text: 'text-yellow-400',
-      textLight: 'text-yellow-600',
-      border: 'border-yellow-500',
-      dot: 'bg-yellow-500',
+      bg: 'bg-[#E9A90B]/20',
+      text: 'text-[#E7B73F]',
+      textLight: 'text-[#E9A90B]',
+      border: 'border-[#E9A90B]',
+      dot: 'bg-[#E9A90B]',
     },
   },
   logic: {
     id: 'logic',
     name: 'Logic',
+    hex: '#456F8C',
+    hexLight: '#5E89A6',
     colors: {
-      bg: 'bg-blue-600/20',
-      text: 'text-blue-400',
-      textLight: 'text-blue-600',
-      border: 'border-blue-600',
-      dot: 'bg-blue-600',
+      bg: 'bg-[#456F8C]/20',
+      text: 'text-[#5E89A6]',
+      textLight: 'text-[#456F8C]',
+      border: 'border-[#456F8C]',
+      dot: 'bg-[#456F8C]',
     },
   },
   focus: {
     id: 'focus',
     name: 'Focus',
+    hex: '#EA4E1E',
+    hexLight: '#E27959',
     colors: {
-      bg: 'bg-red-500/20',
-      text: 'text-red-400',
-      textLight: 'text-red-600',
-      border: 'border-red-500',
-      dot: 'bg-red-500',
+      bg: 'bg-[#EA4E1E]/20',
+      text: 'text-[#E27959]',
+      textLight: 'text-[#EA4E1E]',
+      border: 'border-[#EA4E1E]',
+      dot: 'bg-[#EA4E1E]',
     },
   },
   memory: {
     id: 'memory',
     name: 'Memory',
+    hex: '#7A41B1',
+    hexLight: '#9368BD',
     colors: {
-      bg: 'bg-purple-500/20',
-      text: 'text-purple-400',
-      textLight: 'text-purple-600',
-      border: 'border-purple-500',
-      dot: 'bg-purple-500',
+      bg: 'bg-[#7A41B1]/20',
+      text: 'text-[#9368BD]',
+      textLight: 'text-[#7A41B1]',
+      border: 'border-[#7A41B1]',
+      dot: 'bg-[#7A41B1]',
     },
   },
   pattern: {
     id: 'pattern',
     name: 'Pattern',
+    hex: '#599865',
+    hexLight: '#7AAA83',
     colors: {
-      bg: 'bg-green-500/20',
-      text: 'text-green-400',
-      textLight: 'text-green-600',
-      border: 'border-green-500',
-      dot: 'bg-green-500',
+      bg: 'bg-[#599865]/20',
+      text: 'text-[#7AAA83]',
+      textLight: 'text-[#599865]',
+      border: 'border-[#599865]',
+      dot: 'bg-[#599865]',
     },
   },
 }
 
 export const SKILL_LIST = Object.values(SKILLS)
+
+/** Hex color per skill — derived from SKILLS, used for charts, logo SVG, etc. */
+export const SKILL_HEX: Record<SkillId, string> = Object.fromEntries(
+  Object.values(SKILLS).map(s => [s.id, s.hex])
+) as Record<SkillId, string>
+
+/**
+ * Pentagon logo SVG polygon data — one slice per skill in SKILL_LIST order.
+ * Vertices of a regular pentagon centered at (256,256), radius 155.
+ * Each entry: [outerPoint1, outerPoint2, center] forming a triangle slice.
+ */
+export const LOGO_POLYGONS: { skill: SkillId; points: string }[] = [
+  // Shrunk 6% toward each triangle's centroid for transparent gaps between slices
+  { skill: 'reflex',  points: '253,106 115,207 253,252' },  // top-left (yellow)
+  { skill: 'logic',   points: '259,106 397,207 259,252' },  // top-right (blue)
+  { skill: 'focus',   points: '399,212 346,375 261,258' },  // right (red)
+  { skill: 'memory',  points: '342,379 170,379 256,261' },  // bottom (purple)
+  { skill: 'pattern', points: '166,375 113,212 251,258' },  // left (green)
+]
 
 export interface GameDef {
   id: string
@@ -91,7 +124,7 @@ export const GAMES: Record<string, GameDef> = {
     name: 'Sequence',
     description: 'Memorize and repeat the emoji pattern',
     skill: 'memory',
-    iconColors: { bg: 'bg-purple-500/20', icon: 'text-purple-500' },
+    iconColors: { bg: 'bg-[#7A41B1]/20', icon: 'text-[#7A41B1]' },
     dbGameTypeId: 'emoji_keypad_sequence',
   },
   image_rotate: {
@@ -99,7 +132,7 @@ export const GAMES: Record<string, GameDef> = {
     name: 'Puzzle Spin',
     description: 'Rotate tiles to complete the image',
     skill: 'logic',
-    iconColors: { bg: 'bg-blue-600/20', icon: 'text-blue-500' },
+    iconColors: { bg: 'bg-[#456F8C]/20', icon: 'text-[#456F8C]' },
     dbGameTypeId: 'image_rotate',
   },
   reaction_time: {
@@ -107,7 +140,7 @@ export const GAMES: Record<string, GameDef> = {
     name: 'Reaction Tap',
     description: 'Tap when the color changes. Skip the fakes.',
     skill: 'reflex',
-    iconColors: { bg: 'bg-yellow-500/20', icon: 'text-yellow-500' },
+    iconColors: { bg: 'bg-[#E9A90B]/20', icon: 'text-[#E9A90B]' },
     dbGameTypeId: 'reaction_time',
   },
   whack_a_mole: {
@@ -115,7 +148,7 @@ export const GAMES: Record<string, GameDef> = {
     name: 'Whack-a-Mole',
     description: 'Tap the moles as fast as you can. Avoid the bombs.',
     skill: 'reflex',
-    iconColors: { bg: 'bg-yellow-500/20', icon: 'text-yellow-500' },
+    iconColors: { bg: 'bg-[#E9A90B]/20', icon: 'text-[#E9A90B]' },
     dbGameTypeId: 'whack_a_mole',
   },
   typing_speed: {
@@ -123,7 +156,7 @@ export const GAMES: Record<string, GameDef> = {
     name: 'Typing Speed',
     description: 'Type the text as fast and accurately as you can.',
     skill: 'pattern',
-    iconColors: { bg: 'bg-green-500/20', icon: 'text-green-500' },
+    iconColors: { bg: 'bg-[#599865]/20', icon: 'text-[#599865]' },
     dbGameTypeId: 'typing_speed',
   },
   mental_math: {
@@ -131,7 +164,7 @@ export const GAMES: Record<string, GameDef> = {
     name: 'Mental Math',
     description: 'Solve arithmetic problems as quickly as possible.',
     skill: 'logic',
-    iconColors: { bg: 'bg-blue-600/20', icon: 'text-blue-500' },
+    iconColors: { bg: 'bg-[#456F8C]/20', icon: 'text-[#456F8C]' },
     dbGameTypeId: 'mental_math',
   },
   color_match: {
@@ -139,7 +172,7 @@ export const GAMES: Record<string, GameDef> = {
     name: 'Color Match',
     description: 'Match the target color as closely as you can.',
     skill: 'focus',
-    iconColors: { bg: 'bg-red-500/20', icon: 'text-red-500' },
+    iconColors: { bg: 'bg-[#EA4E1E]/20', icon: 'text-[#EA4E1E]' },
     dbGameTypeId: 'color_match',
   },
   visual_diff: {
@@ -147,7 +180,7 @@ export const GAMES: Record<string, GameDef> = {
     name: 'Spot the Diff',
     description: 'Find the differences between the two images.',
     skill: 'focus',
-    iconColors: { bg: 'bg-red-500/20', icon: 'text-red-500' },
+    iconColors: { bg: 'bg-[#EA4E1E]/20', icon: 'text-[#EA4E1E]' },
     dbGameTypeId: 'visual_diff',
   },
   audio_pattern: {
@@ -155,7 +188,7 @@ export const GAMES: Record<string, GameDef> = {
     name: 'Simon Says',
     description: 'Listen to the pattern, then repeat it.',
     skill: 'pattern',
-    iconColors: { bg: 'bg-green-500/20', icon: 'text-green-500' },
+    iconColors: { bg: 'bg-[#599865]/20', icon: 'text-[#599865]' },
     dbGameTypeId: 'audio_pattern',
   },
   drag_sort: {
@@ -163,7 +196,7 @@ export const GAMES: Record<string, GameDef> = {
     name: 'Drag & Sort',
     description: 'Drag the items into the correct order.',
     skill: 'logic',
-    iconColors: { bg: 'bg-blue-600/20', icon: 'text-blue-500' },
+    iconColors: { bg: 'bg-[#456F8C]/20', icon: 'text-[#456F8C]' },
     dbGameTypeId: 'drag_sort',
   },
   follow_me: {
@@ -171,7 +204,7 @@ export const GAMES: Record<string, GameDef> = {
     name: 'Follow Me',
     description: 'Trace the path from start to finish. 3 levels.',
     skill: 'focus',
-    iconColors: { bg: 'bg-red-500/20', icon: 'text-red-500' },
+    iconColors: { bg: 'bg-[#EA4E1E]/20', icon: 'text-[#EA4E1E]' },
     dbGameTypeId: 'follow_me',
   },
   duck_shoot: {
@@ -179,7 +212,7 @@ export const GAMES: Record<string, GameDef> = {
     name: 'Target Shoot',
     description: 'Tap to fire. Hit red. Avoid green.',
     skill: 'reflex',
-    iconColors: { bg: 'bg-yellow-500/20', icon: 'text-yellow-500' },
+    iconColors: { bg: 'bg-[#E9A90B]/20', icon: 'text-[#E9A90B]' },
     dbGameTypeId: 'duck_shoot',
   },
   memory_cards: {
@@ -187,7 +220,7 @@ export const GAMES: Record<string, GameDef> = {
     name: 'Memory Cards',
     description: 'Flip cards and find all matching pairs.',
     skill: 'memory',
-    iconColors: { bg: 'bg-purple-500/20', icon: 'text-purple-500' },
+    iconColors: { bg: 'bg-[#7A41B1]/20', icon: 'text-[#7A41B1]' },
     dbGameTypeId: 'memory_cards',
   },
   number_chain: {
@@ -195,7 +228,7 @@ export const GAMES: Record<string, GameDef> = {
     name: 'Number Chain',
     description: 'Tap the numbers in ascending order.',
     skill: 'logic',
-    iconColors: { bg: 'bg-blue-600/20', icon: 'text-blue-500' },
+    iconColors: { bg: 'bg-[#456F8C]/20', icon: 'text-[#456F8C]' },
     dbGameTypeId: 'number_chain',
   },
   gridlock: {
@@ -203,7 +236,7 @@ export const GAMES: Record<string, GameDef> = {
     name: 'Gridlock',
     description: 'Slide blocks to free the green piece. 3 rounds.',
     skill: 'focus',
-    iconColors: { bg: 'bg-red-500/20', icon: 'text-red-500' },
+    iconColors: { bg: 'bg-[#EA4E1E]/20', icon: 'text-[#EA4E1E]' },
     dbGameTypeId: 'gridlock',
   },
   reaction_bars: {
@@ -211,7 +244,7 @@ export const GAMES: Record<string, GameDef> = {
     name: 'Reaction Bars',
     description: 'Stop oscillating bars at the target. Speed + accuracy.',
     skill: 'reflex',
-    iconColors: { bg: 'bg-yellow-500/20', icon: 'text-yellow-500' },
+    iconColors: { bg: 'bg-[#E9A90B]/20', icon: 'text-[#E9A90B]' },
     dbGameTypeId: 'reaction_bars',
   },
   image_puzzle: {
@@ -219,7 +252,7 @@ export const GAMES: Record<string, GameDef> = {
     name: 'Image Puzzle',
     description: 'Place missing pieces to complete the image.',
     skill: 'focus',
-    iconColors: { bg: 'bg-red-500/20', icon: 'text-red-500' },
+    iconColors: { bg: 'bg-[#EA4E1E]/20', icon: 'text-[#EA4E1E]' },
     dbGameTypeId: 'image_puzzle',
   },
   draw_me: {
@@ -227,7 +260,7 @@ export const GAMES: Record<string, GameDef> = {
     name: 'Draw Me',
     description: 'Copy the reference path. 3 rounds of increasing difficulty.',
     skill: 'pattern',
-    iconColors: { bg: 'bg-green-500/20', icon: 'text-green-500' },
+    iconColors: { bg: 'bg-[#599865]/20', icon: 'text-[#599865]' },
     dbGameTypeId: 'draw_me',
   },
   beat_match: {
@@ -235,7 +268,7 @@ export const GAMES: Record<string, GameDef> = {
     name: 'Beat Match',
     description: 'Listen to the beat pattern, then tap it back in rhythm.',
     skill: 'pattern',
-    iconColors: { bg: 'bg-green-500/20', icon: 'text-green-500' },
+    iconColors: { bg: 'bg-[#599865]/20', icon: 'text-[#599865]' },
     dbGameTypeId: 'beat_match',
   },
   grid_recall: {
@@ -243,8 +276,16 @@ export const GAMES: Record<string, GameDef> = {
     name: 'Grid Recall',
     description: 'Memorize the pattern, then tap it back.',
     skill: 'memory',
-    iconColors: { bg: 'bg-purple-500/20', icon: 'text-purple-500' },
+    iconColors: { bg: 'bg-[#7A41B1]/20', icon: 'text-[#7A41B1]' },
     dbGameTypeId: 'grid_recall',
+  },
+  maze_path: {
+    id: 'maze_path',
+    name: 'Maze Path',
+    description: 'Find and trace the path through the maze.',
+    skill: 'pattern',
+    iconColors: { bg: 'bg-[#599865]/20', icon: 'text-[#599865]' },
+    dbGameTypeId: 'maze_path',
   },
 }
 

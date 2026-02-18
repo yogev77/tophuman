@@ -506,12 +506,14 @@ export function DuckShootGame({ onGameComplete, groupSessionId }: DuckShootGameP
       {phase === 'idle' && (
         <div className="text-center pb-6">
           <div className="mb-4 max-w-sm mx-auto"><GameThumbnail gameId="duck_shoot" isPlayable={true} /></div>
-          <button
-            onClick={startGame}
-            className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg text-lg transition"
-          >
-            Start (1 <CC />Credit)
-          </button>
+          <div className="max-w-sm mx-auto">
+            <button
+              onClick={startGame}
+              className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 px-8 rounded-lg text-lg transition"
+            >
+              Start (1 <CC />Credit)
+            </button>
+          </div>
         </div>
       )}
 
