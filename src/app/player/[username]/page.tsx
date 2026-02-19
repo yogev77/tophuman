@@ -894,9 +894,6 @@ function SkillsTab({ username }: { username: string }) {
           const Icon = SKILL_ICONS[skill.skillId]
           const isMax = skill.level >= MAX_SKILL_LEVEL
           const strengthPct = Math.round(skill.percentile * 100)
-          // Visual floor: min 20% fill so new players see presence
-          const barFill = skill.totalPlays > 0 ? Math.max(strengthPct, 20) : 0
-          const isStrong = strengthPct >= 80
           const xpInLevel = skill.totalPlays % 10
           const playsToNext = isMax ? 0 : 10 - xpInLevel
 
@@ -921,26 +918,25 @@ function SkillsTab({ username }: { username: string }) {
                       )}
                     </div>
                     <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full text-white ${def.colors.dot}`}>
-                      Lv.{skill.level}
+                      {skill.totalPlays > 0 ? `Top ${strengthPct}%` : '—'}
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Strength bar + number */}
+              {/* Level progress bar */}
               <div className="flex items-center gap-2.5 mb-1.5">
+                <span className="text-xs font-bold text-slate-500 dark:text-slate-400 tabular-nums shrink-0 w-8">
+                  Lv.{skill.level}
+                </span>
                 <div className="flex-1 h-2.5 rounded-full bg-slate-200 dark:bg-slate-700">
                   <div
                     className={`h-2.5 rounded-full ${def.colors.dot} transition-all`}
                     style={{
-                      width: `${barFill}%`,
-                      ...(isStrong ? { boxShadow: `0 0 8px ${SKILL_HEX[skill.skillId]}66` } : {}),
+                      width: `${isMax ? 100 : (xpInLevel / 10) * 100}%`,
                     }}
                   />
                 </div>
-                <span className="text-sm font-bold text-slate-700 dark:text-slate-200 tabular-nums w-6 text-right shrink-0">
-                  {skill.totalPlays > 0 ? strengthPct : '—'}
-                </span>
               </div>
 
               {/* Subtle metadata */}
@@ -959,7 +955,7 @@ function SkillsTab({ username }: { username: string }) {
       <div className="text-sm text-slate-400 dark:text-slate-500 leading-relaxed space-y-1.5 px-1">
         <p className="font-medium text-slate-500 dark:text-slate-400">How to read your skills</p>
         <p>The <strong>radar chart</strong> gives a quick overview of your strengths across all five skill categories.</p>
-        <p>Each <strong>strength score</strong> (0–100) is based on your best game scores compared to other players on the platform — not how many games you played. A score of 75 means you outperform 75% of players in that skill.</p>
+        <p>Each <strong>strength score</strong> is based on your best game scores compared to other players on the platform — not how many games you played. Top 25% means you outperform 75% of players in that skill.</p>
         <p><strong>Level</strong> tracks your experience and goes up every 10 plays. Strength measures how good you are; level measures how much you&apos;ve played.</p>
       </div>
     </div>

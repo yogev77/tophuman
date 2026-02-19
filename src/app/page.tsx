@@ -533,10 +533,10 @@ export default function HomePage() {
             <div className="flex items-center gap-3 shrink-0">
               {user && (
                 <>
-                  <span className="text-yellow-400 font-semibold text-sm"><CC />{balance}</span>
+                  <span className="hidden sm:inline text-yellow-400 font-semibold text-sm"><CC />{balance}</span>
                   <Link
                     href={profileUsername ? `/player/${profileUsername}` : '/profile'}
-                    className="text-slate-400 hover:text-white text-sm transition"
+                    className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-white font-semibold text-sm transition"
                   >
                     {(profileUsername || displayName || '?')[0].toUpperCase()}
                   </Link>
