@@ -917,7 +917,7 @@ function SkillsTab({ username }: { username: string }) {
                         </span>
                       )}
                     </div>
-                    <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full text-white ${def.colors.dot}`}>
+                    <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${def.colors.dot}`} style={{ color: '#fff' }}>
                       {skill.totalPlays > 0 ? `Top ${strengthPct}%` : '—'}
                     </span>
                   </div>
@@ -941,10 +941,10 @@ function SkillsTab({ username }: { username: string }) {
 
               {/* Subtle metadata */}
               <div className="flex items-center justify-between text-[11px] text-slate-400 dark:text-slate-500">
-                <span>
-                  {skill.totalPlays} plays · {isMax ? 'Max level' : `${playsToNext} to Lv.${skill.level + 1}`}
-                </span>
                 <span>{totalAllPlays > 0 ? `${Math.round(skill.totalPlays / totalAllPlays * 100)}% of plays` : ''}{skill.totalPlays > 0 ? ` · Rank #${skill.rank} of ${skill.totalPlayers}` : ''}</span>
+                <span>
+                  {skill.totalPlays} plays · {isMax ? <span className={`font-semibold ${def.colors.textLight} dark:${def.colors.text}`}>Max level</span> : <><span className={`font-semibold ${def.colors.textLight} dark:${def.colors.text}`}>{playsToNext} to Lv.{skill.level + 1}</span></>}
+                </span>
               </div>
             </div>
           )
