@@ -4,6 +4,7 @@ import { use } from 'react'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Link } from 'next-view-transitions'
+import Image from 'next/image'
 import {
   Trophy,
   Gamepad2,
@@ -332,6 +333,16 @@ export default function GroupPage({ params }: { params: Promise<{ token: string 
 
         </div>
       </div>
+
+      {/* About promo */}
+      <Link href="/about" className="mt-8 block rounded-xl overflow-hidden bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-yellow-500/50 transition-colors">
+        <Image src="/team-selfie.png" alt="Podium Arena — 5 mind skills" width={1073} height={585} className="w-full" />
+        <div className="px-4 py-3 text-center">
+          <p className="font-bold text-sm text-slate-900 dark:text-white">Compete across 5 mind skills</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">21 games, daily leaderboards, free credits. Learn more about Podium Arena.</p>
+        </div>
+      </Link>
+
     </div>
   )
 }

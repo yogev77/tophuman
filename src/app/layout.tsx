@@ -65,7 +65,10 @@ export default function RootLayout({
               <footer className="border-t border-slate-200 dark:border-slate-800">
                 <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-sm text-slate-500 dark:text-slate-500">
                   <span>&copy; 2026 Podium Arena &middot; For entertainment purposes only.</span>
-                  <Link href="/terms" className="hover:text-slate-700 dark:hover:text-slate-300 transition-colors">Terms of Use</Link>
+                  <div className="flex items-center gap-3">
+                    <Link href="/about" className="hover:text-slate-700 dark:hover:text-slate-300 transition-colors">About</Link>
+                    <Link href="/terms" className="hover:text-slate-700 dark:hover:text-slate-300 transition-colors">Terms of Use</Link>
+                  </div>
                 </div>
               </footer>
               <BottomNotificationBar />

@@ -3,6 +3,7 @@
 import { Suspense, useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { Link } from 'next-view-transitions'
+import Image from 'next/image'
 import {
   Target,
   Pencil,
@@ -1135,6 +1136,15 @@ function PlayerProfileContent() {
           <SettingsTab />
         </div>
       )}
+
+      {/* About promo */}
+      <Link href="/about" className="mt-8 block">
+        <Image src="/team-race.png" alt="Podium Arena — 5 mind skills" width={1068} height={538} className="w-full" />
+        <div className="py-3 text-center">
+          <p className="font-bold text-sm text-slate-900 dark:text-white">Compete across 5 mind skills</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">21 games, daily leaderboards, free credits. Learn more about Podium Arena.</p>
+        </div>
+      </Link>
     </div>
   )
 }

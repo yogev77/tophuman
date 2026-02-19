@@ -41,6 +41,7 @@ import {
   Gamepad2,
 } from 'lucide-react'
 import { C, CC } from '@/lib/currency'
+import Image from 'next/image'
 import { GAMES, toDbGameTypeId, getSkillForGame } from '@/lib/skills'
 import { GAME_ICONS } from '@/lib/game-icons'
 import { trackGameCompleted, trackGroupPlayCreated, trackReferralShared } from '@/lib/analytics'
@@ -440,6 +441,15 @@ function GamePageContent({ gameType }: { gameType: string }) {
           )}
         </motion.div>
       </div>
+
+      {/* About promo */}
+      <Link href="/about" className="mt-8 block">
+        <Image src="/team-selfie.png" alt="Podium Arena — 5 mind skills" width={1073} height={585} className="w-full" />
+        <div className="py-3 text-center">
+          <p className="font-bold text-sm text-slate-900 dark:text-white">Compete across 5 mind skills</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">21 games, daily leaderboards, free credits. Learn more about Podium Arena.</p>
+        </div>
+      </Link>
 
     </div>
   )

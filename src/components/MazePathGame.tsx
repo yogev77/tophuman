@@ -155,7 +155,8 @@ export function MazePathGame({ onGameComplete, groupSessionId }: MazePathGamePro
     const rect = svg.getBoundingClientRect()
 
     let clientX: number, clientY: number
-    if ('touches' in e) {
+    const isTouch = 'touches' in e
+    if (isTouch) {
       if (e.touches.length === 0) return null
       clientX = e.touches[0].clientX
       clientY = e.touches[0].clientY
@@ -165,7 +166,9 @@ export function MazePathGame({ onGameComplete, groupSessionId }: MazePathGamePro
     }
 
     const x = (clientX - rect.left) / rect.width * svgSize
-    const y = (clientY - rect.top) / rect.height * svgSize
+    // On touch, offset upward by ~1 cell so the drawn line stays visible above the finger
+    const touchOffset = isTouch ? CELL_SIZE * 0.9 : 0
+    const y = (clientY - rect.top) / rect.height * svgSize - touchOffset
 
     const col = Math.floor((x - WALL_WIDTH / 2) / CELL_SIZE)
     const row = Math.floor((y - WALL_WIDTH / 2) / CELL_SIZE)
