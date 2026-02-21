@@ -604,8 +604,10 @@ export default function HomePage() {
                   {Object.values(GAMES).map(gameDef => {
                     const Icon = GAME_ICONS[gameDef.id] || Target
                     return (
-                      <div key={gameDef.id} className="flex flex-col items-center text-center p-3 rounded-xl bg-white dark:bg-slate-800">
-                        <Icon className={`w-7 h-7 mb-2 ${gameDef.iconColors.icon}`} />
+                      <div key={gameDef.id} className={`flex flex-col items-center text-center p-3 rounded-xl bg-white dark:bg-slate-800 border-b-4 ${SKILLS[gameDef.skill].colors.border}`}>
+                        <div className={`p-3 rounded-2xl mb-2 ${gameDef.iconColors.bg}`}>
+                          <Icon className={`w-7 h-7 ${gameDef.iconColors.icon}`} />
+                        </div>
                         <span className="text-xs font-medium text-slate-900 dark:text-white leading-tight line-clamp-2">{gameDef.name}</span>
                         <div className="flex items-center gap-1 mt-0.5">
                           <span className="text-[10px] text-slate-400 dark:text-slate-500 animate-pulse">· · ·</span>
@@ -632,8 +634,13 @@ export default function HomePage() {
                           {skillGameDefs.map(gameDef => {
                             const Icon = GAME_ICONS[gameDef.id] || Target
                             return (
-                              <div key={gameDef.id} className="flex flex-col items-center text-center p-3 rounded-xl bg-white dark:bg-slate-800">
-                                <Icon className={`w-7 h-7 mb-2 ${gameDef.iconColors.icon}`} />
+                              <div
+                                key={gameDef.id}
+                                className={`flex flex-col items-center text-center p-3 rounded-xl bg-white dark:bg-slate-800 border-b-4 ${skill.colors.border}`}
+                              >
+                                <div className={`p-3 rounded-2xl mb-2 ${gameDef.iconColors.bg}`}>
+                                  <Icon className={`w-7 h-7 ${gameDef.iconColors.icon}`} />
+                                </div>
                                 <span className="text-xs font-medium text-slate-900 dark:text-white leading-tight line-clamp-2">{gameDef.name}</span>
                                 <div className="flex items-center gap-1 mt-0.5">
                                   <span className="text-[10px] text-slate-400 dark:text-slate-500 animate-pulse">· · ·</span>
@@ -669,7 +676,7 @@ export default function HomePage() {
                           <Link
                             key={game.id}
                             href={`/game/${game.id}`}
-                            className="flex flex-col items-center text-center p-3 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-transform duration-150 hover:scale-105 active:scale-95"
+                            className={`flex flex-col items-center text-center p-3 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all duration-150 border-b-4 ${skill?.colors.border || 'border-slate-300'} hover:border-b-2 hover:translate-y-0.5 active:border-b-0 active:translate-y-1`}
                           >
                             <Icon className={`w-7 h-7 mb-2 ${colors.icon}`} />
                             <span className="text-xs font-medium text-slate-900 dark:text-white leading-tight line-clamp-2">{game.name}</span>
@@ -713,7 +720,7 @@ export default function HomePage() {
                                   <Link
                                     key={game.id}
                                     href={`/game/${game.id}`}
-                                    className="flex flex-col items-center text-center p-3 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-transform duration-150 hover:scale-105 active:scale-95"
+                                    className={`flex flex-col items-center text-center p-3 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all duration-150 border-b-4 ${skill.colors.border} hover:border-b-2 hover:translate-y-0.5 active:border-b-0 active:translate-y-1`}
                                   >
                                     <Icon className={`w-7 h-7 mb-2 ${colors.icon}`} />
                                     <span className="text-xs font-medium text-slate-900 dark:text-white leading-tight line-clamp-2">{game.name}</span>
