@@ -90,7 +90,7 @@ export function GroupSessionBar({ endsAt, playerCount, joinToken, isEnded, creat
       {!isEnded && (
         <button
           onClick={handleInvite}
-          className="w-full flex items-center justify-center gap-1.5 text-sm border border-yellow-500 text-yellow-600 dark:text-yellow-400 hover:bg-yellow-500/10 px-3 py-2 rounded-lg transition"
+          className="w-full flex items-center justify-center gap-1.5 text-sm border border-purple-500 text-purple-600 dark:text-purple-400 hover:bg-purple-500/10 px-3 py-2 rounded-lg transition"
         >
           {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
           {copied ? 'Invite copied!' : 'Invite Friends'}

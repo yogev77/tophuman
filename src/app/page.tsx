@@ -496,7 +496,7 @@ export default function HomePage() {
       <div ref={stickyBarRef} className={`sticky top-0 z-30 -mx-4 px-4 py-2 bg-slate-900/95 backdrop-blur-sm ${isSticky ? 'sticky-bar-enter border-b border-slate-800' : ''}`}>
         <div className={`flex items-center gap-3 ${isSticky ? 'justify-between' : 'justify-center'}`}>
           {isSticky && (
-            <Link href="/" className="flex items-center gap-2 text-lg font-bold text-white font-title shrink-0">
+            <Link href="/" className="hidden sm:flex items-center gap-2 text-lg font-bold text-white font-title shrink-0">
               <svg viewBox="104 96 304 290" className="w-7 h-7 shrink-0">
                 {LOGO_POLYGONS.map(p => (
                   <polygon key={p.skill} fill={SKILLS[p.skill].hex} points={p.points} />
@@ -505,7 +505,7 @@ export default function HomePage() {
               <span className="hidden sm:inline">Podium Arena</span>
             </Link>
           )}
-          <div className={`flex gap-1 bg-slate-800 rounded-xl p-1 ${isSticky ? 'flex-1 max-w-sm' : 'w-full md:w-1/2'}`}>
+          <div className={`flex gap-1 bg-slate-800 rounded-xl p-1 ${isSticky ? 'flex-1 sm:max-w-sm' : 'w-full md:w-1/2'}`}>
             <button
               onClick={() => setAndSaveSiteTab('games')}
               className={`flex-1 flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition ${
@@ -515,7 +515,7 @@ export default function HomePage() {
               }`}
             >
               <Gamepad2 className="w-4 h-4" />
-              Games
+              {isSticky ? <><span className="sm:hidden">Top Games</span><span className="hidden sm:inline">Games</span></> : 'Games'}
             </button>
             <button
               onClick={() => setAndSaveSiteTab('topCharts')}
@@ -526,11 +526,11 @@ export default function HomePage() {
               }`}
             >
               <Trophy className="w-4 h-4" />
-              Charts
+              {isSticky ? <><span className="sm:hidden">Top Charts</span><span className="hidden sm:inline">Charts</span></> : 'Charts'}
             </button>
           </div>
           {isSticky && (
-            <div className="flex items-center gap-3 shrink-0">
+            <div className="hidden sm:flex items-center gap-3 shrink-0">
               {user && (
                 <>
                   <span className="hidden sm:inline text-yellow-400 font-semibold text-sm"><CC />{balance}</span>

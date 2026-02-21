@@ -158,12 +158,12 @@ function ProfileTab({ data }: { data: PlayerData }) {
               return (
                 <tr key={game.gameId} className={i < games.length - 1 ? 'border-b border-slate-700/50' : ''}>
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
+                    <Link href={`/game/${game.gameId}`} className="tap-highlight flex items-center gap-3 hover:opacity-80 transition">
                       <div className={`p-1.5 rounded-lg ${colors.bg}`}>
                         <Icon className={`w-4 h-4 ${colors.icon}`} />
                       </div>
-                      <span className="text-white text-sm font-medium">{game.gameName}</span>
-                    </div>
+                      <span className="text-white text-sm font-medium hover:text-yellow-400 transition">{game.gameName}</span>
+                    </Link>
                   </td>
                   <td className="px-2 py-3 text-right">
                     <span className="text-green-400 font-bold text-sm">{formatCompactScore(stats.score)}</span>
